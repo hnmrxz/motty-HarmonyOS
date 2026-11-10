@@ -312,6 +312,13 @@ class Runner:
                     if 'app' not in spec:
                         raise EnvError('spec 没有 app 块，无法 launch')
                     self.launch(spec['app'])
+                elif act == 'restart':
+                    # 进程级重启：用于验证"凭据不是靠内存传递的"（保险库类断言必须用它）
+                    if 'app' not in spec:
+                        raise EnvError('spec 没有 app 块，无法 restart')
+                    self.sh(f"aa force-stop {spec['app']['bundleName']}", check=False)
+                    time.sleep(1.5)
+                    self.launch(spec['app'])
                 elif act == 'wait':
                     time.sleep(step['ms'] / 1000.0)
                 elif act == 'click':

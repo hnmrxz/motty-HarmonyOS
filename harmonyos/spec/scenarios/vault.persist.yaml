@@ -1,0 +1,75 @@
+schema: 1
+id: vault.persist
+title: 凭据保险库：口令落系统 Asset，进程重启后无需重新输入即可连接
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: vault-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1200
+  - action: restart
+  - action: wait
+    ms: 1500
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+asserts:
+  - kind: screenRegex
+    regex: "hello-from-list"
+    withinMs: 15000
+  - kind: absent
+    value: "no credentials in memory"
+    withinMs: 3000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。验证：口令经 Asset Store Kit 落盘，
+    **进程级重启后**仍能取出并完成认证（restart = force-stop + 重新 launch）。
+    **不覆盖**：锁屏/锁屏后的访问限制行为（DEVICE_UNLOCKED 语义）、口令轮换与失效、
+    多用户、备份迁移、Asset 不可用时的降级路径、根密钥强度与硬件背书的实际保证。
+    未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 依赖 runner 新增的 restart 动作（force-stop + launch）
+notes: >-
+  这条 spec 的价值在"restart"这一步：内存 Map 在进程重启后必然为空，
+  若还能连上并拿到命令输出，口令只可能来自保险库。
+  "no credentials in memory" 的缺席断言是反证——保险库没生效时 UI 会显示它。

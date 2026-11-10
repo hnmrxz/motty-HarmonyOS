@@ -607,3 +607,24 @@ The current mode is developer mode, and the screen cannot be unlocked automatica
 ### 22.4 断言别用"裸文件名"
 上传目标输入框里本来就有 `uploaded.txt`，用裸文件名匹配屏幕会**假通过**。
 要匹配目录列表的格式（`uploaded\.txt\|[0-9]+`）——只有它真的出现在远端目录里才成立。
+---
+
+## 23. 凭据保险库（Asset Store Kit）与 restart 动作
+
+### 23.1 为什么用 Asset 而不是自己搓加密
+口令属于系统该管的机密。`@kit.AssetStoreKit` 由系统保管、可绑定锁屏状态访问，
+比自己拿 HUKS + AES 拼一套更不容易写错。别名：`motty.host.<address:port>`。
+**只存口令**；地址/端口/用户名仍在 relationalStore（非机密）。
+
+注意枚举名：可访问性是 `asset.Accessibility.DEVICE_UNLOCKED` / `DEVICE_FIRST_UNLOCKED` /
+`DEVICE_POWERED_ON`——**没有 `UNLOCKED`**（写错会在编译期报 `Property 'UNLOCKED' does not exist`）。
+
+### 23.2 怎么验证"真的落盘了"
+新增 runner 动作 `restart`：`aa force-stop <bundle>` + 重新 launch（进程级重启）。
+重启后**不重新输入口令**直接发起连接，还能拿到远端输出 → 口令只可能来自保险库。
+反证：保险库失效时 UI 显示 `no credentials in memory`，spec 把它断言为**缺席**。
+只验证"界面上显示已保存"是没有意义的。
+
+### 23.3 连带影响（踩过的）
+删掉硬编码的 fixture 口令后，凡是用诊断入口的 spec 都必须**先建主机**，
+否则会走"没有凭据"分支。`ssh.exec`、`ssh.hostkey` 已补上建主机步骤。

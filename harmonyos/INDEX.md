@@ -607,3 +607,36 @@ abc|中文|def
 ### 未做
 上传进度/断点续传、大文件、二进制上传、目录递归上传与删除、权限/时间戳保留、并发与冲突、
 本地↔远端双栏、SCP。
+---
+
+## Round 21：凭据保险库（还安全债）
+
+此前口令只活在内存 `Map` 里，进程一退就没了。本轮把它交给**系统 Asset Store Kit**。
+
+| 产物 | 说明 |
+|---|---|
+| `Index.ets` | `Vault` 封装（`asset.add/query/remove`，别名 `motty.host.<host:port>`，可访问性 `DEVICE_UNLOCKED`） |
+| `submit()` | 新增主机时口令写入保险库；`reload()` 时**从保险库预热**内存缓存 |
+| 启动逻辑 | **删除硬编码的 fixture 口令**——诊断入口现在也走保险库，没有主机就没有凭据 |
+| `spec/run.py` | 新增 `restart` 动作（`aa force-stop` + 重新 launch），进程级重启的验证手段 |
+| `spec/scenarios/vault.persist.yaml` | 建主机 → **重启进程** → 直接点 Test → 拿到命令输出 |
+
+### 这条 spec 为什么能证明"落盘了"
+内存 `Map` 在进程重启后**必然为空**。重启后没有重新输入任何口令，却仍能完成认证并拿到
+`hello-from-list` 输出 → 口令只可能来自保险库。反证：保险库失效时 UI 会显示
+`no credentials in memory`，这条被断言为**缺席**。
+
+### 连带改动（都是必要的）
+- `ssh.exec`、`ssh.hostkey` 两个 spec 先建一台主机（硬编码口令已删除，不建就没凭据）
+- 能力注册表回填：`B03`（凭据存储）、`C01`（SFTP 浏览）、`C02`（SFTP 写）
+
+### 双画像验收（15 条 × 2 画像）
+`vault.persist`、`sftp.write`、`sftp.browse`、`session.tabs`、`terminal.pty`、`terminal.scrollback`、
+`terminal.vt`、`terminal.view`、`terminal.interactive`、`ssh.connect-from-list`、`infra.host-create-by-id`、
+`host.persist`、`net.reachability`、`ssh.exec`、`ssh.hostkey` —— 全部 **passed**。
+
+### 边界（别说成"安全做完了"）
+- 只覆盖"锁屏解锁后可访问"一种可访问性；锁屏/重启后的访问限制行为未测
+- 未做口令轮换、失效、迁移、多用户、Asset 不可用时的降级
+- 地址/端口/用户名仍在明文库（它们不是机密）；**known_hosts 与主机列表也没有加密**
+- 未做 arm64 真机验证；未做渗透测试

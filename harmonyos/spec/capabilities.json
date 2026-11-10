@@ -436,10 +436,13 @@
       "evidence": "E1",
       "proof": [
         "spec/scenarios/net.reachability.yaml",
+        "spec/scenarios/session.tabs.yaml",
         "spec/scenarios/ssh.connect-from-list.yaml",
         "spec/scenarios/ssh.exec.yaml",
         "spec/scenarios/ssh.hostkey.yaml",
         "spec/scenarios/terminal.interactive.yaml",
+        "spec/scenarios/terminal.pty.yaml",
+        "spec/scenarios/terminal.scrollback.yaml",
         "spec/scenarios/terminal.view.yaml",
         "spec/scenarios/terminal.vt.yaml"
       ],
@@ -487,8 +490,10 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/vault.persist.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {
@@ -626,8 +631,11 @@
       "proof": [
         "spec/scenarios/host.persist.yaml",
         "spec/scenarios/infra.host-create-by-id.yaml",
+        "spec/scenarios/session.tabs.yaml",
         "spec/scenarios/ssh.connect-from-list.yaml",
         "spec/scenarios/terminal.interactive.yaml",
+        "spec/scenarios/terminal.pty.yaml",
+        "spec/scenarios/terminal.scrollback.yaml",
         "spec/scenarios/terminal.view.yaml",
         "spec/scenarios/terminal.vt.yaml"
       ],
@@ -739,8 +747,10 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/sftp.browse.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {
@@ -761,8 +771,10 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/sftp.write.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {

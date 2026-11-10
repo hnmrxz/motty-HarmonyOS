@@ -15,6 +15,28 @@ app:
 steps:
   - action: launch
   - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: hostkey-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
     target: id:diag/open
   - action: click
     target: id:ssh/hostkey-check

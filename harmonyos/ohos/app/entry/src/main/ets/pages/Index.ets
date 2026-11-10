@@ -18,6 +18,8 @@ import { relationalStore } from '@kit.ArkData';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { socket } from '@kit.NetworkKit';
 import { BusinessError } from '@kit.BasicServicesKit';
+import { asset } from '@kit.AssetStoreKit';
+import { util } from '@kit.ArkTS';
 import mottynapi from 'libmottynapi.so';
 
 const DOMAIN: number = 0x0000;
@@ -36,6 +38,62 @@ const SQL_CREATE_KNOWN_HOSTS =
   'CREATE TABLE IF NOT EXISTS known_hosts (host TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, updated_at INTEGER)';
 
 const HOST_COLUMNS: string[] = ['id', 'label', 'address', 'usr', 'port', 'proto'];
+const VAULT_PREFIX: string = 'motty.host.';
+
+/**
+ * 凭据保险库：用系统 Asset Store Kit 存口令。
+ * 为什么不用自己搓 AES：口令属于系统该管的机密，Asset 由系统保管、可随锁屏状态限制访问，
+ * 比自己拿 HUKS 拼一套更不容易写错。别名按 host:port 区分。
+ *
+ * 明确边界：这里只存口令；地址/端口/用户名仍在 relationalStore（非机密）。
+ */
+class Vault {
+  private static aliasOf(key: string): Uint8Array {
+    return new util.TextEncoder().encodeInto(VAULT_PREFIX + key);
+  }
+
+  static async save(key: string, secret: string): Promise<boolean> {
+    try {
+      await Vault.remove(key);
+      const attr: asset.AssetMap = new Map();
+      attr.set(asset.Tag.ALIAS, Vault.aliasOf(key));
+      attr.set(asset.Tag.SECRET, new util.TextEncoder().encodeInto(secret));
+      attr.set(asset.Tag.ACCESSIBILITY, asset.Accessibility.DEVICE_UNLOCKED);
+      await asset.add(attr);
+      return true;
+    } catch (e) {
+      hilog.error(DOMAIN, TAG, 'vault save failed: %{public}s', JSON.stringify(e));
+      return false;
+    }
+  }
+
+  static async load(key: string): Promise<string> {
+    try {
+      const query: asset.AssetMap = new Map();
+      query.set(asset.Tag.ALIAS, Vault.aliasOf(key));
+      query.set(asset.Tag.RETURN_TYPE, asset.ReturnType.ALL);
+      const res: asset.AssetMap[] = await asset.query(query);
+      if (res.length === 0) {
+        return '';
+      }
+      const raw = res[0].get(asset.Tag.SECRET) as Uint8Array;
+      return raw === undefined ? '' : util.TextDecoder.create('utf-8').decodeToString(raw);
+    } catch (e) {
+      // 没存过会抛 NOT_FOUND，这里按"没有"处理
+      return '';
+    }
+  }
+
+  static async remove(key: string): Promise<void> {
+    try {
+      const query: asset.AssetMap = new Map();
+      query.set(asset.Tag.ALIAS, Vault.aliasOf(key));
+      await asset.remove(query);
+    } catch (e) {
+      // 不存在就算了
+    }
+  }
+}
 
 interface HostItem {
   id: string;
@@ -105,7 +163,6 @@ struct Index {
   private pendingLabel: string = '';
 
   aboutToAppear(): void {
-    this.creds.set(this.fixtureKey, { address: '127.0.0.1', port: 2222, user: 'tester', password: 'secret' });
     this.initStore();
   }
 
@@ -146,6 +203,22 @@ struct Index {
     }
     rs.close();
     this.hosts = out;
+    // 从保险库预热：进程重启后凭据仍然可用，这是"落盘"与"只在内存"的分界
+    for (let i = 0; i < out.length; i++) {
+      const key = this.hostKey(out[i].address, out[i].port);
+      if (this.creds.get(key) !== undefined) {
+        continue;
+      }
+      const pw = await Vault.load(key);
+      if (pw.length > 0) {
+        this.creds.set(key, {
+          address: out[i].address,
+          port: Number.parseInt(out[i].port, 10),
+          user: out[i].user,
+          password: pw
+        });
+      }
+    }
     const st: string[] = [];
     for (let i = 0; i < out.length; i++) {
       st.push(this.statuses.length > i ? this.statuses[i] : '');
@@ -218,7 +291,10 @@ struct Index {
     };
     try {
       await this.store.insert('hosts', bucket);
-      this.creds.set(this.hostKey(address, port), {
+      const key = this.hostKey(address, port);
+      const saved = await Vault.save(key, this.formPassword);
+      hilog.info(DOMAIN, TAG, 'vault save for %{public}s -> %{public}s', key, String(saved));
+      this.creds.set(key, {
         address: address,
         port: Number.parseInt(port, 10),
         user: this.formUser.trim(),

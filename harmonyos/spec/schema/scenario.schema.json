@@ -119,7 +119,8 @@
               "rightClick",
               "wait",
               "setVariable",
-              "invoke"
+              "invoke",
+              "restart"
             ]
           },
           "target": {
