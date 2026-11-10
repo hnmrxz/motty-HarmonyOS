@@ -319,6 +319,23 @@ class Runner:
                     self.sh(f"aa force-stop {spec['app']['bundleName']}", check=False)
                     time.sleep(1.5)
                     self.launch(spec['app'])
+                elif act == 'shell':
+                    # 在宿主（跑 runner 的机器）上执行一条命令：重启夹具、换 host key 等。
+                    # 输出写临时文件而不是管道：命令里若用 Start-Process 重定向输出，
+                    # 子进程会继承句柄，管道永远等不到 EOF（实测把整轮挂死 10 分钟）。
+                    if 'cmd' not in step:
+                        raise EnvError('shell 动作缺少 cmd')
+                    with tempfile.NamedTemporaryFile(mode='w+', suffix='.shell.log', delete=False) as fh:
+                        log_path = pathlib.Path(fh.name)
+                    with open(log_path, 'w', encoding='utf-8') as fh:
+                        proc = subprocess.run(step['cmd'], shell=True, stdin=subprocess.DEVNULL,
+                                              stdout=fh, stderr=subprocess.STDOUT,
+                                              timeout=step.get('timeoutSec', 60))
+                    tail = log_path.read_text(encoding='utf-8', errors='replace')[-300:]
+                    entry['detail'] = {'rc': proc.returncode, 'log': tail}
+                    if proc.returncode != 0 and not step.get('allowFailure', False):
+                        raise AssertionError(f"shell 命令失败 rc={proc.returncode}: {tail[-160:]}")
+                    time.sleep(step.get('settleMs', 1500) / 1000.0)
                 elif act == 'wait':
                     time.sleep(step['ms'] / 1000.0)
                 elif act == 'click':

@@ -468,6 +468,7 @@
       },
       "evidence": "E1",
       "proof": [
+        "spec/scenarios/hostkey.changed.yaml",
         "spec/scenarios/knownhosts.manage.yaml",
         "spec/scenarios/ssh.hostkey.yaml"
       ],
@@ -479,7 +480,7 @@
         "deps": "R04",
         "acceptance": "`host_test`"
       },
-      "partialCoverage": "部分：信任确认、known_hosts 持久化与删除已双画像实测；主机密钥变更告警、@cert-authority、导入导出未做。"
+      "partialCoverage": "部分：信任确认、known_hosts 持久化/删除、主机密钥变更告警与默认拒绝已双画像实测；接受新钥后重连、@cert-authority、导入导出未做。"
     },
     {
       "id": "B03",

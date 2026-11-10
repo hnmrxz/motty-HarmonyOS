@@ -1,0 +1,119 @@
+schema: 1
+id: hostkey.changed
+title: 主机密钥变更告警：换钥后必须显式告警、默认拒绝、显式接受才更新信任
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B02
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  # 关键的一步：把夹具的 host key 换成另一把（宿主侧动作，不经 hdc）
+  - action: shell
+    cmd: >-
+      powershell -NoProfile -Command "Get-Process sshfixture -ErrorAction SilentlyContinue | Stop-Process -Force;
+      Start-Sleep -Milliseconds 800;
+      Start-Process -FilePath 'E:\motty-HarmonyOS\harmonyos\.bin\sshfixture.exe'
+      -ArgumentList '-addr','127.0.0.1:2223','-hostkey','E:\motty-HarmonyOS\harmonyos\.bin\.sshfixture\hostkey-alt','-hostkeytype','rsa'
+      -RedirectStandardOutput 'E:\motty-HarmonyOS\harmonyos\.bin\sshfixture.log'
+      -RedirectStandardError 'E:\motty-HarmonyOS\harmonyos\.bin\sshfixture.err' -WindowStyle Hidden"
+    settleMs: 2500
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: rotate-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  # 第一次：未知主机 -> 信任（记下第一把钥匙）
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "hello-from-list"
+      withinMs: 15000
+  # 换成另一把 host key
+  - action: shell
+    cmd: >-
+      powershell -NoProfile -Command "Get-Process sshfixture -ErrorAction SilentlyContinue | Stop-Process -Force;
+      Start-Sleep -Milliseconds 800;
+      Start-Process -FilePath 'E:\motty-HarmonyOS\harmonyos\.bin\sshfixture.exe'
+      -ArgumentList '-addr','127.0.0.1:2223','-hostkey','E:\motty-HarmonyOS\harmonyos\.bin\.sshfixture\hostkey-rotated','-hostkeytype','rsa'
+      -RedirectStandardOutput 'E:\motty-HarmonyOS\harmonyos\.bin\sshfixture.log'
+      -RedirectStandardError 'E:\motty-HarmonyOS\harmonyos\.bin\sshfixture.err' -WindowStyle Hidden"
+    settleMs: 2500
+  # 再连：必须告警，且不能自动连上
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 3000
+    expect:
+      kind: screenRegex
+      regex: "HOST KEY HAS CHANGED"
+      withinMs: 15000
+  # 弹窗文本必须在关掉之前断言（关掉后节点就没了）
+  - action: wait
+    ms: 500
+    expect:
+      kind: screenRegex
+      regex: "new: SHA256:"
+      withinMs: 6000
+  - action: click
+    target: id:hostkey/cancel-changed
+  - action: wait
+    ms: 800
+asserts:
+  - kind: screenRegex
+    regex: "host key changed: refused"
+    withinMs: 6000
+  - kind: screenRegex
+    regex: "HOST KEY HAS CHANGED|host key changed: refused"
+    withinMs: 4000
+  - kind: absent
+    value: "verified SHA256:"
+    withinMs: 3000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：换钥后被识别为"变更"（不是"未知"）、
+    弹出显式告警并同时显示新旧指纹、默认拒绝（不发起认证）、用户取消后保持拒绝。
+    **不覆盖**：接受新密钥后自动重连的路径（需另一条用例）、known_hosts 的
+    `@cert-authority`、算法降级告警、告警跨会话复现；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 通过 runner 新增的 shell 动作在宿主侧轮换夹具的 host key（这是唯一能造出"换钥"的方式）
+notes: >-
+  "Unknown host key" 与 "HOST KEY HAS CHANGED" 必须区分：前者是首次连接，
+  后者是**同主机换了钥匙**，属于 MITM 的典型信号。断言 "verified SHA256:" 缺席，
+  证明应用没有在告警的同时偷偷把连接做完。

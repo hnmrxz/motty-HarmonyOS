@@ -131,6 +131,9 @@ struct Index {
   @State formPassword: string = '';
   @State probeText: string = '(not probed)';
   @State keyDialog: boolean = false;
+  @State changedDialog: boolean = false;
+  @State changedOld: string = '';
+  @State changedNew: string = '';
   @State pendingFp: string = '';
   @State pendingKey: string = '';
   @State diagOpen: boolean = false;
@@ -944,7 +947,29 @@ struct Index {
 
   private runProbe(index: number, cred: Cred, fp: string): void {
     mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo hello-from-list', fp,
-      (result: string) => { this.setStatus(index, result); });
+      (result: string) => {
+        this.setStatus(index, result);
+        // 主机密钥变更：必须显式告警，且**不自动连接**
+        if (result.indexOf('hostkey-mismatch') === 0) {
+          const m = new RegExp('actual=(SHA256:[A-Za-z0-9+/]+)').exec(result);
+          this.changedOld = fp;
+          this.changedNew = m !== null ? m[1] : 'unknown';
+          this.changedDialog = true;
+        }
+      });
+  }
+
+  // 用户明确接受新密钥：更新 known_hosts 后重试
+  private acceptChangedKey(index: number): void {
+    const key = this.hostKey(this.hosts[index].address, this.hosts[index].port);
+    const newFp = this.changedNew;
+    this.changedDialog = false;
+    this.saveFp(key, newFp).then(() => {
+      const cred = this.creds.get(key);
+      if (cred !== undefined) {
+        this.runProbe(index, cred, newFp);
+      }
+    });
   }
 
   private async connectRow(index: number): Promise<void> {
@@ -1244,6 +1269,30 @@ struct Index {
   }
 
   @Builder
+  changedKeyWarning() {
+    Column({ space: 10 }) {
+      Text('HOST KEY HAS CHANGED').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#C62828').width('100%')
+      Text('This can mean the server was reinstalled — or that someone is intercepting the connection.')
+        .fontSize(12).fontColor('#666666').width('100%')
+      Text('old: ' + this.changedOld).id('hostkey/old').fontSize(11).fontFamily('monospace').width('100%')
+      Text('new: ' + this.changedNew).id('hostkey/new').fontSize(11).fontFamily('monospace')
+        .fontColor('#C62828').width('100%')
+      Row({ space: 12 }) {
+        Button('Cancel').id('hostkey/cancel-changed').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => {
+            this.changedDialog = false;
+            // 同时写主机行状态：诊断面板没打开时 probeText 是看不见的
+            this.setStatus(0, 'host key changed: refused (user did not accept)');
+          })
+        Button('Accept new key').id('hostkey/update').backgroundColor('#C62828').fontColor(Color.White)
+          .onClick(() => { this.acceptChangedKey(0); })
+      }.width('100%').justifyContent(FlexAlign.End)
+    }
+    .id('hostkey/changed').width(560).padding(20).backgroundColor(Color.White).borderRadius(12)
+    .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
+  }
+
+  @Builder
   knownPanel() {
     Column({ space: 8 }) {
       Row() {
@@ -1466,6 +1515,10 @@ struct Index {
       if (this.vncOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
         this.vncPanel()
+      }
+      if (this.changedDialog) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
+        this.changedKeyWarning()
       }
       if (this.knownOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})

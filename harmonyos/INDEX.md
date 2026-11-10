@@ -1060,3 +1060,34 @@ OpenSSL 是 **Apache-2.0**，与 FreeRDP 一致，不引入新的 GPL 义务（�
 ### 小坑
 YAML 里 `- 断言用 "trusted entries: N" 计数…` 这种带冒号的未加引号条目会被解析成 map，
 lint 直接报 `is not of type 'string'`——已改成不带冒号的写法。
+---
+
+## Round 35：主机密钥变更告警（B02 的另一半）
+
+### 交付
+| 产物 | 说明 |
+|---|---|
+| `Index.ets` | 检测 `hostkey-mismatch` → 弹**变更告警**（`hostkey/changed`），同时显示 `hostkey/old` 与 `hostkey/new`；`hostkey/cancel-changed`（默认拒绝）、`hostkey/update`（显式接受后更新 known_hosts 并重试） |
+| `spec/run.py` | 新增 `shell` 动作：在**宿主**上跑命令（用于中途轮换夹具 host key），输出写临时文件而非管道 |
+| `spec/scenarios/hostkey.changed.yaml` | 信任钥匙 A → 换钥匙 B → 再连必须告警且默认拒绝 |
+
+### 为什么必须与"未知主机"分开
+`Unknown host key` 是首次连接；`HOST KEY HAS CHANGED` 是**同一主机换了钥匙**——这是 MITM 的典型信号。
+两者混在一起会让用户习惯性点"信任"。
+
+### 本轮修掉的三个问题
+1. **runner 挂死 10 分钟**：`shell` 动作用管道捕获输出，而命令里的 `Start-Process -RedirectXxx`
+   让子进程继承句柄、管道永远等不到 EOF → 改为写临时文件
+2. **新旧指纹显示成同一个**：正则取的是结果串里**第一个** `SHA256:`（那是 `expected=`），
+   必须显式匹配 `actual=(SHA256:…)`
+3. **拒绝文案看不见**：原先只写进 `probeText`（只在诊断面板里渲染），改为同时写主机行状态
+
+### 双画像
+`hostkey.changed` 在 2in1 与 tablet 均 **passed**。
+
+### 能力表
+`B02` 的 partialCoverage 更新为：信任确认 + 持久化/删除 + **变更告警与默认拒绝**已测；
+接受新钥后重连、`@cert-authority`、导入导出仍未做。
+
+### 未做
+接受新钥匙后的自动重连路径（需另一条用例）、算法降级告警、告警跨会话复现。
