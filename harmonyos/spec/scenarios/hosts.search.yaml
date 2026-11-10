@@ -1,0 +1,93 @@
+schema: 1
+id: hosts.search
+title: 主机搜索：按标签/地址过滤，无匹配时给出空态
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B07
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: alpha-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: beta-box
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.9.9.9
+  - action: type
+    target: id:shell/dialog-user
+    text: root
+  - action: type
+    target: id:shell/dialog-port
+    text: "22"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 900
+  - action: type
+    target: id:hosts/search
+    text: alpha
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "alpha-host"
+      withinMs: 8000
+  - action: type
+    target: id:hosts/search
+    text: zzz-no-such
+  - action: wait
+    ms: 800
+asserts:
+  - kind: screenRegex
+    regex: "no matching hosts"
+    withinMs: 8000
+  - kind: absent
+    value: "alpha-host"
+    withinMs: 3000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：按标签过滤、无匹配空态、原下标语义不变
+    （行内按钮 id 仍对应未过滤数组）。
+    **不覆盖**：按端口/协议过滤、模糊搜索排序、搜索历史、搜索结果计数；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 第二次输入会追加到搜索框，所以用一个必然无匹配的串来验证空态
+notes: >-
+  过滤实现刻意"遍历全部、内层 if 隐藏"，而不是重建数组：这样 host-row/<i> 的下标
+  仍然对应未过滤数组，spec 与用户都不会因为搜索而点错机器。

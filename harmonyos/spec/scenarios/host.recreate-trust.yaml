@@ -1,0 +1,108 @@
+schema: 1
+id: host.recreate-trust
+title: 删除主机后重建同一地址：必须重新要求确认主机密钥
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B02
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: re-trust
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "hello-from-list"
+      withinMs: 15000
+  # 删除主机（连带清掉 known_hosts 与保险库口令）
+  - action: click
+    target: id:host-del/0
+  - action: click
+    target: id:hostdel/confirm
+  - action: wait
+    ms: 1200
+  # 重建同一地址
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: re-trust-again
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2500
+asserts:
+  - kind: screenRegex
+    regex: "Unknown host key"
+    withinMs: 15000
+  - kind: screenRegex
+    regex: "SHA256:"
+    withinMs: 5000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：删除主机后其 known_hosts 记录确实被清除，
+    同地址重建再连会重新进入"未知主机"确认流程。
+    **不覆盖**：删除后保险库口令是否被清（需"重建时不填口令"的用例）、
+    主机密钥变更后的重建、多主机同名地址（不同端口）；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 用"重建同地址后仍要信任"间接证明 known_hosts 被清，而不只是界面从列表消失
+notes: >-
+  这是补上一轮留的口子：上轮只证明"库里删了"，这条证明"删除对后续连接真的生效"。
+  如果 known_hosts 没清，第二次点 Test 会直接 verified 而不弹框——断言就会失败。

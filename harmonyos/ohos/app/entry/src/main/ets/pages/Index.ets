@@ -115,6 +115,11 @@ interface TabInfo {
   vtId: number;
 }
 
+interface HostRow {
+  h: HostItem;
+  index: number;
+}
+
 interface Cred {
   address: string;
   port: number;
@@ -182,6 +187,7 @@ struct Index {
   @State editingId: string = '';      // 非空 = 编辑模式
   @State deleteDialog: boolean = false;
   @State deleteIndex: number = -1;
+  @State hostQuery: string = '';
 
   private creds: Map<string, Cred> = new Map<string, Cred>();
   private store: relationalStore.RdbStore | null = null;
@@ -984,6 +990,26 @@ struct Index {
     this.startForward();
   }
 
+  // 过滤主机：返回 (host, 原下标) 对。下标必须来自**未过滤**数组，
+  // 否则 host-row/<i> 会随搜索变化而指向别的机器（spec 与用户都会踩到）。
+  private matchesQuery(h: HostItem): boolean {
+    const q = this.hostQuery.trim().toLowerCase();
+    if (q.length === 0) {
+      return true;
+    }
+    return h.label.toLowerCase().indexOf(q) >= 0 || h.address.toLowerCase().indexOf(q) >= 0;
+  }
+
+  private matchCount(): number {
+    let n = 0;
+    for (let i = 0; i < this.hosts.length; i++) {
+      if (this.matchesQuery(this.hosts[i])) {
+        n++;
+      }
+    }
+    return n;
+  }
+
   private probeNet(): void {
     this.probeText = 'connecting...';
     const tcp = socket.constructTCPSocketInstance();
@@ -1624,9 +1650,15 @@ struct Index {
     Column() {
       Text('Hosts').fontSize(13).fontColor('#666666').width('100%')
         .padding({ left: 16, top: 10, bottom: 4 })
+      TextInput({ text: this.hostQuery, placeholder: 'search label or address' })
+        .id('hosts/search')
+        .width('100%')
+        .padding({ left: 16, right: 16 })
+        .onChange((v: string) => { this.hostQuery = v; })
       List({ space: 8 }) {
         ForEach(this.hosts, (h: HostItem, index: number) => {
           ListItem() {
+            if (this.matchesQuery(h)) {
             Column({ space: 4 }) {
               Row({ space: 12 }) {
                 Column({ space: 4 }) {
@@ -1651,6 +1683,7 @@ struct Index {
                 Text(this.statuses[index]).id('host-status/' + index).fontSize(11).fontColor('#0A6C00').width('100%')
               }
             }.width('100%').padding(12).backgroundColor(Color.White).borderRadius(8)
+            }
           }
         }, (h: HostItem) => h.id + '|' + h.label + '|' + h.address + '|' + h.port)
       }
@@ -1658,6 +1691,9 @@ struct Index {
 
       if (this.hosts.length === 0) {
         Text('No hosts yet').id('host-grid/empty').fontSize(13).fontColor('#999999')
+          .width('100%').textAlign(TextAlign.Center).padding({ bottom: 24 })
+      } else if (this.matchCount() === 0) {
+        Text('no matching hosts').id('hosts/no-match').fontSize(13).fontColor('#999999')
           .width('100%').textAlign(TextAlign.Center).padding({ bottom: 24 })
       }
     }

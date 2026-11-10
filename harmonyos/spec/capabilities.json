@@ -468,6 +468,7 @@
       },
       "evidence": "E1",
       "proof": [
+        "spec/scenarios/host.recreate-trust.yaml",
         "spec/scenarios/hostkey.changed.yaml",
         "spec/scenarios/knownhosts.manage.yaml",
         "spec/scenarios/ssh.hostkey.yaml"
@@ -480,7 +481,7 @@
         "deps": "R04",
         "acceptance": "`host_test`"
       },
-      "partialCoverage": "部分：信任确认、known_hosts 持久化/删除、主机密钥变更告警与默认拒绝已双画像实测；接受新钥后重连、@cert-authority、导入导出未做。"
+      "partialCoverage": "部分：信任确认、known_hosts 持久化/删除、删除后重建必须重新信任、主机密钥变更告警与默认拒绝已双画像实测；接受新钥后重连、@cert-authority、导入导出未做。"
     },
     {
       "id": "B03",
@@ -586,6 +587,7 @@
       "evidence": "E1",
       "proof": [
         "spec/scenarios/host.manage.yaml",
+        "spec/scenarios/hosts.search.yaml",
         "spec/scenarios/ssh.connect-from-list.yaml",
         "spec/scenarios/ssh.exec.yaml"
       ],
@@ -597,7 +599,7 @@
         "deps": "—",
         "acceptance": "`credentials`"
       },
-      "partialCoverage": "部分：新建/编辑/删除(含二次确认)已双画像实测；导入导出、分组、排序、搜索未做。"
+      "partialCoverage": "部分：新建/编辑/删除(二次确认)/搜索过滤与空态已双画像实测；导入导出、分组、排序未做。"
     },
     {
       "id": "B08",

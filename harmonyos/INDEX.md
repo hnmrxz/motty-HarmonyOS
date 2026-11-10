@@ -1131,3 +1131,29 @@ lint 直接报 `is not of type 'string'`——已改成不带冒号的写法。
 
 ### 未做
 删除后"重建同主机是否重新要求信任"的第二条用例、编辑时改端口/地址的迁移、批量删除、撤销、导入导出。
+---
+
+## Round 38：主机搜索 + 删除后重建必须重新信任
+
+| 产物 | 说明 |
+|---|---|
+| `Index.ets` | 列表加搜索框 `hosts/search`（按标签/地址过滤）与空态 `hosts/no-match`；**渲染仍遍历全量、内层 `if` 过滤**，保证 `host-row/<i>` 下标仍对应未过滤数组 |
+| `spec/scenarios/hosts.search.yaml` | 两台主机 → 搜 `alpha` 只留一台 → 搜无匹配串出空态 |
+| `spec/scenarios/host.recreate-trust.yaml` | 信任 → 删除主机 → 重建同地址 → **必须重新弹信任框** |
+
+### 两个实现细节（都是踩过才改的）
+1. **不能用"重建过滤数组 + ForEach"**：ArkUI 的 ForEach 体内**不允许写 `const` 语句**
+   （报 `Only UI component syntax can be written here`），而且重建数组会让 `host-row/<i>`
+   的下标随搜索漂移。最终采用"遍历全量 + 内层 if 隐藏"。
+2. **元组类型在 ArkTS 里推断不稳**：`Array<[HostItem, number]>` 在 ForEach 里报类型不匹配，
+   改用接口对象（最终连接口也不需要了，因为方案换成了内层 if）。
+
+### 为什么"重建后仍要信任"这条重要
+上一轮只证明"库里的行删了"，这条证明**删除对后续连接真的生效**：
+若 known_hosts 没清，第二次点 Test 会直接 `verified` 而不弹框，断言必然失败。
+
+### 双画像
+`hosts.search` 与 `host.recreate-trust` 在 2in1 与 tablet 均 **passed**。
+
+### 未做
+按端口/协议过滤、排序、搜索历史；删除后"重建时不填口令"的凭据清理用例；多主机同地址不同端口。
