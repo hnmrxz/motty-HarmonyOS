@@ -1,0 +1,299 @@
+{
+  "bomFormat": "CycloneDX-like (minimal)",
+  "specVersion": "1.4",
+  "metadata": {
+    "component": {
+      "type": "application",
+      "name": "com.motty.harmony",
+      "version": "0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "GPL-3.0-or-later"
+          }
+        }
+      ]
+    },
+    "note": "整体以 GPL-3.0-or-later 组合分发（含 GPL-2.0-or-later 的 LibVNC 已构建但未链接）。详见 harmonyos/LICENSING.md。本文件由 harmonyos/tools/gen-sbom.py 生成，不要手改。"
+  },
+  "components": [
+    {
+      "name": "FreeRDP",
+      "version": "3.9.0",
+      "license": "Apache-2.0",
+      "use": "RDP 协议栈（当前仅连接路径）",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libfreerdp3.a",
+          "sizeBytes": 4886486,
+          "sha256": "d2cf3b7fc0e7ea953729c51373e06819480d381ca729445f9e307e00853f639e"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libfreerdp3.a",
+          "sizeBytes": 5006438,
+          "sha256": "939fc40417365ea77b0a704658f5380bd76b275fdf8251f29d4f95623d1da1b3"
+        }
+      ]
+    },
+    {
+      "name": "FreeRDP (client)",
+      "version": "3.9.0",
+      "license": "Apache-2.0",
+      "use": "RDP 客户端上下文（随 FreeRDP）",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libfreerdp-client3.a",
+          "sizeBytes": 1397482,
+          "sha256": "eeee2fd512f5d71d83249318713eea48eec646f2290be04086cf1afd09784493"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libfreerdp-client3.a",
+          "sizeBytes": 1493962,
+          "sha256": "1201ab4b3af733cd5cc3b082828a61b9a4f1e30f4366bd1c797fbd3e73b1e4c4"
+        }
+      ]
+    },
+    {
+      "name": "LibVNC (client)",
+      "version": "0.9.14",
+      "license": "GPL-2.0-or-later",
+      "use": "**已构建但未链接**（VNC 走自研 RFB 实现）",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libvncclient.a",
+          "sizeBytes": 152098,
+          "sha256": "0f76369c0626de30f9048a46f800814d17e09344b481b8be696d8c6556f73014"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libvncclient.a",
+          "sizeBytes": 148146,
+          "sha256": "a912b719ddfd3fdc0c58047a3334c407e2803427ce6eabab7d59e1ec9a9dfc13"
+        }
+      ]
+    },
+    {
+      "name": "LibVNC (server)",
+      "version": "0.9.14",
+      "license": "GPL-2.0-or-later",
+      "use": "**已构建但未链接**",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libvncserver.a",
+          "sizeBytes": 400852,
+          "sha256": "bf27c4e4a91fa7923520308b7993d5fc1ae2e9192493e4453224b99424d3cb92"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libvncserver.a",
+          "sizeBytes": 387668,
+          "sha256": "122abffe229e28973c9c5882ccff0e6f00bfe3401da594a87252c4339a78b769"
+        }
+      ]
+    },
+    {
+      "name": "OpenSSL (libcrypto)",
+      "version": "3.0.15",
+      "license": "Apache-2.0",
+      "use": "FreeRDP 的 TLS/证书/哈希后端",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libcrypto.a",
+          "sizeBytes": 7476808,
+          "sha256": "c5c791df51466bd31300f1fd4bbf0efdabf69b6d5db468c4a99b818dad7200c7"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libcrypto.a",
+          "sizeBytes": 7771434,
+          "sha256": "8366c4f7c496efa370b91f28fee7f1609fe85db85eb3413d34f0db19d653fa65"
+        }
+      ]
+    },
+    {
+      "name": "OpenSSL (libssl)",
+      "version": "3.0.15",
+      "license": "Apache-2.0",
+      "use": "TLS（随 OpenSSL）",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libssl.a",
+          "sizeBytes": 1217508,
+          "sha256": "0881171b7b049d504746398918e667d94b5826924f872e1a66c1db2395755b2e"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libssl.a",
+          "sizeBytes": 1160508,
+          "sha256": "eb6d4b50514c8cd4cfa4962e83c112c08c05d57bc9343fd3e79559060bd396a7"
+        }
+      ]
+    },
+    {
+      "name": "WinPR",
+      "version": "3.9.0",
+      "license": "Apache-2.0",
+      "use": "FreeRDP 的 Win32 兼容层（随 FreeRDP）",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libwinpr3.a",
+          "sizeBytes": 2093212,
+          "sha256": "45fe6f3f5e96bae34a6c1326737a1200d7afed74018c3b2b39042ec482fb86aa"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libwinpr3.a",
+          "sizeBytes": 2177140,
+          "sha256": "76784b502cb9dcb7b6433676a96bc8b6471cebec4ff1adf2dd0f6c28fb8f7c87"
+        }
+      ]
+    },
+    {
+      "name": "WinPR tools",
+      "version": "3.9.0",
+      "license": "Apache-2.0",
+      "use": "WinPR 辅助（随 FreeRDP）",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libwinpr-tools3.a",
+          "sizeBytes": 34292,
+          "sha256": "045ab9b8fade711f81c4d7e43dacb2e5c45b938645a69186556096034e0758ca"
+        }
+      ]
+    },
+    {
+      "name": "libssh2",
+      "version": "1.11.1",
+      "license": "BSD-3-Clause",
+      "use": "SSH2 传输/SFTP/端口转发",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libssh2.a",
+          "sizeBytes": 390266,
+          "sha256": "478686f4aff3994a4604dc7cec6e63ed4fb3770b91a9895a7204a38519dba8ef"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libssh2.a",
+          "sizeBytes": 376114,
+          "sha256": "98819ef52066a47f178427e8c7c752083c928d3dee7e3e95d0b16870eca25a94"
+        }
+      ]
+    },
+    {
+      "name": "libvterm",
+      "version": "neovim fork (2024)",
+      "license": "MIT",
+      "use": "终端 VT 解析与回滚缓冲",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libvterm.a",
+          "sizeBytes": 108106,
+          "sha256": "1a6982b00127403b584af7a0b5ec6c49e77f21433d82ccf32a8986501b1b28e1"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libvterm.a",
+          "sizeBytes": 83162,
+          "sha256": "d3fd3585eb12c4b334bdf437500d688cd670c2a343abf52fb844a137006de887"
+        }
+      ]
+    },
+    {
+      "name": "mbedTLS",
+      "version": "3.6.2",
+      "license": "Apache-2.0",
+      "use": "密码学原语（随 mbedTLS）",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libmbedcrypto.a",
+          "sizeBytes": 893696,
+          "sha256": "8252c3253952235521626605fa4a88b05098c4c1d97985d36978795d558232f8"
+        },
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libmbedtls.a",
+          "sizeBytes": 485828,
+          "sha256": "f47096576741efa5b737fbcbea3825785f9ce6f6fc6d5bcd8f43714ef92e0d0c"
+        },
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libmbedx509.a",
+          "sizeBytes": 100896,
+          "sha256": "febdc8c96284b8ee444ecb0cb4e3fba8bf054264aa18e259640d0a37bbc1b7b0"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libmbedcrypto.a",
+          "sizeBytes": 892570,
+          "sha256": "212ae739f2f9ee36c7b08c19a8d6a98ab49eaadc76f37ce61458b72ff26cecb5"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libmbedtls.a",
+          "sizeBytes": 498692,
+          "sha256": "2a724857dc1ef33903e84cba0d325761c4979f2f849238afcac1c45d366cb844"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libmbedx509.a",
+          "sizeBytes": 97568,
+          "sha256": "1eae2abe85903ed4841dd45f6a462ccf7192c9f4675d15a002eb87be3707a7e6"
+        }
+      ]
+    },
+    {
+      "name": "mbedTLS (everest)",
+      "version": "3.6.2",
+      "license": "Apache-2.0",
+      "use": "Curve25519（随 mbedTLS）",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libeverest.a",
+          "sizeBytes": 2544,
+          "sha256": "908808e5e14874dd1dcb2ac8bf6ae5e80fd1ea034c63bc15ac64b6dd6ca86168"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libeverest.a",
+          "sizeBytes": 2640,
+          "sha256": "32a4e41695f70ca63009d095ebe826d57f035d3e0e170a4ab6907a5c0d8784bc"
+        }
+      ]
+    },
+    {
+      "name": "mbedTLS (p256-m)",
+      "version": "3.6.2",
+      "license": "Apache-2.0",
+      "use": "P-256（随 mbedTLS）",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libp256m.a",
+          "sizeBytes": 1768,
+          "sha256": "3f9f74d0de3add935d0cef78a7ae7215dc9edda3b5b77f675733c9395569bc53"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libp256m.a",
+          "sizeBytes": 1824,
+          "sha256": "4e909a5fcfe5374cdbd1f88122754ff89858369b19f3682f0484130c530ce9ea"
+        }
+      ]
+    }
+  ]
+}

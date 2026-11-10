@@ -105,6 +105,19 @@ def check(path, schema, caps, errors):
     return doc
 
 
+def check_sbom() -> list:
+    """SBOM 与产物一致性：漏登记三方库或清单过期时，lint 直接失败。"""
+    import subprocess
+    script = pathlib.Path(__file__).resolve().parents[1] / "tools" / "gen-sbom.py"
+    if not script.exists():
+        return ["缺少 tools/gen-sbom.py"]
+    proc = subprocess.run([sys.executable, str(script), "--check"], capture_output=True, text=True)
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout).strip().splitlines()
+        return ["SBOM 校验失败: " + (detail[-1] if detail else "unknown")]
+    return []
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--strict', action='store_true', help='把 needsReview 的能力也当作错误')
@@ -114,6 +127,7 @@ def main():
         schema = json.load(fh)
     caps = load_caps()
     errors = []
+    errors += check_sbom()
     docs = []
     for path in sorted(SCENARIOS.glob('*.yaml')):
         doc = check(path, schema, caps, errors)
