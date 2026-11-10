@@ -1,0 +1,57 @@
+schema: 1
+id: rdp.connect
+title: RDP 客户端接入（仅连接路径）：非法对端必须明确失败，不得崩溃
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - E04
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:diag/open
+  - action: click
+    target: id:rdp/probe-closed
+  - action: wait
+    ms: 4000
+    expect:
+      kind: screenRegex
+      regex: "connect failed"
+      withinMs: 15000
+  - action: click
+    target: id:rdp/probe-ssh
+  - action: wait
+    ms: 5000
+asserts:
+  - kind: screenRegex
+    regex: "connect failed"
+    withinMs: 15000
+  - kind: absent
+    value: "connected 127.0.0.1"
+    withinMs: 3000
+  - kind: absent
+    value: "error context"
+    withinMs: 2000
+  - kind: absent
+    value: "error settings"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。**只验证连接路径与失败语义**：
+    FreeRDP 上下文能创建、设置项能填、连接失败时把错误如实返回、进程不崩溃。
+    **明确未覆盖**：与真实 RDP 服务器的成功连接、TLS/证书校验与 pin、NLA/CredSSP、
+    能力协商、位图更新与渲染、输入、通道（剪贴板/声音/磁盘）。**RDP 不能算已实现。**
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 两个对端都是"非 RDP 服务"：3389 无监听、2222 是 SSH
+notes: >-
+  这条用例的价值是"接入没把应用弄崩、错误能传出来"：FreeRDP 的初始化路径很长
+  （上下文/设置/凭据/传输），任何一步没接好都可能崩在 native 层。
+  "connected 127.0.0.1" 必须缺席——否则说明它在对非 RDP 服务时报了成功。

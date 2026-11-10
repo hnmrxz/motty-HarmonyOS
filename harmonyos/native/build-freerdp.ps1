@@ -14,6 +14,9 @@
 #      winpr 头**（wtypes.h / build-config.h / buildflags.h 是生成物，源码里没有）
 #   5. 产物用 `cmake --install` 会带一堆额外步骤，直接手工拷贝更可靠
 #   6. 应用侧链接时必须提供 pthread_cancel 桩（musl 未实现 TerminateThread 所需符号）
+#   7. **必须关 LTO**（-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF）：默认 Release 会开 ThinLTO，
+#      生成的 .a 里是 bitcode，与应用 lld 链接时报
+#      "loop not vectorized: the optimizer was unable to ..." 并直接失败
 #
 # 用法：pwsh -File native/build-freerdp.ps1
 $ErrorActionPreference = 'Stop'
@@ -43,6 +46,7 @@ foreach ($arch in @(
     Remove-Item -Recurse -Force $bld -ErrorAction SilentlyContinue
     & $cmake -S $src -B $bld -G Ninja "-DCMAKE_MAKE_PROGRAM=$ninja" "-DCMAKE_TOOLCHAIN_FILE=$tcPath" `
         -DCMAKE_BUILD_TYPE=Release "-DCMAKE_INSTALL_PREFIX=$p" `
+        -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF `
         "-DZLIB_LIBRARY=$zlib" "-DZLIB_INCLUDE_DIR=$zlibInc" `
         "-DOPENSSL_ROOT_DIR=$p" "-DOPENSSL_INCLUDE_DIR=$p/include" `
         "-DOPENSSL_CRYPTO_LIBRARY=$p/lib/libcrypto.a" "-DOPENSSL_SSL_LIBRARY=$p/lib/libssl.a" `

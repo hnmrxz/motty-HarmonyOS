@@ -166,6 +166,7 @@ struct Index {
   @State vncFrameInfo: string = '';
   @State vncDrawn: number = 0;
   @State vncPassword: string = 'secret';
+  @State rdpResult: string = '';
 
   private creds: Map<string, Cred> = new Map<string, Cred>();
   private store: relationalStore.RdbStore | null = null;
@@ -801,6 +802,17 @@ struct Index {
     mottynapi.vncPointer(this.vncId, Math.round(localX), Math.round(localY), mask);
   }
 
+  // ---------------- RDP（FreeRDP 接入，仅连接路径）----------------
+  // 说明：本轮只验证"能起、能失败、能报错"，没有画面与输入。
+  private rdpProbe(port: number): void {
+    this.rdpResult = 'rdp: probing 127.0.0.1:' + port + ' ...';
+    mottynapi.rdpProbe('127.0.0.1', port, 'administrator', 'wrong-password',
+      (result: string) => {
+        this.rdpResult = 'rdp: ' + result;
+        this.probeText = 'rdp: ' + result;
+      });
+  }
+
   private probeNet(): void {
     this.probeText = 'connecting...';
     const tcp = socket.constructTCPSocketInstance();
@@ -1229,9 +1241,15 @@ struct Index {
           .onClick(() => { this.diagOpen = false; this.startVnc('secret'); })
         Button('VNC bad pw').id('vnc/session-bad').backgroundColor('#C62828').fontColor(Color.White)
           .onClick(() => { this.diagOpen = false; this.startVnc('wrong-password'); })
+        Button('RDP :3389').id('rdp/probe-closed').backgroundColor('#37474F').fontColor(Color.White)
+          .onClick(() => { this.rdpProbe(3389); })
+        Button('RDP :2222').id('rdp/probe-ssh').backgroundColor('#37474F').fontColor(Color.White)
+          .onClick(() => { this.rdpProbe(2222); })
       }.width('100%')
       Text(this.vncResult.length > 0 ? this.vncResult : 'vnc: (not probed)')
         .id('vnc/result').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')
+      Text(this.rdpResult.length > 0 ? this.rdpResult : 'rdp: (not probed)')
+        .id('rdp/result').fontSize(11).fontFamily('monospace').fontColor('#37474F').width('100%')
       Scroll() {
         Text(this.probeText).id('net/probe-result').fontSize(11).fontFamily('monospace').width('100%')
       }.height(120).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)

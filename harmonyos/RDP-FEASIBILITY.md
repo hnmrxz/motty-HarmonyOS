@@ -87,3 +87,24 @@ FreeRDP 的 `docs/README.building.md` 写着支持：
 - arm64 的 FreeRDP 静态库（脚本已支持，尚未跑完）
 - RDP 客户端接入：连接、能力协商、位图更新、输入、通道（剪贴板/声音/磁盘）
 - 渲染与帧率、证书 pin、NLA 凭据
+
+---
+
+## 7. 进展更新（Round 33）
+
+| 项 | 状态 |
+|---|---|
+| arm64 FreeRDP 静态库 | **完成**（libfreerdp3.a 4.77 MB / client 1.45 MB / winpr 2.59 MB） |
+| 双 ABI 关闭 LTO | **必须**，否则与应用 lld 链接失败（见下） |
+| NAPI 接线 `rdpProbe` | **完成**，工作线程执行，失败原因如实回传 |
+| 设备双画像验证 | **完成**（`rdp.connect`，2in1 + tablet） |
+
+### 新踩的两个坑
+1. **ThinLTO**：FreeRDP 默认 `CMAKE_INTERPROCEDURAL_OPTIMIZATION=ON`，`.a` 里是 bitcode，
+   应用链接时报 `loop not vectorized: the optimizer was unable to perform the requested transformation`
+   并失败 → 构建脚本必须 `-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF`
+2. **上下文创建**：`freerdp_client_context_new(nullptr)`（需要客户端入口点）返回空；
+   只链 libfreerdp 时应使用 `freerdp_new()` + `freerdp_context_new()`
+
+### 仍未做（RDP 不能算实现）
+成功连接真实 RDP 服务器、TLS/证书 pin、NLA/CredSSP、能力协商、位图与渲染、输入、通道。

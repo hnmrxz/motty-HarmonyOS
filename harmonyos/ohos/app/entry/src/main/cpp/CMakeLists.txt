@@ -22,13 +22,15 @@ endif()
 set(OHOS_SSH_PREFIX ${OHOS_SSH_ROOT}/${OHOS_SSH_ARCH})
 message(STATUS "OHOS_ARCH=${OHOS_ARCH} -> OHOS_SSH_PREFIX=${OHOS_SSH_PREFIX}")
 
-add_library(mottynapi SHARED ssh_napi.cpp vt_core.cpp)
+add_library(mottynapi SHARED ssh_napi.cpp vt_core.cpp rdp_napi.cpp)
 
 target_include_directories(mottynapi PRIVATE
     ${NATIVERENDER_ROOT_PATH}
     ${NATIVERENDER_ROOT_PATH}/include
     ${OHOS_SSH_PREFIX}/include
-    ${OHOS_SSH_PREFIX}/include/vterm)
+    ${OHOS_SSH_PREFIX}/include/vterm
+    ${OHOS_SSH_PREFIX}/include
+    ${OHOS_SSH_PREFIX}/include/freerdp)
 
 target_link_libraries(mottynapi PUBLIC libace_napi.z.so)
 
@@ -40,7 +42,15 @@ target_link_libraries(mottynapi PRIVATE
     ${OHOS_SSH_PREFIX}/lib/libmbedcrypto.a
     ${OHOS_SSH_PREFIX}/lib/libeverest.a
     ${OHOS_SSH_PREFIX}/lib/libp256m.a
-    ${OHOS_SSH_PREFIX}/lib/libvterm.a)
+    ${OHOS_SSH_PREFIX}/lib/libvterm.a
+    # FreeRDP（Apache-2.0）静态库：RDP 客户端接入用；本轮只做连接路径
+    ${OHOS_SSH_PREFIX}/lib/libfreerdp-client3.a
+    ${OHOS_SSH_PREFIX}/lib/libfreerdp3.a
+    ${OHOS_SSH_PREFIX}/lib/libwinpr3.a
+    ${OHOS_SSH_PREFIX}/lib/libssl.a
+    ${OHOS_SSH_PREFIX}/lib/libcrypto.a)
+    # musl 不提供 pthread_cancel（FreeRDP 的 TerminateThread 引用它）
+    # rdp_napi.cpp 里提供了桩实现
     # LibVNC client 已交叉编译但**尚未接入运行时**（见 LICENSING.md / INDEX Round 28）；
     # 接入与验证完成前不链接，避免"库在包里但没人用"的假象。
 

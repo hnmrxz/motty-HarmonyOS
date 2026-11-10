@@ -1003,3 +1003,30 @@ OpenSSL 是 **Apache-2.0**，与 FreeRDP 一致，不引入新的 GPL 义务（�
 ### 为什么这轮算"真进展"
 它把 RDP 从"完全不知道能不能做"推进到"依赖链已就位、只剩接入"。这类前置如果跳到接入阶段再补，
 就会像第 28 轮那样在最后一步回退。
+---
+
+## Round 33：RDP 客户端接入（仅连接路径）+ arm64 FreeRDP
+
+### 交付
+| 项 | 说明 |
+|---|---|
+| `cpp/rdp_napi.cpp` | `rdpProbe(host,port,user,password,cb)`：**工作线程**里创建 FreeRDP 上下文、填设置、尝试连接、把失败原因如实回传；含 `pthread_cancel` 桩（musl 缺口） |
+| `Index.ets` | 诊断面板加 `RDP :3389`（无监听）与 `RDP :2222`（SSH）两个探测按钮 + `rdp/result` |
+| `spec/scenarios/rdp.connect.yaml` | 两个非法对端都必须 `connect failed`，且不得出现 `connected 127.0.0.1` |
+| arm64 FreeRDP | 静态库补齐（libfreerdp3 4.77 MB 等），双 ABI 均可链 |
+
+### 本轮修掉的四个问题（都是"能编但跑不对"的类型）
+1. **默认开 ThinLTO**：FreeRDP Release 默认 `CMAKE_INTERPROCEDURAL_OPTIMIZATION=ON`，生成的 `.a` 是 bitcode，
+   与应用 lld 链接时报 `loop not vectorized: the optimizer was unable...` **直接失败** → 必须显式关掉
+2. **`freerdp_client_context_new(nullptr)` 返回空**：那是"客户端入口点"版本，本工程只链 libfreerdp；
+   改用 `freerdp_new()` + `freerdp_context_new()` 才拿到上下文
+3. **`freerdp_get_last_error` 收的是 `rdpContext*`**，不是 `freerdp*`（3.x API）
+4. **`rdp/result` 被插进了 VNC 面板**：锚点撞车（第 29 轮同类错误），已移到诊断面板
+
+### 诚实边界（必须一起读）
+- **RDP 仍是 E3**：这条只验证"能起、能失败、能报错、不崩溃"
+- **没有**与真实 RDP 服务器成功连接、TLS/证书 pin、NLA/CredSSP、能力协商、位图、输入、通道
+- 两个对端都是非 RDP 服务（3389 无监听、2222 是 SSH）——所以断言的是**失败语义**，不是功能
+
+### 双画像
+`rdp.connect` 在 2in1 与 tablet 均 **passed**。
