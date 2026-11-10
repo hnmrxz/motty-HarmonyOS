@@ -7,11 +7,11 @@
 | 文件 | 作用 | 状态 |
 |---|---|---|
 | [PLAN.md](./PLAN.md) | 总方案：路线对比 → 决策台账 → 风险登记册 → G1 实测 → A′ 定案 | 定稿（多次修订） |
-| [A-PRIME-PLAN.md](./A-PRIME-PLAN.md) | A′ 落地：分层、C 依赖映射、M0.5 验收门、前 4 月 sprint、M0.5 实测进展 | 定稿 |
+| [A-PRIME-ENGINEERING.md](./A-PRIME-ENGINEERING.md) | A′ 落地：分层、C 依赖映射、M0.5 验收门、前 4 月 sprint、M0.5 实测进展 | 定稿 |
 | [A-PRIME-ENGINEERING.md](./A-PRIME-ENGINEERING.md) | **工程主方案**：目录、12 个领域模块、7 端口契约、M0.5–M5 任务分解、Sprint 1 | 定稿（软件架构师交付） |
 | [contracts/motty-native.d.ts](./contracts/motty-native.d.ts) | ArkTS ↔ NAPI ↔ C 契约 IDL 草案 | 草案 |
 | [CAPABILITY-MATRIX.md](./CAPABILITY-MATRIX.md) | 能力矩阵 T1/T2/T3 逐项 | 待补「A′ 落点 + E1/E2/E3」两列 |
-| [SPIKES.md](./SPIKES.md) | 模拟器环境、验证边界、证据等级 | 定稿 |
+| [spec/RUNBOOK.md](./spec/RUNBOOK.md) | 模拟器环境、验证边界、证据等级 | 定稿 |
 
 ## 代码骨架（已建，待填）
 
@@ -24,8 +24,6 @@ tools/design/   docs/
 
 ## 已验证的可用资产
 
-- `spike/bprime/` —— **可复用的 NAPI HAP 骨架**：CMake + NAPI、`abiFilters: ["x86_64"]`、debug 签名、装机、hilog 采集全链路已跑通
-- `spike/hello/` + `spike/core/` —— Go 三态探针（静态二进制 / c-shared / dlopen loader），是 G1 判定的原始证据
 - `.bin/motty-baseline.exe`（52.6 MB）与 `.bin/motty-head.exe`（52.9 MB）—— 原版参照实现，M0.5 oracle 的源头
 
 ## 环境速查
@@ -77,7 +75,6 @@ Go       1.27.3    Viva E:\viva @95802a9    Python C:\Python315\python.exe
 |---|---|
 | `spec/run.py` | spec → 真机/模拟器执行器：选择器解析→坐标解算→uitest 原语→断言→证据物 |
 | `spec/RUNBOOK.md` | 运行手册：设备原语、双画像端口、首次安装对话框坑、证据物约定、**已知限制** |
-| `spec/scenarios/smoke.runner.yaml` | harness 自检 spec（目标为 `spike/bprime`），双画像均 **passed** |
 | `spec/runs/smoke-2in1/`、`smoke-tablet/`、`smoke-tablet-2/` | 证据物：布局快照 + final.png + result.json |
 
 ### 实测结论
@@ -421,3 +418,22 @@ abc|中文|def
 82 个行为规格完成 **9 个（11%）**；产品功能只有"主机列表 + 连接 + 终端"一个切片；
 **arm64 只有编译证据（E2），没有任何真机执行证据**。距离"1:1 完成"仍是数十人月的量，
 现状与缺口逐条写在 [A-PRIME-STATUS.md](./A-PRIME-STATUS.md)。
+
+---
+
+## 清理：删除探针与被取代文档（2026-11-10）
+
+用户要求"清理无关代码和文档"。删掉的是**已失效或已被取代**的东西，不是有用的证据：
+
+| 删除 | 原因 | 证据去哪了 |
+|---|---|---|
+| `spike/`（bprime / hello / core） | G1 已定案（Go 不可用），探针工程不再是产品资产；且 bprime 的 build-profile 曾含明文签名口令 | PLAN §15/§16 保留了完整的实测命令与结论 |
+| `spec/scenarios/smoke.runner.yaml` | 目标是 bprime 探针应用，探针删除后它必然失效（僵尸 spec） | 测试链路可用性已由 9 个产品 spec 持续证明 |
+| `A-PRIME-PLAN.md` | 与 A-PRIME-ENGINEERING.md 大面积重叠 | 其唯一独有的「C 依赖映射」已并入 ENGINEERING 附录 A |
+| `SPIKES.md` | G1 门禁已结束；模拟器/rport 操作知识已固化在 spec/RUNBOOK.md | RUNBOOK §10 与 PLAN §15/§16 |
+| 构建产物与证据物（`.bin/`、`native/build/`、`entry/.cxx`、`entry/build`、`spec/runs/`） | 可重建，且已在 gitignore 内 | 结论写入文档，不靠提交截图表意 |
+
+**结果**：`harmonyos/` 从 363.5 MB / 5355 文件降到约 116 MB / 少量源文件；文档从 9 篇降到 7 篇，
+交叉引用全部改指仍然存在的文件。
+
+清理后复核：`devecocli build` 成功、`spec/lint.py` 全绿、`terminal.vt` 在平板上仍 **passed**。

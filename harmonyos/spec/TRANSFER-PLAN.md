@@ -6,7 +6,7 @@
 
 ## 0. 三条已被实测钉死的前提
 
-1. **不能直接跑**：原脚本内嵌 POSIX 路径（`/tmp/...`）、UTF-8 BOM、且依赖 TAB 焦点顺序。三类缺陷已在 `host_menu_move` 上全部遇到并修好（见 [A-PRIME-PLAN.md](../A-PRIME-PLAN.md) §7.2）。
+1. **不能直接跑**：原脚本内嵌 POSIX 路径（`/tmp/...`）、UTF-8 BOM、且依赖 TAB 焦点顺序。三类缺陷已在 `host_menu_move` 上全部遇到并修好（见 [A-PRIME-ENGINEERING.md](../A-PRIME-ENGINEERING.md) §7.2）。
 2. **选择器只允许 `id:` / `role:` / `label:`**，**禁止坐标**——坐标在双画像与不同 DPI 下必然失效。稳定 id 由 `tree` 命令直接取（实测可用，例如 `shell/dialog-address`）。
 3. **网络通则**：设备 → 宿主用 `hdc rport tcp:2222 tcp:2222`。M0.5 已把这条固化进脚本，spec 里用 `network.hdcReversePort` 声明。
 

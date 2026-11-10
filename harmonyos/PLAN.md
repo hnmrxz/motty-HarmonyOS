@@ -8,7 +8,7 @@
 
 ## 0. 结论摘要（先看这一节）
 
-> **修订 2026-11-10（rev.2）**：测试基线由"真机"改为 **DevEco 鸿蒙模拟器（虚拟机）**。新增 §11 记录由此带来的 ABI、「可证/不可证」边界与验收口径变更，**覆盖 §4/§5/§7 中与设备相关的要求**。执行命令见 [SPIKES.md](./SPIKES.md)。
+> **修订 2026-11-10（rev.2）**：测试基线由"真机"改为 **DevEco 鸿蒙模拟器（虚拟机）**。新增 §11 记录由此带来的 ABI、「可证/不可证」边界与验收口径变更，**覆盖 §4/§5/§7 中与设备相关的要求**。执行命令见 [spec/RUNBOOK.md](./spec/RUNBOOK.md)。
 
 **1. 今天的实现度是 0%。** `git rev-list --left-right --count upstream/main...HEAD` = `0 0`，HEAD 与 `upstream/main` 同一个 commit `f27254b`，全仓无任何 `.ets` / `.ets` 之外要求 NAPI 或 `build-profile.json5` 文件。当前目录是上游原版快照，**不是**"已移植的鸿蒙版本"。
 
@@ -386,7 +386,7 @@ $NDK = "C:\Program Files\Huawei\DevEco Studio\sdk\default\openharmony\native"
 
 ## 11. 测试基线：鸿蒙模拟器（虚拟机）— 2026-11-10 修订
 
-> 本节**覆盖** §4 的 Phase 0、§5 的 R01/R16/R17/R19、§7 的门禁定义。命令见 [SPIKES.md](./SPIKES.md)。
+> 本节**覆盖** §4 的 Phase 0、§5 的 R01/R16/R17/R19、§7 的门禁定义。命令见 [spec/RUNBOOK.md](./spec/RUNBOOK.md)。
 
 ### 11.1 为什么这个变更改变了方案的性质
 
@@ -817,7 +817,7 @@ D1 与 B **都要求 Go 运行在应用进程内**（D1 = Viva 是 Go；B = Go �
 用户已确认 **A′**：ArkTS/ArkUI 重写视图与工作流 + C/C++ 协议库经 NAPI。
 
 - **取代** §2 的 D1 / B / B′ 分支结论（Go 路线因 §15/§16 的实测证据全部作废）。
-- 详细落地见 **[A-PRIME-PLAN.md](./A-PRIME-PLAN.md)**：分层、C 依赖映射（逐包）、M0.5 oracle harness、前 4 个月 sprint 计划、两个待决项。
+- 详细落地见 **[A-PRIME-ENGINEERING.md](./A-PRIME-ENGINEERING.md)**：分层、C 依赖映射（逐包）、M0.5 oracle harness、前 4 个月 sprint 计划、两个待决项。
 - C 依赖的两个要点同步记入风险：**R35**（LibVNC 为 GPL-2.0，与闭源分发冲突 → 建议自写 VNC）；**R36**（C 依赖引入后 govulncheck 不覆盖，需 SBOM + CVE 比对）。
 - 工期口径不变：建设 55–70 人月 + oracle 13–20 人月 ≈ **70–90 人月**；M0.5 为 M1 硬前置。
 ---
@@ -837,6 +837,6 @@ M0.5 里"原版参照实现"这一步的**硬前置已解除**。
 **一个需要记住的判读陷阱**：第一次构建被报 `exit code 1`，实际是 **PowerShell 把 `go` 写到 stderr 的下载进度当作错误记录**。改用 `cmd /c "... > log 2>&1"` 重跑后 `exit=0` 且日志为空。
 → 这是本次会话第二次踩同一个坑（viva 的 `git clone` 也是），已作为方法论记下：**在 PowerShell 里判断外部命令成败，不能只看 exit code，必须把 stdout/stderr 落到文件再判读**。
 
-**对 M0.5 的意义**（对应 [A-PRIME-PLAN.md](./A-PRIME-PLAN.md) §3.1 ②）：
+**对 M0.5 的意义**（对应 [A-PRIME-ENGINEERING.md](./A-PRIME-ENGINEERING.md) §3.1 ②）：
 - 原版 Motty 可以在本机构建 → **轨迹 oracle 具备源头**（同一次交互在 Go 客户端与 ArkTS 客户端上分别采集，做协议级逐字节对比）。
 - 下一步待验：`-tags vivahead` 无头构建 + `tools/headless_drive.py` 驱动（需 python3，本机是否可用见下方探测结果）。

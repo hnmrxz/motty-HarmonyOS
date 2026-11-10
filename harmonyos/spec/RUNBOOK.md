@@ -87,16 +87,15 @@ python harmonyos\spec\run.py harmonyos\spec\scenarios\<id>.yaml ^
 - 当前只实现了动作 `launch / click / type / key / wait`；`swipe / longPress / rightClick / setVariable / invoke` 会**报错**而不是跳过。
 - 断言只实现 `text / absent / layout`；其余种类（`state / screenRegex / wireLog / count / capabilityDisabled`）**报错**。
 - 尚未接 `testSurface`（P7 观测面）：终端里的文本读不到，B2 批次在它落地前无法机器判定。
-- 模拟器上的帧率/耗时数字不可作为性能证据（宿主 GPU 中介），见 [SPIKES.md](../SPIKES.md) §C。
+- 模拟器上的帧率/耗时数字不可作为性能证据（宿主 GPU 中介），见 [RUNBOOK.md](./RUNBOOK.md) §C。
 
-## 7. 已验证的双画像结果（2026-11-10）
+## 7. 已验证的双画像结果
 
-| spec | 画像 | 结果 | 证据目录 |
-|---|---|---|---|
-| `smoke.runner` | 2in1 | **passed** | `spec/runs/smoke-2in1/`（final.png 1.6 MB） |
-| `smoke.runner` | tablet | **passed** | `spec/runs/smoke-tablet/`、`smoke-tablet-2/` |
+harness 自检 spec（`smoke.runner`，目标曾是 `spike/bprime` 探针应用）已随探针工程一并删除——
+它证明的是测试链路可用，不是产品行为，长期留在仓库里只会增加维护面。
 
-`smoke.runner` 是 harness 自检（目标为 `spike/bprime` 探针应用），**不是产品验收**。产品 spec 见 [scenarios/](./scenarios/)，其 `infra.host-create-by-id` 目前只能 lint 通过，要等 ArkTS 应用落地后才能执行。
+产品 spec 的证据请以 `spec/scenarios/` 下的 9 个文件为准，其运行结果见
+[A-PRIME-STATUS.md](../A-PRIME-STATUS.md) §2 与 `INDEX.md` 的逐轮记录。
 
 ---
 
@@ -453,7 +452,7 @@ exec(host, port, user, password, command, expectedFingerprint, onData, onDone)
 - 验证点是"多块数据都到了"，不是"渲染正确"
 
 真正的终端模拟器（VT 解析 + 网格 + 5000 行回滚 + 图片/连字）是 M1 剩余的最大一块，
-计划以 libvterm 为骨架 + 自有扩展（见 A-PRIME-PLAN §5 待决项 D1）。
+计划以 libvterm 为骨架 + 自有扩展（见 A-PRIME-ENGINEERING.md 的待决项 D1）。
 
 ### 16.3 fixture 的 term-demo
 `term-demo` 输出 6 行、每行间隔 120ms、末行 `\x1b[32m…\x1b[0m`：

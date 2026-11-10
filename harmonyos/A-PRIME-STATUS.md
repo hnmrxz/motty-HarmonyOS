@@ -50,7 +50,6 @@
 已转译并通过（9）：
 `terminal.vt`、`terminal.view`、`terminal.interactive`、`ssh.connect-from-list`、`infra.host-create-by-id`、`host.persist`、`net.reachability`、`ssh.exec`、`ssh.hostkey`
 
-另有 1 个 harness 自检：`smoke.runner`（目标为探针应用，**不计入产品 spec**）。
 
 未开始（73）：按 [TRANSFER-PLAN.md](./TRANSFER-PLAN.md) 的 B1–B10 批次推进；B11 的 14 个已判定不转译
 （12 个本就是截图素材，3 个已判 T3，其中 1 个重叠）。

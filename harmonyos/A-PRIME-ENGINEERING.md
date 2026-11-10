@@ -1,6 +1,6 @@
 # A′ 工程化落地方案（目录 / 模块 / 契约 / 任务分解）
 
-> 输入：路线 A′ 已定案（[PLAN.md](./PLAN.md) §17、[A-PRIME-PLAN.md](./A-PRIME-PLAN.md)）。
+> 输入：路线 A′ 已定案（[PLAN.md](./PLAN.md) §17、[A-PRIME-ENGINEERING.md](./A-PRIME-ENGINEERING.md)）。
 > 本文**不评估路线**，只回答"怎么把它变成可排期、可验收的工程"。
 > 纪律：**不改上游任何文件**（`E:\motty-HarmonyOS` 除本文档所在 `harmonyos/` 外 diff 必须为 0）；本文不含构建执行结果。
 > 数据来源全部为本次实测核对（见 §8 数据核实表）。
@@ -22,12 +22,12 @@
 原口径："M0.5-b：ArkTS 侧能建立一条真实 SSH 会话"。但 ArkTS 的 SSH 能力是 **M0.6（native 能力层）**的产物。M0.5 若等它，oracle harness 就永远开不了工。
 
 → 拆为：
-- **M0.5-b′**（W1–W2）：用 `spike/bprime` 级别的**一次性探针**证明"ArkTS → NAPI → 对端 socket 可达"（不需要 SSH 语义）。
+- **M0.5-b′**（W1–W2）：用一次性探针工程（已归档删除）证明"ArkTS → NAPI → 对端 socket 可达"（不需要 SSH 语义）。
 - **M0.6-b**（W8–W10）：真实 libssh2 会话（公钥认证 + exec + SFTP 列目录）。
 
 ### 0.3 "协议层逐字节等价"对 SSH 不成立，L2 必须换三级等价
 
-A-PRIME-PLAN §3.1② 写"逐字节等价证据"。这对**文件/密码学格式**成立，对**协议会话**不成立：KEX 含双方随机数、算法集顺序由实现偏好决定。照此写验收，永远过不了。
+早期方案 §3.1② 曾写"逐字节等价证据"。这对**文件/密码学格式**成立，对**协议会话**不成立：KEX 含双方随机数、算法集顺序由实现偏好决定。照此写验收，永远过不了。
 
 → 三级等价证据（§4.1）：**字节级**（vault/ppk/otp/backup/known_hosts/schemes）× **帧级归一化**（SSH/SFTP/转发）× **行为级**（UI spec）。
 
@@ -638,7 +638,7 @@ testSurface.dump(): Promise<{
 | **R49** | ArkTS 语言限制（无 `any`/动态属性/受限结构）造成移植摩擦 | 直译 Go 结构 | 返工 | `libs/contract` 先定 DTO；禁止 `Record<string,any>` | lint 规则 |
 | **R50** | C 依赖无 `govulncheck` 覆盖 | 沿用旧 CI | 供应链盲区 | SBOM + CVE 比对流水；固定 commit；patch 集可审计 | S-G4 |
 | **R51** | **能力矩阵漏项**：`telnet`(387)、`notes`(6,878)、`cmdhistory`(853)、`aiproviderimport`(1,682)、`remotestats`(1,619) 未成行 | 按矩阵排期 | 交付后才发现没做 | T0.5.6 由包树反向补齐条目 | 条目数 = 包树派生集 |
-| **R-SIGN** | 签名材料与口令管理（`spike/bprime/build-profile.json5` 曾以明文口令形式存在，当前未入 git） | CI 注入不当 | 凭据泄露 | 仓库只存占位；CI 从 secret 注入；`git secrets`/gitleaks 扫描 | CI 扫描 + 历史审计 |
+| **R-SIGN** | 签名材料与口令管理（探针工程曾以明文口令形式存放签名配置，已随工程删除；真实 `build-profile.json5` 已 gitignore） | CI 注入不当 | 凭据泄露 | 仓库只存占位；CI 从 secret 注入；`git secrets`/gitleaks 扫描 | CI 扫描 + 历史审计 |
 
 ### 7.2 未决项（需要人或时间给答案）
 
@@ -685,3 +685,58 @@ testSurface.dump(): Promise<{
 A′ 的工程难点**不在 UI 重写（那只是量大），而在三处"看不见的地基"**：① NAPI 句柄/线程/背压这一层如果做错，后面所有端口都得返工；② 终端引擎底座选错要重做 M1；③ 没有观测面（P7）就没有"1:1"的机器判定。
 
 因此第一个 sprint 刻意把 45% 的缓冲留给 ①，把 2 周时间盒留给 ②，把 spec/capabilities 的骨架放在 ③ —— 这三件事做完，后面 18 个月才有资格谈"等价"。
+
+---
+
+## 附录 A：C 依赖映射（逐包，迁移自已删除的方案文档 §2）
+
+> 迁移说明：原 `A-PRIME-ENGINEERING.md` 与本文件内容重叠，已删除；这里是它唯一独有的部分，保留备查。
+
+### A.1 映射总表
+
+从 Motty 的 Go 包出发，逐条给出 A′ 的落点。**"工作量"仅指 A′ 下新增的胶水/适配，不含 C 库本身。**
+
+### 2.1 直采成熟 C 库
+
+| Motty 包 | 行数 | A′ 落点 | 许可 | 注意 |
+|---|---|---|---|---|
+| `internal/sshconn` | 10,384 | **libssh2**（会话/认证/kbdint/direct-tcpip） | BSD-3 | 跳板链需自己串多会话；`@cert-authority`、OpenSSH 用户证书支持弱于 OpenSSH，需补 hostkey 回调解析；agent 转发用 `libssh2_agent_*` |
+| `internal/sftpclient` | 8,136 | **libssh2 SFTP** | BSD-3 | 原子重命名/续传/权限需在 ArkTS 侧编排（逻辑可照搬 Go 版语义）；无并发管道时性能受限 |
+| `internal/scpclient` | 1,537 | SCP over libssh2 exec channel | BSD-3 | 无 SFTP 子系统的回退路径，协议简单 |
+| `internal/rfb` | 3,981 | **LibVNC / libvncclient** | GPL-2.0 ⚠️ | **许可风险**：GPL 与闭源分发冲突。备选：自己实现 RFB（Hextile/ZRLE/Raw 只 ~1.5k 行 C），或找 BSD 许可的 `libvncserver/LibVNC` 之外的实现 |
+| `internal/rdpcore` | 38,410 | **FreeRDP** | Apache-2.0 | 比 Motty 的 MIT fork 更完整（NLA/CredSSP）；但 API 复杂，需要一层薄封装；证书 pin 用 `freerdp` 的 verify 回调 |
+| `internal/vault` / `backup` / `ppk` | ~5,000 | **OpenSSL**（AES-256-GCM、HMAC）+ **libargon2**（Argon2id） | Apache-2.0 / CC0 | 保险库格式要与原版**字节兼容**才能导入 `.mottybak`/`.ppk` → 必须写兼容性夹具 |
+| `internal/otp`、`hostkey`、`knownhosts` | ~3,000 | OpenSSL（HMAC-SHA1/256、指纹） | Apache-2.0 | known_hosts 文件格式要逐字节兼容（含 `@cert-authority` 行） |
+| `internal/portforward` | 1,824 | libssh2 direct-tcpip + ArkTS `@ohos.net.socket` | BSD-3 | SOCKS5/HTTP CONNECT 是纯逻辑，ArkTS 可写；只绑 loopback |
+| `internal/zmodem`/`xymodem` | 1,751 | 纯逻辑，ArkTS 重写 | — | 1.7k 行、协议简单、无密码学 |
+| `internal/i18n` | 12,249 | 由 Go 结构体**机械生成** ArkTS 资源 | — | 约 2,580 叶串 × 3 语言；生成脚本一次投入 |
+
+### 2.2 用鸿蒙 Kit 替代（不引入 C）
+
+| Motty 包 | A′ 落点 | 说明 |
+|---|---|---|
+| `modernc.org/sqlite` + `configstore` | **ArkTS `@ohos.data.relationalStore`** | 免去 C sqlite；注意 schema 迁移与 epoch 23 兼容 |
+| `internal/workbench` 状态持久化 | `@ohos.data.preferences` | 轻量键值，不写 C |
+| 密钥存储（Viva `app.*Secret`） | **HUKS / Asset Store** | §PLAN 12.1；拒绝时不回退文件 |
+| 文件对话框 / URI | `@ohos.file.picker` + `persistPermission` | |
+| 剪贴板 | `@ohos.pasteboard` | OSC52 默认 ask（R13） |
+| 后台长时任务 | `@ohos.resourceschedule.backgroundTaskManager` | 不伪造类型（R08） |
+| 窗口/分屏/悬浮窗 | `@ohos.window` + `supportWindowMode` | 双形态 1:1（PLAN §12.3） |
+| `internal/ai` 网络层 | ArkTS `@ohos.net.http` / `webSocket` | 脱敏、token 预算、审批门在 ArkTS 重实现，必须有等价夹具 |
+| MCP server | ArkTS `@ohos.net.socket`（loopback + bearer） | Host/Origin/常量时间比较三条不变量必须保留 |
+
+### 2.3 必须重写的（无 C 库可替）
+
+| 模块 | 行数 | 说明 | 风险 |
+|---|---|---|---|
+| 终端模拟器 `internal/term` | 11,207 | libvterm 只覆盖基础 VT；Motty 的 **kitty 键盘协议、iTerm2/Kitty/SIXEL 图片、DECSET 2026、连字网格** 都超出 libvterm | **最高风险项**：这是"终端产品力"的核心，建议以 libvterm 为骨架 + 自有扩展，预留最多工时 |
+| `internal/workbench` | 131,012 | 全部 ArkTS 重写 | 已知主导工期 |
+| `internal/sessionlog`/`completion`/`fuzzy`/`monitor` 等 | ~15,000 | 纯逻辑，ArkTS 重写 | 低 |
+
+### 2.4 许可与合规（新增阻断项）
+
+- **LibVNC 是 GPL-2.0**：若上架要求闭源分发，**不能用**。→ 决议：VNC 自己用 C 实现（Raw/CopyRect/RRE/Hextile/ZRLE ≈1.5–2k 行），或改用 zlib/libssh2 已有依赖拼装。
+- FreeRDP Apache-2.0、libssh2 BSD-3、OpenSSL Apache-2.0、libargon2 CC0 —— 均可闭源分发，需进 `THIRD_PARTY_NOTICES` 与 SBOM。
+- 引入 C 依赖后，**govulncheck 不覆盖 C**，需改用 SBOM + CVE 比对（R23 升级）。
+
+---

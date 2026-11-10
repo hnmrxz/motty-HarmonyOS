@@ -23,19 +23,4 @@ ohos/app/build-profile.json5
 
 # ---- spec 鏉╂劘顢戠拠浣瑰祦閻椻晪绱欓崣顖氼槻閻滃府绱濈紒鎾诡啈閸愭瑨绻橀弬鍥ㄣ€傞懓灞肩瑝閺勵垱褰佹禍?PNG閿?---
 spec/runs/
-# ---- spike 鎺㈤拡宸ョ▼锛氬悓鏍峰惈绛惧悕鍙ｄ护涓庢瀯寤轰骇鐗╋紝鍙繚鐣欐簮鐮?----
-spike/*/build-profile.json5
-spike/*/.hvigor/
-spike/*/.idea/
-spike/*/oh_modules/
-spike/*/oh-package-lock.json5
-spike/*/entry/.cxx/
-spike/*/entry/build/
-spike/*/build/
 # ---- 探针产物（可由源码重建，二进制不入库）----
-spike/hello/hello-ohos-*
-spike/core/*.so
-spike/core/*.h
-spike/core/loader*
-spike/bprime/entry/libs/
-spike/bprime/entry/src/main/resources/rawfile/
