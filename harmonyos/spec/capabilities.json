@@ -765,7 +765,8 @@
       "evidence": "E1",
       "proof": [
         "spec/scenarios/sftp.browse.yaml",
-        "spec/scenarios/sftp.manage.yaml"
+        "spec/scenarios/sftp.manage.yaml",
+        "spec/scenarios/sftp.navigate.yaml"
       ],
       "fallback": null,
       "userText": null,
@@ -775,7 +776,7 @@
         "deps": "G1",
         "acceptance": "`sftp_*`"
       },
-      "partialCoverage": "部分：列举/读取/写入/删除/重命名/新建目录已双画像实测；多选、权限位、符号链接、递归操作、目录层级导航、书签未做。"
+      "partialCoverage": "部分：列举/读取/写入/删除/重命名/新建目录/进入子目录与返回上级已双画像实测；多选、权限位、符号链接、递归操作、面包屑与书签未做。"
     },
     {
       "id": "C02",

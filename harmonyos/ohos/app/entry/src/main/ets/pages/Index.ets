@@ -823,6 +823,40 @@ struct Index {
       });
   }
 
+  // ---------------- 目录层级导航 ----------------
+  // 列表条目形如 "name|size"，目录带尾斜杠（C 层已标注）。
+  private enterEntry(cred: Cred, fp: string, entry: string): void {
+    const name = entry.substring(0, entry.indexOf('|'));
+    if (!name.endsWith('/')) {
+      this.sftpFile = name;
+      this.sftpStatus = 'selected ' + name;
+      return;
+    }
+    const dir = name.substring(0, name.length - 1);
+    this.sftpPath = this.joinPath(this.sftpPath, dir);
+    this.sftpFile = '';
+    this.refreshListing(cred, fp);
+  }
+
+  private goUp(cred: Cred, fp: string): void {
+    const p = this.sftpPath;
+    if (p === '.' || p === '/' || p.length === 0) {
+      this.sftpStatus = 'already at root';
+      return;
+    }
+    const trimmed = p.endsWith('/') ? p.substring(0, p.length - 1) : p;
+    const idx = trimmed.lastIndexOf('/');
+    this.sftpPath = idx <= 0 ? '.' : trimmed.substring(0, idx);
+    this.refreshListing(cred, fp);
+  }
+
+  private joinPath(base: string, name: string): string {
+    if (base === '.' || base.length === 0) {
+      return name;
+    }
+    return base.endsWith('/') ? base + name : base + '/' + name;
+  }
+
   private downloadFile(cred: Cred, fp: string): void {
     this.sftpStatus = 'reading ' + this.sftpFile;
     mottynapi.sftp(cred.address, cred.port, cred.user, cred.password, fp, 'read', this.sftpFile,
@@ -1378,6 +1412,13 @@ struct Index {
       Row({ space: 8 }) {
         TextInput({ text: this.sftpPath, placeholder: '.' }).id('sftp/path')
           .layoutWeight(1).onChange((v: string) => { this.sftpPath = v; })
+        Button('Up').id('sftp/up').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => {
+            const cred = this.creds.get(this.fixtureKey);
+            if (cred !== undefined) {
+              this.lookupFp(this.fixtureKey).then((fp: string) => { this.goUp(cred, fp); });
+            }
+          })
         Button('List').id('sftp/list-btn').onClick(() => {
           const cred = this.creds.get(this.fixtureKey);
           if (cred !== undefined) {

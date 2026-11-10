@@ -1307,3 +1307,27 @@ lint 直接报 `is not of type 'string'`——已改成不带冒号的写法。
 
 ### 未做
 递归目录操作、覆盖已存在目标、权限位与符号链接、批量重命名、目录层级进入/返回、书签。
+---
+
+## Round 46：SFTP 目录层级导航
+
+| 产物 | 说明 |
+|---|---|
+| `Index.ets` | 新增 `Up`（`sftp/up`）与 `goUp/enterEntry/joinPath`；目录条目（带尾斜杠）点击进入子目录，文件条目点击仅为选中 |
+| `spec/scenarios/sftp.navigate.yaml` | 建目录 → 点击 `newdir/` 进入（断言 `listed newdir`）→ `Up` 返回（断言 `listed .` 且能看到 `hello.txt`） |
+
+### 本轮抓到的一个隐蔽 bug
+插入 Up 按钮前，检查脚本用 `"sftp/up" in line` 判断"是否已存在"——
+结果被 **`sftp/upload-name` / `sftp/upload`** 前缀误匹配，导致"已存在"永远为真、按钮从未插入，
+而构建与安装都成功（因为代码没变）。改成精确匹配 `id('sftp/up')` 后才真正插入。
+这与第 45 轮同源：**"看起来改了"必须用精确断言验证**。
+
+### 另一个平台差异
+平板屏幕更矮：`listed newdir (0 entries)` 这类长状态行在平板可能不在可视区，
+断言改为稳定前缀 `listed newdir` + 父目录 `hello.txt`（严格断言，未放宽）。
+
+### 双画像
+`sftp.navigate` 在 2in1 与 tablet 均 **passed**。
+
+### 未做
+多级深路径、路径手输跳转校验、面包屑、书签、符号链接目录。
