@@ -69,6 +69,10 @@ struct Index {
   @State keyDialog: boolean = false;
   @State pendingFp: string = '';
   @State pendingKey: string = '';
+  @State termVisible: boolean = false;
+  @State termText: string = '';
+  private pendingAction: string = 'connect';   // connect | terminal
+  private termIndex: number = -1;
 
   // 密码只在内存：键为 address:port。进程退出即失，这是刻意的。
   private creds: Map<string, Cred> = new Map<string, Cred>();
@@ -205,8 +209,56 @@ struct Index {
     }
   }
 
+  // ---- 终端视图（最小闭环：字节流 -> 文本网格区域）----
+  // 注意：这一版**没有 VT 解析**，只把远端字节流追加成文本，用于证明终端数据通路成立。
+  private async openTerminal(index: number): Promise<void> {
+    if (index >= this.hosts.length) {
+      return;
+    }
+    this.pendingAction = 'terminal';
+    this.termIndex = index;
+    const h = this.hosts[index];
+    const key = this.hostKey(h.address, h.port);
+    const cred = this.creds.get(key);
+    if (cred === undefined) {
+      this.setStatus(index, 'no credentials in memory (vault not implemented yet)');
+      return;
+    }
+    const stored = await this.lookupFp(key);
+    if (stored.length > 0) {
+      this.startTerminal(index, cred, stored);
+      return;
+    }
+    this.setStatus(index, 'unknown host, fetching key...');
+    mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo no-auth-yet', '',
+      (first: string) => {
+        const m = new RegExp('SHA256:[A-Za-z0-9+/]+').exec(first);
+        if (m === null || first.indexOf('unknown_host') !== 0) {
+          this.setStatus(index, first);
+          return;
+        }
+        this.pendingFp = m[0];
+        this.pendingKey = key;
+        this.keyDialog = true;
+        this.setStatus(index, 'waiting for user to trust ' + this.pendingFp);
+      });
+  }
+
+  private startTerminal(index: number, cred: Cred, fp: string): void {
+    this.termVisible = true;
+    this.termText = '';
+    this.setStatus(index, 'terminal streaming...');
+    mottynapi.exec(cred.address, cred.port, cred.user, cred.password, 'term-demo', fp,
+      (chunk: string) => { this.termText = this.termText + chunk; },
+      (status: string) => {
+        this.termText = this.termText + '\n[status] ' + status;
+        this.setStatus(index, 'terminal: ' + status);
+      });
+  }
+
   // ---- 连接：未知主机先取指纹并要用户确认，已知则直接连 ----
   private async connectRow(index: number): Promise<void> {
+    this.pendingAction = 'connect';
     if (index >= this.hosts.length) {
       return;
     }
@@ -233,6 +285,7 @@ struct Index {
         }
         this.pendingFp = m[0];
         this.pendingKey = key;
+        this.termIndex = index;
         this.keyDialog = true;
         this.setStatus(index, 'waiting for user to trust ' + this.pendingFp);
       });
@@ -260,7 +313,11 @@ struct Index {
       for (let i = 0; i < this.hosts.length; i++) {
         if (this.hostKey(this.hosts[i].address, this.hosts[i].port) === key) {
           this.setStatus(i, 'trusted ' + fp + ', connecting...');
-          this.runProbe(i, cred, fp);
+          if (this.pendingAction === 'terminal') {
+            this.startTerminal(i, cred, fp);
+          } else {
+            this.runProbe(i, cred, fp);
+          }
           return;
         }
       }
@@ -406,6 +463,40 @@ struct Index {
   }
 
   @Builder
+  terminalPanel() {
+    Column({ space: 8 }) {
+      Row() {
+        Text('Terminal (fixture)').fontSize(16).fontWeight(FontWeight.Bold).fontColor(Color.White)
+        Blank()
+        Button('Close')
+          .id('terminal/close')
+          .backgroundColor('#E6E6E6')
+          .fontColor('#1A1A1A')
+          .onClick(() => { this.termVisible = false; })
+      }.width('100%')
+      Scroll() {
+        Text(this.termText.length > 0 ? this.termText : '(no output yet)')
+          .id('terminal/output')
+          .fontSize(13)
+          .fontColor('#D4D4D4')
+          .fontFamily('monospace')
+          .width('100%')
+      }
+      .layoutWeight(1)
+      .width('100%')
+      .align(Alignment.TopStart)
+      .border({ width: 1, color: '#CCCCCC' })
+      .padding(8)
+    }
+    .id('terminal/panel')
+    .width(680)
+    .height(420)
+    .padding(16)
+    .backgroundColor('#1E1E1E')
+    .borderRadius(12)
+  }
+
+  @Builder
   keyConfirm() {
     Column({ space: 12 }) {
       Text('Unknown host key').fontSize(18).fontWeight(FontWeight.Bold).width('100%')
@@ -475,6 +566,11 @@ struct Index {
                       Text(':' + h.port).fontSize(12).fontColor('#999999')
                     }.width('100%')
                   }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+                  Button('Term')
+                    .id('host-term/' + index)
+                    .backgroundColor('#0A6C00')
+                    .fontColor(Color.White)
+                    .onClick(() => { this.openTerminal(index); })
                   Button('Connect')
                     .id('host-row/' + index)
                     .backgroundColor('#1A6DD0')
@@ -503,6 +599,11 @@ struct Index {
         }
       }
       .width('100%').height('100%').backgroundColor('#FAFAFA')
+
+      if (this.termVisible) {
+        Column().width('100%').height('100%').backgroundColor('#99000000').onClick(() => {})
+        this.terminalPanel()
+      }
 
       if (this.keyDialog) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})

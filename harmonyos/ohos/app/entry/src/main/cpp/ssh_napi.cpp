@@ -184,6 +184,142 @@ std::string runProbe(ProbeJob &job) {
     return out;
 }
 
+// 前向声明：流式 exec 的 TSFN 回调复用同一个 callJs（定义在本段之后）
+void callJs(napi_env env, napi_value jsCb, void *context, void *data);
+
+// ---- 流式 exec：终端通路需要的形态（分块回调，而不是等全部读完）----
+struct ExecJob {
+    std::string host;
+    int port = 22;
+    std::string user;
+    std::string password;
+    std::string command;
+    std::string expectedFingerprint;
+    napi_threadsafe_function onData = nullptr;
+    napi_threadsafe_function onDone = nullptr;
+};
+
+// 复用主机密钥校验语义：未知/不匹配绝不认证
+std::string runExecStream(ExecJob &job, bool &started) {
+    started = false;
+    static bool inited2 = false;
+    if (!inited2) {
+        libssh2_init(0);
+        inited2 = true;
+    }
+    std::string err;
+    int fd = tcpConnect(job.host, job.port, err);
+    if (fd < 0) {
+        return "error " + err;
+    }
+    LIBSSH2_SESSION *session = libssh2_session_init();
+    if (session == nullptr) {
+        close(fd);
+        return "error session_init";
+    }
+    std::string result;
+    if (libssh2_session_handshake(session, fd) != 0) {
+        char *msg = nullptr;
+        libssh2_session_last_error(session, &msg, nullptr, 0);
+        result = std::string("error handshake: ") + (msg ? msg : "unknown");
+    } else {
+        const char *hash = libssh2_hostkey_hash(session, LIBSSH2_HOSTKEY_HASH_SHA256);
+        std::string fp = hash ? "SHA256:" + base64(reinterpret_cast<const unsigned char *>(hash), 32) : "unavailable";
+        if (job.expectedFingerprint.empty()) {
+            result = "unknown_host " + fp;
+        } else if (job.expectedFingerprint != fp) {
+            result = "hostkey-mismatch expected=" + job.expectedFingerprint + " actual=" + fp;
+        } else if (libssh2_userauth_password(session, job.user.c_str(), job.password.c_str()) != 0) {
+            char *msg = nullptr;
+            libssh2_session_last_error(session, &msg, nullptr, 0);
+            result = std::string("error auth: ") + (msg ? msg : "unknown");
+        } else {
+            LIBSSH2_CHANNEL *ch = libssh2_channel_open_session(session);
+            if (ch == nullptr) {
+                result = "error channel";
+            } else if (libssh2_channel_exec(ch, job.command.c_str()) != 0) {
+                result = "error exec: refused";
+            } else {
+                started = true;
+                char buf[512];
+                for (;;) {
+                    ssize_t n = libssh2_channel_read(ch, buf, sizeof(buf));
+                    if (n > 0) {
+                        auto *chunk = new std::string(buf, static_cast<size_t>(n));
+                        napi_call_threadsafe_function(job.onData, chunk, napi_tsfn_blocking);
+                        continue;
+                    }
+                    if (n == LIBSSH2_ERROR_EAGAIN) {
+                        continue;
+                    }
+                    break;
+                }
+                libssh2_channel_close(ch);
+                libssh2_channel_free(ch);
+                result = "ok";
+            }
+        }
+    }
+    libssh2_session_disconnect(session, "bye");
+    libssh2_session_free(session);
+    close(fd);
+    return result;
+}
+
+void execWorker(ExecJob *job) {
+    bool started = false;
+    std::string status = runExecStream(*job, started);
+    auto *payload = new std::string(status);
+    napi_call_threadsafe_function(job->onDone, payload, napi_tsfn_blocking);
+    napi_release_threadsafe_function(job->onDone, napi_tsfn_release);
+    napi_release_threadsafe_function(job->onData, napi_tsfn_release);
+    delete job;
+}
+
+// exec(host, port, user, password, command, expectedFingerprint, onData, onDone)
+napi_value Exec(napi_env env, napi_callback_info info) {
+    size_t argc = 8;
+    napi_value args[8] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 8) {
+        napi_throw_type_error(env, nullptr,
+                              "exec(host, port, user, password, command, expectedFingerprint, onData, onDone)");
+        return nullptr;
+    }
+    auto *job = new ExecJob();
+    auto readStr = [&](size_t i, std::string &dst) {
+        size_t len = 0;
+        napi_get_value_string_utf8(env, args[i], static_cast<char *>(nullptr), 0, &len);
+        if (len == 0) {
+            dst.clear();
+            return;
+        }
+        dst.resize(len);
+        napi_get_value_string_utf8(env, args[i], &dst[0], len + 1, &len);
+    };
+    readStr(0, job->host);
+    int32_t port = 22;
+    napi_get_value_int32(env, args[1], &port);
+    job->port = port;
+    readStr(2, job->user);
+    readStr(3, job->password);
+    readStr(4, job->command);
+    readStr(5, job->expectedFingerprint);
+
+    napi_value n1 = nullptr;
+    napi_value n2 = nullptr;
+    napi_create_string_utf8(env, "motty.ssh.exec.data", NAPI_AUTO_LENGTH, &n1);
+    napi_create_string_utf8(env, "motty.ssh.exec.done", NAPI_AUTO_LENGTH, &n2);
+    if (napi_create_threadsafe_function(env, args[6], nullptr, n1, 0, 1, nullptr, nullptr, nullptr, callJs, &job->onData) != napi_ok ||
+        napi_create_threadsafe_function(env, args[7], nullptr, n2, 0, 1, nullptr, nullptr, nullptr, callJs, &job->onDone) != napi_ok) {
+        delete job;
+        napi_throw_error(env, nullptr, "cannot create threadsafe functions");
+        return nullptr;
+    }
+    std::thread(execWorker, job).detach();
+    return nullptr;
+}
+
 void callJs(napi_env env, napi_value jsCb, void * /*context*/, void *data) {
     auto *text = static_cast<std::string *>(data);
     if (env != nullptr && jsCb != nullptr && text != nullptr) {
@@ -253,6 +389,7 @@ napi_value Probe(napi_env env, napi_callback_info info) {
 napi_value Init(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
         {"probe", nullptr, Probe, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"exec", nullptr, Exec, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     return exports;
