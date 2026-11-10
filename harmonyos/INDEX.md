@@ -1521,3 +1521,29 @@ stub 回答里的字符数是可判定信号：若发的是空 body，端点返�
 
 ### 状态
 lint 通过（41 用例 + SBOM 校验）。E1 能力 16。
+---
+
+## Round 53：arm64 真机验证脚本与指引（E2 就绪）
+
+| 产物 | 说明 |
+|---|---|
+| `spec/run.py` | 新增 `--profile device`（真机画像）：接受任意声明模拟器画像的用例，结果单独落盘，**不混淆"模拟器通过"与"真机通过"** |
+| `tools/verify-arm64.ps1` | 装 HAP → 建 rport(2222/5901/2297) → 起夹具 → 逐条跑 → 出 `matrix-device.json`；判据 41/41 全通过才 exit 0 |
+| `ARM64-REAL-DEVICE.md` | 六类差异、前置条件、完整命令、验收判据、真机风险点排序、记录模板 |
+
+### 守卫的负向验证（都能判定）
+| 情况 | 期望 | 实测 |
+|---|---|---|
+| 设备不在 `hdc list targets` | exit 3 | **3** ✅ |
+| 序列号是模拟器 `127.0.0.1:1010x` | exit 4 | **4** ✅ |
+| 缺 HAP | exit 5 | 逻辑同源（未构造） |
+| 安装失败（真机缺 UDID Profile） | exit 6 | 逻辑同源（未构造） |
+
+### E2 证据（本轮实测）
+- `arm64-v8a/libmottynapi.so` 9803 KB，`llvm-readobj` 确认 **EM_AARCH64**
+- HAP 内同时含 `libs/arm64-v8a/` 与 `libs/x86_64/` 两份 `.so`
+- strip 前 9.8 MB → strip 后 7.3 MB
+
+### 诚实边界
+**真机未执行**。所以能力表里相关条目 evidence 保持 **E2**，没有改成 E1。
+`sweep` 里 `--profile device` 的 smoke 是在模拟器上跑的，只验证"开关机制可用"，不作为真机证据。

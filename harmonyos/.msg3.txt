@@ -1,0 +1,27 @@
+﻿feat(harmonyos): arm64 真机验证脚本与指引（E2 就绪；真机执行需设备）
+
+runner:
+- 新增 --profile device（真机画像）：接受任意声明了模拟器画像的用例，结果单独落盘，
+  不混淆"模拟器通过"与"真机通过"
+- smoke: 用 device 画像在模拟器上跑 ui.i18n 通过（仅验证开关机制，不作为真机证据）
+
+tools/verify-arm64.ps1:
+- 前置守卫（都有负向验证）：
+  设备不在 hdc list targets -> exit 3
+  序列号是模拟器 127.0.0.1:1010x -> exit 4
+  缺 HAP -> exit 5
+  安装失败(真机需带 UDID 的 Profile) -> exit 6
+- 正常流程：装 HAP -> 建 rport(2222/5901/2297) -> 起夹具 -> 逐条跑 41 条 -> 出矩阵
+- 判据：41/41 全通过才 exit 0；否则 exit 1（不允许跳过）
+
+ARM64-REAL-DEVICE.md:
+- 为什么必须做真机验证（架构/系统服务/图形/网络/输入/生命周期六类差异）
+- 前置条件（真机 + 含 UDID 的签名 + hdc 可达）
+- 完整步骤命令、验收判据、"已知真机风险点"按概率排序、结果记录模板
+
+E2 证据（本轮实测）:
+- arm64-v8a/libmottynapi.so 9803KB，llvm-readobj 确认 EM_AARCH64
+- HAP 内同时含 libs/arm64-v8a 与 libs/x86_64 两份 .so
+- 未 strip 的 9.8MB -> stripped 7.3MB
+
+诚实边界: 真机未执行；能力表对应条目 evidence 保持 E2，不改成 E1

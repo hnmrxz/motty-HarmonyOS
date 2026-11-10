@@ -434,7 +434,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('spec')
     ap.add_argument('--serial', required=True)
-    ap.add_argument('--profile', choices=['2in1', 'tablet'], required=True)
+    ap.add_argument('--profile', choices=['2in1', 'tablet', 'device'], required=True)
     ap.add_argument('--out', default=None)
     ap.add_argument('--verbose', action='store_true')
     ap.add_argument('--fresh', action='store_true', help='运行前清空应用数据，保证可重复')
@@ -442,8 +442,11 @@ def main():
 
     spec_path = pathlib.Path(args.spec)
     spec = yaml.safe_load(spec_path.read_text(encoding='utf-8'))
-    if args.profile not in spec['profile']:
-        print(f'错误: spec 未声明 profile {args.profile}', file=sys.stderr)
+# profile 'device' = real arm64 device: accept any spec regardless of declared emulator profile.
+    if args.profile == 'device':
+        pass
+    elif args.profile not in spec['profile']:
+        print(f'spec does not declare profile {args.profile}', file=sys.stderr)
         return 2
 
     out = pathlib.Path(args.out) if args.out else (spec_path.parent.parent / 'runs' /
