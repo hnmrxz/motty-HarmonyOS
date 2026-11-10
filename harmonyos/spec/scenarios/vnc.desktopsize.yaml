@@ -1,0 +1,77 @@
+schema: 1
+id: vnc.desktopsize
+title: DesktopSize 伪编码：服务端改分辨率后客户端跟随（不花屏、不错位）
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - E02
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: ds-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:diag/open
+  - action: click
+    target: id:vnc/session
+  # 夹具在第 3 次更新请求后就把尺寸改成 80x60（非常快，64x48 是瞬态的，不做断言）
+  - action: wait
+    ms: 5000
+    expect:
+      kind: screenRegex
+      regex: "80x60"
+      withinMs: 25000
+asserts:
+  - kind: screenRegex
+    regex: "80x60"
+    withinMs: 15000
+  # 像素数必须与新尺寸一致：80*60 = 4800，光有尺寸文字不够
+  - kind: screenRegex
+    regex: "drawn=4800"
+    withinMs: 8000
+  - kind: absent
+    value: "error unexpected message"
+    withinMs: 3000
+  - kind: absent
+    value: "error read update"
+    withinMs: 3000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：请求 DesktopSize 伪编码、收到后更新会话尺寸并重分配缓冲、
+    后续帧按新尺寸解码（状态行出现 80x60 且无 error）。
+    **不覆盖**：尺寸变小时的裁剪、缩放显示（UI 固定 320x240 Canvas，未做自适应）、
+    多显示器拓扑、ExtendedDesktopSize 变体；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 夹具固定在第 3 次 FramebufferUpdateRequest 后改尺寸，避免随机性
+notes: >-
+  旧实现里 w/h 是 const，且 SetEncodings 不含 DesktopSize——服务端一旦改分辨率，
+  客户端要么收不到通知，要么按旧尺寸解析像素而错位/花屏。
+  这条用例断言的是"尺寸真的跟着变了"，而不只是"收到了一个矩形"。

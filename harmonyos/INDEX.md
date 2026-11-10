@@ -1356,3 +1356,26 @@ lint 直接报 `is not of type 'string'`——已改成不带冒号的写法。
 
 ### 未做
 Latin-1 以外的编码转换细节、超长文本分片、自动双向同步（当前手动读/发）、DesktopSize 与 resize、其他编码。
+---
+
+## Round 48：DesktopSize 伪编码（服务端改分辨率）
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/ssh_napi.cpp` | `w/h` 由 `const` 改为可变；`SetEncodings` 增加 **DesktopSize(-223)**；收到该伪矩形时更新会话尺寸、**重分配像素缓冲**、丢弃本帧剩余矩形并重新请求 |
+| 夹具 | 第 3 次 `FramebufferUpdateRequest` 后先发 DesktopSize 矩形，再把绘制尺寸切到 80x60（`rfbWidth/rfbHeight` 改为可变） |
+| `spec/scenarios/vnc.desktopsize.yaml` | 断言最终 `80x60` **且 `drawn=4800`**（80×60 像素数） |
+
+### 为什么断言"像素数"而不只断言尺寸文字
+只断言 `80x60` 可能只是状态文字更新了，缓冲仍是旧尺寸——那样解码会越界或错位。
+`drawn=4800` 是 80×60 的像素总数，说明**缓冲与解码都按新尺寸走**。
+
+### 两个实现坑
+1. `w/h` 原来是 `const`，帧循环里写死——不改就永远按初始尺寸解析
+2. 夹具的 `rfbWidth/rfbHeight` 原来是 `const`（`AppendUint16` 直接吃常量），改成变量后需要显式 `uint16(...)` 转换
+
+### 双画像
+`vnc.desktopsize` 在 2in1 与 tablet 均 **passed**。
+
+### 未做
+UI 对非 320×240 的缩放自适应（Canvas 固定尺寸）、ExtendedDesktopSize 变体、多显示器、Tight/ZRLE/Cursor 编码。

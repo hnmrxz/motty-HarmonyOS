@@ -2006,14 +2006,19 @@ bool vncHandshake(VncSession *sess, const std::string &host, int port, std::stri
         return false;
     }
     if (bpp != 32 || !trueColor) { err = "unsupported pixel format"; return false; }
-    std::vector<unsigned char> enc = {2, 0, 0, 2, 0, 0, 0, 5, 0, 0, 0, 0};   // Hextile(5) + Raw(0)
+    // Raw(0) + Hextile(5) + DesktopSize(-223 = 0xFFFFFF21)，最后一个是伪编码，用来感知尺寸变化
+    std::vector<unsigned char> enc = {2, 0, 0, 3,
+                                      0, 0, 0, 0,        // Raw
+                                      0, 0, 0, 5,        // Hextile
+                                      0xFF, 0xFF, 0xFF, 0x21};  // DesktopSize
     if (!writeAll(fd, enc.data(), enc.size())) { err = "set encodings"; return false; }
     return true;
 }
 
 void vncLoop(VncSession *sess, int id) {
-    const int w = sess->width;
-    const int h = sess->height;
+    // w/h 不能是 const：服务端可以用 DesktopSize 伪编码改尺寸
+    int w = sess->width;
+    int h = sess->height;
     int frameNo = 0;
     std::vector<unsigned char> rgba(static_cast<size_t>(w) * static_cast<size_t>(h) * 4, 0);
     while (!sess->closed.load()) {
@@ -2115,6 +2120,18 @@ void vncLoop(VncSession *sess, int id) {
             const int rw = (rh[4] << 8) | rh[5];
             const int rhh = (rh[6] << 8) | rh[7];
             const int32_t encoding = (static_cast<int32_t>(rh[8]) << 24) | (rh[9] << 16) | (rh[10] << 8) | rh[11];
+            // DesktopSize 伪编码(-223)：没有像素数据，只是通知"桌面尺寸变了"
+            if (encoding == -223) {
+                if (rw > 0 && rhh > 0 && (rw != w || rhh != h)) {
+                    w = rw;
+                    h = rhh;
+                    sess->width = rw;
+                    sess->height = rhh;
+                    rgba.assign(static_cast<size_t>(w) * static_cast<size_t>(h) * 4, 0);
+                    vncStatus(sess, "resize " + std::to_string(w) + "x" + std::to_string(h));
+                }
+                break;   // 本帧剩下的矩形按旧尺寸来，直接丢弃，下一帧重新请求
+            }
             auto decodePixel = [&](const unsigned char *p) -> unsigned int {
                 const unsigned int raw = static_cast<unsigned int>(p[0]) |
                                          (static_cast<unsigned int>(p[1]) << 8) |

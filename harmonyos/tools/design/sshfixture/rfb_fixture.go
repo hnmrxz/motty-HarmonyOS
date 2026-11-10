@@ -23,7 +23,8 @@ import (
 	"time"
 )
 
-const (
+// 尺寸可变：DesktopSize 伪编码会在连接中途改变桌面大小
+var (
 	rfbWidth  = 64
 	rfbHeight = 48
 )
@@ -138,8 +139,8 @@ func serveRFB(conn net.Conn) {
 
 	// ServerInit
 	buf := make([]byte, 0, 32)
-	buf = binary.BigEndian.AppendUint16(buf, rfbWidth)
-	buf = binary.BigEndian.AppendUint16(buf, rfbHeight)
+	buf = binary.BigEndian.AppendUint16(buf, uint16(rfbWidth))
+	buf = binary.BigEndian.AppendUint16(buf, uint16(rfbHeight))
 	// PIXEL_FORMAT: bpp=32 depth=24 bigendian=0 truecolor=1
 	buf = append(buf, 32, 24, 0, 1)
 	buf = binary.BigEndian.AppendUint16(buf, 255) // red max
@@ -156,6 +157,7 @@ func serveRFB(conn net.Conn) {
 
 	var mark pointerMark
 	useHextile := false
+	reqCount := 0
 
 	// 握手完成后先发一条固定的服务端剪贴板内容：让"客户端能收 ServerCutText"可断言
 	if err := sendServerCutText(conn, "fixture-clip"); err != nil {
@@ -195,6 +197,18 @@ func serveRFB(conn net.Conn) {
 			}
 			log.Printf("rfb: SetEncodings count=%d hextile=%v", count, useHextile)
 		case 3: // FramebufferUpdateRequest
+			reqCount++
+			if reqCount == 3 {
+				// DesktopSize 伪编码：通知客户端桌面尺寸变为 80x60（没有像素数据）
+				hdr := []byte{0, 0, 0, 1} // type 0 + padding + 1 rect
+				rect := []byte{0, 0, 0, 0, 0, 80, 0, 60, 0xFF, 0xFF, 0xFF, 0x21}
+				if _, err := conn.Write(append(hdr, rect...)); err != nil {
+					log.Printf("rfb: send DesktopSize failed: %v", err)
+					return
+				}
+				rfbWidth, rfbHeight = 80, 60
+				log.Printf("rfb: DesktopSize -> %dx%d", rfbWidth, rfbHeight)
+			}
 			req := make([]byte, 9)
 			if _, err := io.ReadFull(conn, req); err != nil {
 				return
@@ -290,8 +304,8 @@ func sendRawUpdate(conn net.Conn, mark pointerMark) error {
 	head = binary.BigEndian.AppendUint16(head, 1)      // 1 rect
 	head = binary.BigEndian.AppendUint16(head, 0)      // x
 	head = binary.BigEndian.AppendUint16(head, 0)      // y
-	head = binary.BigEndian.AppendUint16(head, rfbWidth)
-	head = binary.BigEndian.AppendUint16(head, rfbHeight)
+	head = binary.BigEndian.AppendUint16(head, uint16(rfbWidth))
+	head = binary.BigEndian.AppendUint16(head, uint16(rfbHeight))
 	head = binary.BigEndian.AppendUint32(head, 0) // encoding = Raw
 	if _, err := conn.Write(head); err != nil {
 		return err
@@ -341,8 +355,8 @@ func sendHextileUpdate(conn net.Conn, mark pointerMark) error {
 	head = binary.BigEndian.AppendUint16(head, 1)
 	head = binary.BigEndian.AppendUint16(head, 0)
 	head = binary.BigEndian.AppendUint16(head, 0)
-	head = binary.BigEndian.AppendUint16(head, rfbWidth)
-	head = binary.BigEndian.AppendUint16(head, rfbHeight)
+	head = binary.BigEndian.AppendUint16(head, uint16(rfbWidth))
+	head = binary.BigEndian.AppendUint16(head, uint16(rfbHeight))
 	head = binary.BigEndian.AppendUint32(head, 5) // encoding = Hextile
 	if _, err := conn.Write(head); err != nil {
 		return err

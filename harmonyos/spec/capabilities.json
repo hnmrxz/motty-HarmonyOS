@@ -1093,7 +1093,8 @@
       "evidence": "E1",
       "proof": [
         "spec/scenarios/vnc.auth-hextile.yaml",
-        "spec/scenarios/vnc.clipboard.yaml"
+        "spec/scenarios/vnc.clipboard.yaml",
+        "spec/scenarios/vnc.desktopsize.yaml"
       ],
       "fallback": null,
       "userText": null,
@@ -1103,7 +1104,7 @@
         "deps": "G1",
         "acceptance": "`vnc_e2e`"
       },
-      "partialCoverage": "部分：RFB 3.8、None/VNC Auth(DES)、Raw+Hextile、fillRect 渲染、指针/键盘事件、服务端/客户端剪贴板已双画像实测；DesktopSize 伪编码、resize、其他编码(Tight/ZRLE/Cursor)、多显示器未做。"
+      "partialCoverage": "部分：RFB 3.8、None/VNC Auth(DES)、Raw+Hextile、fillRect 渲染、指针/键盘、剪贴板、DesktopSize 尺寸变化已双画像实测；UI 缩放自适应、ExtendedDesktopSize、Tight/ZRLE/Cursor 编码未做。"
     },
     {
       "id": "E03",
