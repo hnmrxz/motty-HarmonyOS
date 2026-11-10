@@ -158,6 +158,8 @@ struct Index {
   @State vtScroll: number = 0;
   @State selText: string = '';
   @State clipText: string = '';
+  private touchLastY: number = -1;
+  private touchAccum: number = 0;
   @State filesOpen: boolean = false;
   @State sftpPath: string = '.';
   @State sftpFile: string = 'hello.txt';
@@ -565,6 +567,37 @@ struct Index {
     this.vtScroll = next < 0 ? 0 : next;
     this.termText = mottynapi.vtView(tab.vtId, this.vtScroll);
     this.ptyStatus = 'scroll=' + this.vtScroll;
+  }
+
+  // ---------------- 触控拖动滚动回滚区 ----------------
+  private onTermTouch(event: TouchEvent): void {
+    if (event.touches.length === 0) {
+      return;
+    }
+    const y = event.touches[0].y;
+    if (event.type === TouchType.Down) {
+      this.touchLastY = y;
+      this.touchAccum = 0;
+      return;
+    }
+    if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+      this.touchLastY = -1;
+      return;
+    }
+    if (event.type === TouchType.Move && this.touchLastY >= 0) {
+      // 手指上滑(y 变小) => 回看历史(offset 增大)
+      this.touchAccum += (this.touchLastY - y);
+      this.touchLastY = y;
+      const STEP = 18;   // 每 18vp 走一行，避免过于灵敏
+      while (this.touchAccum >= STEP) {
+        this.touchAccum -= STEP;
+        this.scrollView(1);
+      }
+      while (this.touchAccum <= -STEP) {
+        this.touchAccum += STEP;
+        this.scrollView(-1);
+      }
+    }
   }
 
   // ---------------- 选区与复制 ----------------
@@ -1729,6 +1762,7 @@ struct Index {
         Text(this.termText.length > 0 ? this.termText : '(no output yet)')
           .id('terminal/output').fontSize(13).fontFamily('monospace').fontColor('#D4D4D4')
           .width('100%')
+          .onTouch((event: TouchEvent) => { this.onTermTouch(event); })
       }
       .layoutWeight(1).width('100%').align(Alignment.TopStart)
       .border({ width: 1, color: '#333333' }).padding(8).backgroundColor('#1E1E1E')

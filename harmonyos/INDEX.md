@@ -1240,3 +1240,26 @@ lint 直接报 `is not of type 'string'`——已改成不带冒号的写法。
 ### 未做
 方向键/功能键的转义序列映射、修饰键组合、Alt/Shift 语义、真实 Linux shell 的作业控制、
 鼠标上报、滚轮/触控滚动（原先计划在此轮，但触控需要先给 runner 加 `swipe` 动作，留到下轮）。
+---
+
+## Round 43：触控拖动滚动回滚区（含 runner 新增 swipe）
+
+| 产物 | 说明 |
+|---|---|
+| `spec/run.py` | 新增 `swipe` 动作（`uitest uiInput swipe`，支持 `dx/dy/durationMs/settleMs`）；此前它是 `NotImplementedError` 占位 |
+| `Index.ets` | 终端输出区 `onTouch`：手指上滑回看历史、下滑回实时；每 18vp 走一行（避免过于灵敏） |
+| `spec/scenarios/terminal.touchscroll.yaml` | 上滑断言 `scroll>0`，下滑断言回到 `scroll=0` |
+
+### 顺序上的一个原则
+这条功能必须**先有 swipe 原语**才能验证。若先写功能再补测试手段，就只能产出 E3（未验证）——
+这也是我把它排在本轮而不是上一轮的原因。
+
+### 断言为什么这样设计
+只断言"scroll 变大"不够：一个只会增不会减的实现也能过。
+必须再断言下滑后回到 `scroll=0`，才证明"方向"是对的。
+
+### 双画像
+`terminal.touchscroll` 在 2in1 与 tablet 均 **passed**。
+
+### 未做
+鼠标滚轮（未接 `AxisEvent`）、惯性滑动、拖到边界回弹、双指手势、方向键转义映射。

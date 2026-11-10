@@ -319,6 +319,20 @@ class Runner:
                     self.sh(f"aa force-stop {spec['app']['bundleName']}", check=False)
                     time.sleep(1.5)
                     self.launch(spec['app'])
+                elif act == 'swipe':
+                    # 触控滑动：用 uitest uiInput swipe。目标取节点中心，
+                    # dy 为"手指位移"（负值=向上滑，通常是回看历史）。
+                    layout = self.dump_layout(f'step-{i:02d}')
+                    self.assert_no_blocking_dialog(layout)
+                    node = self.resolve(layout, step['target'])
+                    if node is None:
+                        raise AssertionError(f'选择器未命中: {step["target"]}')
+                    x, y = self.center(node)
+                    dy = int(step.get('dy', -300))
+                    dx = int(step.get('dx', 0))
+                    ms = int(step.get('durationMs', 400))
+                    self.sh(f'uitest uiInput swipe {x} {y} {x + dx} {y + dy} {ms}', check=False)
+                    time.sleep(step.get('settleMs', 600) / 1000.0)
                 elif act == 'shell':
                     # 在宿主（跑 runner 的机器）上执行一条命令：重启夹具、换 host key 等。
                     # 输出写临时文件而不是管道：命令里若用 Start-Process 重定向输出，

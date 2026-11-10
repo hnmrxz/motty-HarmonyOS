@@ -154,6 +154,15 @@
           },
           "settleMs": {
             "type": "integer"
+          },
+          "dx": {
+            "type": "integer"
+          },
+          "dy": {
+            "type": "integer"
+          },
+          "durationMs": {
+            "type": "integer"
           }
         }
       }

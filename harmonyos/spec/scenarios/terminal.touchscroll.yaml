@@ -1,0 +1,92 @@
+schema: 1
+id: terminal.touchscroll
+title: 触控拖动滚动回滚区：上滑回看历史，下滑回到实时
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B09
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: ts-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:diag/open
+  - action: click
+    target: id:terminal/vt2
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3500
+    expect:
+      kind: screenRegex
+      regex: "main-after-alt"
+      withinMs: 15000
+  # 手指上滑（dy 为负）= 回看历史
+  - action: swipe
+    target: id:terminal/output
+    dy: -260
+    durationMs: 500
+    settleMs: 900
+    expect:
+      kind: screenRegex
+      regex: "scroll=[1-9][0-9]*"
+      withinMs: 8000
+  # 手指下滑 = 回到实时
+  - action: swipe
+    target: id:terminal/output
+    dy: 520
+    durationMs: 500
+    settleMs: 900
+asserts:
+  - kind: screenRegex
+    regex: "scroll=0"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "scroll-2[5-9]"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：在终端输出区用手指拖动改变回滚位置（上滑回看、下滑回实时），
+    以及 runner 新增的 swipe 动作。
+    **不覆盖**：鼠标滚轮（未接 AxisEvent）、惯性滑动、拖到边界后的回弹、双指手势；
+    未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 滑动步长是每 18vp 一行（实现里的 STEP），所以 -260vp 大约回退 14 行
+notes: >-
+  这条用例同时验证两件事：runner 的 swipe 原语可用，以及终端真的把触控位移换算成回滚偏移。
+  只断言 scroll 变化不够，还要断言下滑后确实回到 0——否则"只增不减"也会通过。
