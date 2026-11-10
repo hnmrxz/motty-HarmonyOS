@@ -468,6 +468,7 @@
       },
       "evidence": "E1",
       "proof": [
+        "spec/scenarios/knownhosts.manage.yaml",
         "spec/scenarios/ssh.hostkey.yaml"
       ],
       "fallback": null,
@@ -477,7 +478,8 @@
         "planInMatrix": "原样；文件进沙箱目录",
         "deps": "R04",
         "acceptance": "`host_test`"
-      }
+      },
+      "partialCoverage": "部分：信任确认、known_hosts 持久化与删除已双画像实测；主机密钥变更告警、@cert-authority、导入导出未做。"
     },
     {
       "id": "B03",
@@ -908,6 +910,7 @@
       },
       "evidence": "E1",
       "proof": [
+        "spec/scenarios/forward.http.yaml",
         "spec/scenarios/forward.local.yaml",
         "spec/scenarios/forward.socks5.yaml"
       ],
@@ -1122,8 +1125,10 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/rdp.connect.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {
@@ -1131,7 +1136,8 @@
         "planInMatrix": "原样；**MinVersion ≥1.2**（现 1.0）、保留 pin 与\"变更即断\"",
         "deps": "R12",
         "acceptance": "`rdp_e2e`、`rdp_files_e2e`"
-      }
+      },
+      "partialCoverage": "仅连接路径（含失败语义）双画像实测；成功连接、TLS/证书 pin、NLA/CredSSP、能力协商、位图、输入、通道均未做。"
     },
     {
       "id": "E05",

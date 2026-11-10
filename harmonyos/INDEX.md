@@ -1030,3 +1030,33 @@ OpenSSL 是 **Apache-2.0**，与 FreeRDP 一致，不引入新的 GPL 义务（�
 
 ### 双画像
 `rdp.connect` 在 2in1 与 tablet 均 **passed**。
+---
+
+## Round 34：known_hosts 管理（查看/删除信任）+ RDP 环境结论
+
+### 一、RDP 被环境卡住（如实记录，不是代码问题）
+宿主检查结果：
+- `TermService` **Stopped**（StartType=Manual）
+- `HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\fDenyTSConnections = 1`（远程桌面被禁用）
+- 3389 **未监听**
+
+启用需要管理员授权与系统设置变更，且真实 RDP 还要凭据 —— 本轮不做未经授权的系统改动。
+所以 RDP 的真实链路验证**被环境阻塞**，我没有把它写成"已实现"。
+
+### 二、本轮交付：known_hosts 管理
+| 产物 | 说明 |
+|---|---|
+| `Index.ets` | 顶栏 `Known`（`known/open`）→ 面板列出条目（`known/count`、`known/del/<host>`、`known/empty`、`known/close`） |
+| 数据 | 删除走 `relationalStore.delete`，删除后立即刷新列表 |
+| `spec/scenarios/knownhosts.manage.yaml` | 信任 → 列出 1 条 → 删除 → 计数 0 → **再连必须重新弹信任框** |
+
+### 为什么最后一步才是关键
+只断言"列表变空"只证明 UI 删了，**不证明信任状态真的失效**。
+再连一次必须重新出现 `Unknown host key` 且对话框里显示 `SHA256:` 指纹，才说明 known_hosts 真的被删。
+
+### 双画像
+`knownhosts.manage` 在 2in1 与 tablet 均 **passed**。
+
+### 小坑
+YAML 里 `- 断言用 "trusted entries: N" 计数…` 这种带冒号的未加引号条目会被解析成 map，
+lint 直接报 `is not of type 'string'`——已改成不带冒号的写法。

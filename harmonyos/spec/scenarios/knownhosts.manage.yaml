@@ -1,0 +1,97 @@
+schema: 1
+id: knownhosts.manage
+title: known_hosts 管理：信任后可查看/删除，删除后再次连接必须重新确认
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B02
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: known-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "hello-from-list"
+      withinMs: 15000
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 1000
+    expect:
+      kind: screenRegex
+      regex: "trusted entries: 1"
+      withinMs: 8000
+  - action: click
+    target: id:known/del/127.0.0.1:2222
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "trusted entries: 0"
+      withinMs: 8000
+  - action: click
+    target: id:known/close
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2500
+asserts:
+  - kind: screenRegex
+    regex: "Unknown host key"
+    withinMs: 15000
+  - kind: screenRegex
+    regex: "SHA256:"
+    withinMs: 4000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：信任后 known_hosts 落库并可在 UI 列出、
+    删除条目（含库记录）、删除后再次连接**重新弹出信任确认**。
+    **不覆盖**：主机密钥变更（同主机换钥）告警、`@cert-authority`、known_hosts 导入/导出、
+    批量删除、算法白名单；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 断言用 trusted entries 计数，避免依赖具体指纹文本
+notes: >-
+  最后一步是关键：删除后再连必须重新出现 "Unknown host key"，且对话框里能看到指纹(SHA256:)。
+  只断言"列表变空"不够——那只证明 UI 删了，不证明信任状态真的失效了。
+  注意：计数断言放在面板仍打开的步骤里；面板关闭后计数文本已不在屏幕上。

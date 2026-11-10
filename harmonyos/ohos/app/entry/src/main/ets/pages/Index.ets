@@ -167,6 +167,9 @@ struct Index {
   @State vncDrawn: number = 0;
   @State vncPassword: string = 'secret';
   @State rdpResult: string = '';
+  @State knownOpen: boolean = false;
+  @State knownKeys: string[] = [];
+  @State knownFps: string[] = [];
 
   private creds: Map<string, Cred> = new Map<string, Cred>();
   private store: relationalStore.RdbStore | null = null;
@@ -813,6 +816,39 @@ struct Index {
       });
   }
 
+  // ---------------- known_hosts 管理 ----------------
+  private async openKnownHosts(): Promise<void> {
+    this.knownOpen = true;
+    await this.refreshKnownHosts();
+  }
+
+  private async refreshKnownHosts(): Promise<void> {
+    if (this.store === null) {
+      return;
+    }
+    const rs = await this.store.query(new relationalStore.RdbPredicates('known_hosts'), ['host', 'fingerprint']);
+    const keys: string[] = [];
+    const fps: string[] = [];
+    while (rs.goToNextRow()) {
+      keys.push(rs.getString(0));
+      fps.push(rs.getString(1));
+    }
+    rs.close();
+    this.knownKeys = keys;
+    this.knownFps = fps;
+  }
+
+  private async deleteKnownHost(key: string): Promise<void> {
+    if (this.store === null) {
+      return;
+    }
+    const pred = new relationalStore.RdbPredicates('known_hosts');
+    pred.equalTo('host', key);
+    await this.store.delete(pred);
+    hilog.info(DOMAIN, TAG, 'known_hosts deleted for %{public}s', key);
+    await this.refreshKnownHosts();
+  }
+
   private probeNet(): void {
     this.probeText = 'connecting...';
     const tcp = socket.constructTCPSocketInstance();
@@ -1208,6 +1244,43 @@ struct Index {
   }
 
   @Builder
+  knownPanel() {
+    Column({ space: 8 }) {
+      Row() {
+        Text('Known hosts').fontSize(16).fontWeight(FontWeight.Bold)
+        Blank()
+        Button('Close').id('known/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.knownOpen = false; })
+      }.width('100%')
+      Text('trusted entries: ' + this.knownKeys.length)
+        .id('known/count').fontSize(11).fontColor('#0A6C00').width('100%')
+      Scroll() {
+        Column({ space: 4 }) {
+          ForEach(this.knownKeys, (key: string, idx: number) => {
+            Row({ space: 8 }) {
+              Column({ space: 2 }) {
+                Text(key).fontSize(12).fontFamily('monospace').width('100%')
+                Text(this.knownFps[idx]).fontSize(10).fontFamily('monospace').fontColor('#888888').width('100%')
+              }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+              Button('Delete').id('known/del/' + key).backgroundColor('#C62828').fontColor(Color.White)
+                .fontSize(12)
+                .onClick(() => { this.deleteKnownHost(key); })
+            }.width('100%').padding(6).backgroundColor('#FAFAFA').borderRadius(6)
+          }, (key: string) => key)
+          if (this.knownKeys.length === 0) {
+            Text('(no trusted hosts)').id('known/empty').fontSize(12).fontColor('#999999').width('100%')
+          }
+        }.width('100%').alignItems(HorizontalAlign.Start)
+      }.height(200).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)
+        .align(Alignment.TopStart)
+      Text('Deleting an entry forces the trust prompt again on next connect.')
+        .fontSize(10).fontColor('#999999').width('100%')
+    }
+    .id('known/panel').width(620).padding(16).backgroundColor(Color.White).borderRadius(12)
+    .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
+  }
+
+  @Builder
   diagPanel() {
     Column({ space: 10 }) {
       Row() {
@@ -1368,6 +1441,8 @@ struct Index {
             Button('Hosts').id('nav/hosts').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
               .onClick(() => { this.showHosts = true; })
           }
+          Button('Known').id('known/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+            .onClick(() => { this.openKnownHosts(); })
           Button('Forward').id('fwd/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
             .onClick(() => { this.fwdOpen = true; })
           Button('Diagnostics').id('diag/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
@@ -1391,6 +1466,10 @@ struct Index {
       if (this.vncOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
         this.vncPanel()
+      }
+      if (this.knownOpen) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
+        this.knownPanel()
       }
       if (this.fwdOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
