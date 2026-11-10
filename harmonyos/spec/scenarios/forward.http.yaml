@@ -1,0 +1,93 @@
+schema: 1
+id: forward.http
+title: HTTP CONNECT 动态转发：CONNECT 握手经 SSH 隧道取回远端数据
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - D01
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: http-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "hello-from-list"
+      withinMs: 15000
+  - action: click
+    target: id:fwd/open
+  - action: click
+    target: id:fwd/mode-http
+  - action: click
+    target: id:fwd/start
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "mode=http"
+      withinMs: 15000
+  - action: click
+    target: id:fwd/test
+  - action: wait
+    ms: 2500
+asserts:
+  - kind: screenRegex
+    regex: "200 Connection Established"
+    withinMs: 12000
+  - kind: screenRegex
+    regex: "SSH-2\\.0-"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "proxy target 127\\.0\\.0\\.1:2223"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：HTTP CONNECT 请求解析（CONNECT host:port）、
+    200 响应、经 SSH direct-tcpip 的隧道透传。
+    **不覆盖**：代理认证（Proxy-Authorization）、非 CONNECT 的正向代理请求、
+    TLS 内嵌（CONNECT 之后由客户端自行 TLS）、并发连接、arm64 真机。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 目标用对端 SSH 自身 2223 端口，banner 可断言
+notes: >-
+  200 Connection Established 只证明握手成功；SSH-2.0- 才证明隧道在转发数据。
+  两条一起断言，避免"握手 OK 但数据没通"被算成通过。

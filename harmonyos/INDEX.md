@@ -914,3 +914,38 @@ None 模式 18 条 + auth 模式 2 条（`vnc.auth-hextile`、`vnc.negative`）�
 
 ### 仍未做
 远程转发、SOCKS5 用户名口令认证、UDP ASSOCIATE、HTTP CONNECT 的断言用例、并发连接、RDP。
+---
+
+## Round 30：HTTP CONNECT 用例补齐 + RDP 可行性定论（不做无效尝试）
+
+### 一、RDP：这条路暂时走不通，原因已定位到源码层
+想用 FreeRDP（Apache-2.0）替掉上游 38k 行自研 RDP。按官方文档试了 **mbedTLS 后端**（我们已有 mbedTLS）：
+
+| 步骤 | 结果 |
+|---|---|
+| 3.9.0 配 `-DWITH_OPENSSL=OFF -DWITH_MBEDTLS=ON` | 失败：`Could NOT find OpenSSL` |
+| 读 CMakeLists | `OPENSSL_FEATURE_TYPE "REQUIRED"`，mbedTLS 只是 OPTIONAL —— **3.9.0 不支持无 OpenSSL**；master 同样 |
+| 打补丁（OpenSSL→OPTIONAL）后配置 | **成功**（找到 mbedTLS 三个静态库） |
+| 编译 | **失败**：①`libfreerdp/crypto/tls.h` 等**无条件 include `<openssl/*>`**；②`winpr/libwinpr/crypto/cipher.c` 的 mbedTLS 分支自身有编译错误（`undeclared identifier 'i'`） |
+
+结论：mbedTLS 后端是社区实验分支，靠 CMake 开关无法生效，改它等于维护一个 FreeRDP fork。
+**可行路径只有先编 OpenSSL**，而本机缺 Perl/​make（便携版 Strawberry Perl 可同时提供两者）。
+详见 [RDP-FEASIBILITY.md](./RDP-FEASIBILITY.md)。
+
+附带解决：FreeRDP 配置还卡 `Could NOT find ZLIB`，需显式给 `-DZLIB_LIBRARY=<sysroot>/libz.so`。
+
+### 二、本轮真正交付的：HTTP CONNECT 用例补齐
+第 29 轮实现了 `mode=http` 却没断言（只有 SOCKS5 有用例）。本轮补 `forward.http`：
+- `200 Connection Established`（握手成功）
+- 隧道内 `SSH-2.0-`（**数据真的通了**）
+- `proxy target 127.0.0.1:2223`（目标来自客户端请求）
+
+两条断言缺一不可：只有 200 无法证明转发，只有 banner 无法证明 HTTP 语义。
+
+### 三、双画像
+`forward.http` 在 2in1 与 tablet 均 **passed**（其余 20 条沿用本轮前一次全量结果，未改代码路径）。
+
+### 四、下一步（顺序已明确）
+1. **OpenSSL 里程碑**（便携 Perl + gmake + 双 ABI 静态库）——独立一轮，先验证 `libcrypto.a` 产物
+2. 再开 **FreeRDP 最小配置**（`-DWITH_OPENSSL=ON`，关 SDL/X11/声音/打印）
+3. 最后才是 RDP 客户端接入（帧/输入/通道）
