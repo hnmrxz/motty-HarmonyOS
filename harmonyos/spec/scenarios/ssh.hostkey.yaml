@@ -1,0 +1,48 @@
+schema: 1
+id: ssh.hostkey
+title: 主机密钥 TOFU 三步：未知主机只回指纹、匹配才认证、不匹配即拒
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B01
+  - B02
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:ssh/hostkey-check
+  - action: wait
+    ms: 3500
+asserts:
+  - kind: screenRegex
+    regex: "unknown_host SHA256:"
+    withinMs: 15000
+  - kind: screenRegex
+    regex: "verified SHA256:"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "hostkey-mismatch expected="
+    withinMs: 8000
+  - kind: absent
+    value: "error auth"
+    withinMs: 3000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。本 spec 验证的是"校验逻辑与失败关闭"：
+    未知主机不认证、指纹不符不认证。不覆盖 known_hosts 持久化（尚未实现）、
+    不覆盖 @cert-authority、不覆盖 hostkey 算法白名单；未在 arm64 真机执行。
+    对端为自建 sshfixture（RSA-3072 主机密钥），不是 upstream e2esshd。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 用"三步自检"一次性覆盖 unknown/modified 两种拒绝路径，而不是分三条 spec
+notes: >-
+  对应 PLAN §7.4 的不变量 P1：主机密钥变更不存在"仍要信任"按钮。
+  对端侧可交叉验证：fixture 的 stderr 只应出现 step 2 那一次 exec
+  （echo should-run-2），不应出现 should-not-run-1 / must-not-run-3。

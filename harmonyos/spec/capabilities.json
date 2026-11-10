@@ -1,0 +1,1834 @@
+{
+  "schema": 1,
+  "_comment": "A′ 能力注册表 v0.1（引导生成，勿手改 id）。level 为 null 或 needsReview=true 的条目必须由人裁决后填实；aPrime.where 留空表示尚未落到 A′ 实现，禁止用矩阵 B 组的\"原样保留 Go 内核\"填充。",
+  "_generatedBy": "harmonyos/tools/design/caps-bootstrap.py",
+  "_sourceMatrix": "harmonyos/CAPABILITY-MATRIX.md",
+  "entries": [
+    {
+      "id": "A01",
+      "title": "真 PTY 会话",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1 / 本地 T3",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/term`、`internal/localshell`",
+        "planInMatrix": "远程 PTY 走 SSH channel（T1）；**本地 PTY 见 B 组 T3**",
+        "deps": "G1",
+        "acceptance": "`terminal_protocols`"
+      }
+    },
+    {
+      "id": "A02",
+      "title": "256 色 / 真彩色",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/term`",
+        "planInMatrix": "Go 内核不变，配色数据随 HAP",
+        "deps": "G1",
+        "acceptance": "截图对照"
+      }
+    },
+    {
+      "id": "A03",
+      "title": "备用屏 / 5000 行回滚",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/term/terminal.go`",
+        "planInMatrix": "内核不变；回滚区内存预算 16 MiB/标签页重标定",
+        "deps": "G3",
+        "acceptance": "`terminal_flood`、`terminal_drag_scroll`"
+      }
+    },
+    {
+      "id": "A04",
+      "title": "宽字符 / 组合字符 / 连字",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1（字形允许 T2 容差）",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/term` + Viva 文本整形",
+        "planInMatrix": "D1：Viva 自带整形；B：ArkUI `@ohos.graphics.text` + 自绘网格",
+        "deps": "G3",
+        "acceptance": "CJK 混排截图"
+      }
+    },
+    {
+      "id": "A05",
+      "title": "鼠标上报 / 滚轮",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1 / 平板 T2",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`term` 键鼠事件",
+        "planInMatrix": "PC 自由窗口鼠标事件；平板触控模拟",
+        "deps": "G3",
+        "acceptance": "`terminal_drag_scroll`"
+      }
+    },
+    {
+      "id": "A06",
+      "title": "IME 输入 / preedit",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "Viva IME 接口",
+        "planInMatrix": "`@ohos.inputMethod` + `InputMethodExtensionAbility`（已有 API）",
+        "deps": "G3",
+        "acceptance": "`preedit`"
+      }
+    },
+    {
+      "id": "A07",
+      "title": "DECSET 2026 同步刷新",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/term`",
+        "planInMatrix": "内核不变，渲染端对齐 vsync",
+        "deps": "G3",
+        "acceptance": "全屏重绘无撕裂"
+      }
+    },
+    {
+      "id": "A08",
+      "title": "kitty 键盘协议",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/term/keyboard.go`",
+        "planInMatrix": "内核不变（仅需替换 `viva/gfx` 键码，≈50 行）",
+        "deps": "P0",
+        "acceptance": "按键矩阵单测"
+      }
+    },
+    {
+      "id": "A09",
+      "title": "`win32-input-mode`",
+      "group": "A. 终端",
+      "level": "T3",
+      "levelRaw": "**T3 删除**",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/term/win32input.go`",
+        "planInMatrix": "只服务 Windows console",
+        "deps": "—",
+        "acceptance": "UI 无入口"
+      }
+    },
+    {
+      "id": "A10",
+      "title": "标签重排 / 水平垂直分屏",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1 / 平板 T2",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/workbench`",
+        "planInMatrix": "PC：自由窗口 + 分屏；平板：单窗口 + 分屏",
+        "deps": "G3",
+        "acceptance": "`layout_*`"
+      }
+    },
+    {
+      "id": "A11",
+      "title": "跨窗口移动标签",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1（两形态）",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`workbench`",
+        "planInMatrix": "PC：多窗口拖拽；平板：分屏内移动 / 悬浮窗切换（功能不缺）",
+        "deps": "G3",
+        "acceptance": "手动"
+      }
+    },
+    {
+      "id": "A12",
+      "title": "垂直标签 / 垂直聚合",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`workbench`",
+        "planInMatrix": "纯 UI 逻辑，可 1:1 重做",
+        "deps": "—",
+        "acceptance": "截图"
+      }
+    },
+    {
+      "id": "A13",
+      "title": "可停靠工具栏",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "PC T1 / 平板 T2",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`workbench`",
+        "planInMatrix": "鼠标拖拽；平板改长按菜单",
+        "deps": "—",
+        "acceptance": "手动"
+      }
+    },
+    {
+      "id": "A14",
+      "title": "200+ 配色 / Xresources 导入",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1 / 导入 T2",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/workbench/schemes`",
+        "planInMatrix": "数据文件随 HAP；导入改为 filePicker",
+        "deps": "—",
+        "acceptance": "`schemes_*`"
+      }
+    },
+    {
+      "id": "A15",
+      "title": "内置编辑器（语法着色/查找替换/正则）",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`workbench` 编辑器",
+        "planInMatrix": "纯图元 + 键盘，无 OS 依赖",
+        "deps": "—",
+        "acceptance": "`editor_*`"
+      }
+    },
+    {
+      "id": "A16",
+      "title": "历史搜索 / OSC 8 链接 / 超链接",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1 / 打开 T2",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`term`",
+        "planInMatrix": "打开外部链接走 want（需确认，见 SEC-02）",
+        "deps": "—",
+        "acceptance": "手动"
+      }
+    },
+    {
+      "id": "A17",
+      "title": "Kitty / iTerm2 / SIXEL 图片",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`term/image.go`",
+        "planInMatrix": "内核不变；上屏走 GPU 纹理",
+        "deps": "G3",
+        "acceptance": "图片 e2e"
+      }
+    },
+    {
+      "id": "A18",
+      "title": "广播输入 / 会话录制",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`workbench`",
+        "planInMatrix": "纯逻辑",
+        "deps": "—",
+        "acceptance": "手动"
+      }
+    },
+    {
+      "id": "A19",
+      "title": "行内命令建议 / 补全",
+      "group": "A. 终端",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/completion`",
+        "planInMatrix": "纯逻辑（22 文件 / 5,587 行）",
+        "deps": "—",
+        "acceptance": "`completion_*`"
+      }
+    },
+    {
+      "id": "B01",
+      "title": "SSH 协议栈（KEX/AEAD/算法协商）",
+      "group": "B. 主机与认证",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/sshconn`（纯 Go `x/crypto/ssh`）",
+        "planInMatrix": "**原样保留**，无需 libssh2/OpenSSL",
+        "deps": "G1",
+        "acceptance": "`host_test`"
+      }
+    },
+    {
+      "id": "B02",
+      "title": "主机密钥校验 + 自有 `known_hosts`",
+      "group": "B. 主机与认证",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`sshconn/hostkey.go`",
+        "planInMatrix": "原样；文件进沙箱目录",
+        "deps": "R04",
+        "acceptance": "`host_test`"
+      }
+    },
+    {
+      "id": "B03",
+      "title": "主机证书 / `@cert-authority`",
+      "group": "B. 主机与认证",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`sshconn`",
+        "planInMatrix": "原样",
+        "deps": "G1",
+        "acceptance": "`host_cert`"
+      }
+    },
+    {
+      "id": "B04",
+      "title": "agent 认证 + agent 转发",
+      "group": "B. 主机与认证",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`sshconn`",
+        "planInMatrix": "原样（纯 Socket 转发，不依赖本地 agent 进程）",
+        "deps": "G1",
+        "acceptance": "`agent_forward`"
+      }
+    },
+    {
+      "id": "B05",
+      "title": "私钥文件 / OpenSSH 证书自动配对",
+      "group": "B. 主机与认证",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`sshconn`、`keyidentity`",
+        "planInMatrix": "原样；私钥经 filePicker 或导入",
+        "deps": "R11",
+        "acceptance": "`credentials`"
+      }
+    },
+    {
+      "id": "B06",
+      "title": "PuTTY `.ppk` v2/v3（含 Argon2id）",
+      "group": "B. 主机与认证",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/ppk`",
+        "planInMatrix": "原样（有参数上限与测试）",
+        "deps": "—",
+        "acceptance": "`ppk`"
+      }
+    },
+    {
+      "id": "B07",
+      "title": "密码 / keyboard-interactive 多问题",
+      "group": "B. 主机与认证",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`workbench` 对话框",
+        "planInMatrix": "原样逻辑，UI 重做",
+        "deps": "—",
+        "acceptance": "`credentials`"
+      }
+    },
+    {
+      "id": "B08",
+      "title": "TOTP/HOTP + 保险库自动填充",
+      "group": "B. 主机与认证",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/vault`、`autofill`",
+        "planInMatrix": "原样；密钥存 HUKS",
+        "deps": "R05",
+        "acceptance": "`autofill_*`"
+      }
+    },
+    {
+      "id": "B09",
+      "title": "主机分组 / 标签 / 搜索",
+      "group": "B. 主机与认证",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`workbench`",
+        "planInMatrix": "纯逻辑",
+        "deps": "—",
+        "acceptance": "`host_*`"
+      }
+    },
+    {
+      "id": "B10",
+      "title": "从 OpenSSH config / PuTTY / Xshell / MobaXterm / WindTerm / Electerm / Netcatty 导入",
+      "group": "B. 主机与认证",
+      "level": "T1",
+      "levelRaw": "T1 / 入口 T2",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/sessionimport`、`sshconfig`",
+        "planInMatrix": "原样；**导入入口必须确认**（SEC-02）",
+        "deps": "R07",
+        "acceptance": "`import_*`"
+      }
+    },
+    {
+      "id": "B11",
+      "title": "保险库 AES-256-GCM",
+      "group": "B. 主机与认证",
+      "level": "T1",
+      "levelRaw": "T1 / 载体 T2",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/vault`",
+        "planInMatrix": "原样；数据密钥进 Asset Store",
+        "deps": "R05",
+        "acceptance": "`vault_*`"
+      }
+    },
+    {
+      "id": "B12",
+      "title": "系统密钥存储",
+      "group": "B. 主机与认证",
+      "level": "T2",
+      "levelRaw": "T2",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "Viva `app.*Secret`",
+        "planInMatrix": "**HUKS / Asset Store**（已有 API）",
+        "deps": "R05",
+        "acceptance": "拒绝时不回退"
+      }
+    },
+    {
+      "id": "B13",
+      "title": "**本地 PTY shell**",
+      "group": "B. 主机与认证",
+      "level": "T1",
+      "levelRaw": "**T3**（未验证，若开放则回 T1）",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/localshell`（2,807 行）+ `creack/pty`",
+        "planInMatrix": "沙箱无 `/dev/ptmx`、禁 exec",
+        "deps": "R16",
+        "acceptance": "UI 无入口"
+      }
+    },
+    {
+      "id": "C01",
+      "title": "SFTP 浏览 / 多选 / 权限 / 书签",
+      "group": "C. 文件",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/sftpclient`",
+        "planInMatrix": "原样协议层；UI 重做",
+        "deps": "G1",
+        "acceptance": "`sftp_*`"
+      }
+    },
+    {
+      "id": "C02",
+      "title": "递归上传下载 / 队列 / 续传 / 取消重试",
+      "group": "C. 文件",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`sftpclient`",
+        "planInMatrix": "原样（原子 partial + 校验前缀 + rename）",
+        "deps": "G1",
+        "acceptance": "`sftp_*`"
+      }
+    },
+    {
+      "id": "C03",
+      "title": "SCP 回退（无 SFTP 子系统）",
+      "group": "C. 文件",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/scpclient`",
+        "planInMatrix": "原样",
+        "deps": "G1",
+        "acceptance": "`scp_e2e`"
+      }
+    },
+    {
+      "id": "C04",
+      "title": "远端文件选择",
+      "group": "C. 文件",
+      "level": "T2",
+      "levelRaw": "T2",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "OS 文件对话框",
+        "planInMatrix": "**filePicker + `persistPermission`**",
+        "deps": "R11",
+        "acceptance": "重启后授权仍在"
+      }
+    },
+    {
+      "id": "C05",
+      "title": "本地↔远端拖放",
+      "group": "C. 文件",
+      "level": "T1",
+      "levelRaw": "T1 / 平板 T2",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "OS 拖放",
+        "planInMatrix": "PC：系统拖放；平板：系统触控拖拽或 filePicker 替代",
+        "deps": "—",
+        "acceptance": "手动"
+      }
+    },
+    {
+      "id": "C06",
+      "title": "终端目录跟随 / 文件面板跟随",
+      "group": "C. 文件",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`docs/terminal-folder-sync.md`",
+        "planInMatrix": "原样逻辑；路径改沙箱",
+        "deps": "R04",
+        "acceptance": "手动"
+      }
+    },
+    {
+      "id": "C07",
+      "title": "传输根越界防护",
+      "group": "C. 文件",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`agent_transfers.go:57-125`",
+        "planInMatrix": "原样 + URI 规范化复核",
+        "deps": "R11",
+        "acceptance": "目录外访问失败"
+      }
+    },
+    {
+      "id": "D01",
+      "title": "本地 / 远程 / SOCKS5 / HTTP CONNECT",
+      "group": "D. 转发与跳板",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/portforward`",
+        "planInMatrix": "原样；只绑 loopback（`127.0.0.1`）",
+        "deps": "`@ohos.net.socket` 已有 API",
+        "acceptance": "`local_proxy`、`proxy_start_stop`"
+      }
+    },
+    {
+      "id": "D02",
+      "title": "跳板链（每跳独立验钥/认证）",
+      "group": "D. 转发与跳板",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`sshconn`",
+        "planInMatrix": "原样",
+        "deps": "G1",
+        "acceptance": "`jump_*`"
+      }
+    },
+    {
+      "id": "D03",
+      "title": "全局出站 SOCKS5/HTTP 代理",
+      "group": "D. 转发与跳板",
+      "level": "T1",
+      "levelRaw": "T1 / 系统代理 T3",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/systemproxy`",
+        "planInMatrix": "原样；**系统代理功能无意义 → 只保留显式配置**",
+        "deps": "—",
+        "acceptance": "手动"
+      }
+    },
+    {
+      "id": "D04",
+      "title": "`ProxyCommand` 子进程",
+      "group": "D. 转发与跳板",
+      "level": "T3",
+      "levelRaw": "**T3 删除**（UI 拒绝并提示）",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`sshconn/proxycommand.go:109-133`",
+        "planInMatrix": "沙箱禁 exec",
+        "deps": "R16",
+        "acceptance": "配置含 ProxyCommand 必拒"
+      }
+    },
+    {
+      "id": "D05",
+      "title": "**X11 转发**",
+      "group": "D. 转发与跳板",
+      "level": "T3",
+      "levelRaw": "**T3 删除**",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/x11fwd`（1,040 行）",
+        "planInMatrix": "需本机 X server + Xauthority",
+        "deps": "—",
+        "acceptance": "UI 无入口"
+      }
+    },
+    {
+      "id": "D06",
+      "title": "容器 / 系统代理集成",
+      "group": "D. 转发与跳板",
+      "level": "T3",
+      "levelRaw": "**T3**",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`workbench`",
+        "planInMatrix": "鸿蒙无对应语义",
+        "deps": "—",
+        "acceptance": "—"
+      }
+    },
+    {
+      "id": "E01",
+      "title": "VNC：RFB 3.3/3.7/3.8",
+      "group": "E. 远程桌面",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/rfb`",
+        "planInMatrix": "原样协议层；帧上屏走 XComponent GPU 纹理",
+        "deps": "G3",
+        "acceptance": "`vnc_e2e`"
+      }
+    },
+    {
+      "id": "E02",
+      "title": "VNC 编码 Raw/CopyRect/RRE/Hextile/ZRLE",
+      "group": "E. 远程桌面",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`rfb`",
+        "planInMatrix": "原样",
+        "deps": "G1",
+        "acceptance": "`vnc_e2e`"
+      }
+    },
+    {
+      "id": "E03",
+      "title": "VNC 认证 None / VNC Auth",
+      "group": "E. 远程桌面",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`rfb`",
+        "planInMatrix": "原样",
+        "deps": "G1",
+        "acceptance": "`vnc_e2e`"
+      }
+    },
+    {
+      "id": "E04",
+      "title": "RDP：TLS / NLA / 证书 pin / 文件拖放",
+      "group": "E. 远程桌面",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/rdpcore`（38,410 行，**单独立项**）",
+        "planInMatrix": "原样；**MinVersion ≥1.2**（现 1.0）、保留 pin 与\"变更即断\"",
+        "deps": "R12",
+        "acceptance": "`rdp_e2e`、`rdp_files_e2e`"
+      }
+    },
+    {
+      "id": "E05",
+      "title": "VNC/RDP 经 SSH loopback 隧道",
+      "group": "E. 远程桌面",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "原样",
+        "planInMatrix": "原样",
+        "deps": "—",
+        "acceptance": "`tools/live`"
+      }
+    },
+    {
+      "id": "E06",
+      "title": "桌面尺寸变化 / 指针 / 剪贴板文本",
+      "group": "E. 远程桌面",
+      "level": "T1",
+      "levelRaw": "T1 / T2",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "原样",
+        "planInMatrix": "原样；剪贴板受 OS 策略约束",
+        "deps": "—",
+        "acceptance": "手动"
+      }
+    },
+    {
+      "id": "F01",
+      "title": "Ask（当前终端为上下文）",
+      "group": "F. AI 与 MCP",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/ai`（22,600 行）",
+        "planInMatrix": "原样；网络走 `@ohos.net.socket`",
+        "deps": "G1",
+        "acceptance": "`ai_*`"
+      }
+    },
+    {
+      "id": "F02",
+      "title": "Agent（执行命令，经风险分级 + 审批门）",
+      "group": "F. AI 与 MCP",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`ai/gate`",
+        "planInMatrix": "原样；**审批 UI 重做，判定留 Go**",
+        "deps": "P0",
+        "acceptance": "`ai_agent_*`"
+      }
+    },
+    {
+      "id": "F03",
+      "title": "脱敏（私钥/赋值/URL 内嵌凭据/令牌格式）",
+      "group": "F. AI 与 MCP",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`ai` Redact",
+        "planInMatrix": "原样；尽力而为性质不变",
+        "deps": "—",
+        "acceptance": "单测"
+      }
+    },
+    {
+      "id": "F04",
+      "title": "token 预算 / 上下文裁剪",
+      "group": "F. AI 与 MCP",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`ai`",
+        "planInMatrix": "原样",
+        "deps": "—",
+        "acceptance": "单测"
+      }
+    },
+    {
+      "id": "F05",
+      "title": "模型 Key 存保险库",
+      "group": "F. AI 与 MCP",
+      "level": "T2",
+      "levelRaw": "T2",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`vault`",
+        "planInMatrix": "HUKS/Asset Store",
+        "deps": "R05",
+        "acceptance": "拒绝不回退"
+      }
+    },
+    {
+      "id": "F06",
+      "title": "HTTP MCP（bearer token，observe/ask）",
+      "group": "F. AI 与 MCP",
+      "level": "T1",
+      "levelRaw": "T1 / 默认关 T2",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`ai/mcp/server.go`",
+        "planInMatrix": "原样；**默认关闭**；loopback 跨应用可达性未验证",
+        "deps": "R14",
+        "acceptance": "`mcp_e2e.py`"
+      }
+    },
+    {
+      "id": "F07",
+      "title": "stdio MCP（`motty mcp-serve`）",
+      "group": "F. AI 与 MCP",
+      "level": "T3",
+      "levelRaw": "**T3**（HTTP MCP 可替代）",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`cmd/motty/mcp_serve.go`",
+        "planInMatrix": "需要子进程 stdin/stdout 管道 → **鸿蒙不可行**",
+        "deps": "R16",
+        "acceptance": "—"
+      }
+    },
+    {
+      "id": "F08",
+      "title": "MCP token 存储",
+      "group": "F. AI 与 MCP",
+      "level": "T2",
+      "levelRaw": "T2",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`ai.db`（明文 0600）",
+        "planInMatrix": "**Asset Store**",
+        "deps": "R14",
+        "acceptance": "导出/诊断无 token"
+      }
+    },
+    {
+      "id": "F09",
+      "title": "\"风险分级审批\"",
+      "group": "F. AI 与 MCP",
+      "level": "T1",
+      "levelRaw": "T1 / 口径 T2",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`ai/risk/risk.go:1-11`（自述**不是**安全边界）",
+        "planInMatrix": "原样，**口径改为\"防误操作提醒\"**；allow-all 二次确认 + 审计",
+        "deps": "R29",
+        "acceptance": "审计日志"
+      }
+    },
+    {
+      "id": "G01",
+      "title": "加密 `.mottybak` 导出导入",
+      "group": "G. 数据",
+      "level": "T1",
+      "levelRaw": "T1 / 载体 T2",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/backup`（Argon2id + AES-GCM）",
+        "planInMatrix": "原样；导出经 filePicker",
+        "deps": "R11",
+        "acceptance": "双向 round-trip"
+      }
+    },
+    {
+      "id": "G02",
+      "title": "WebDAV / S3 / Gist / Gitee 同步",
+      "group": "G. 数据",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`cloudsync`",
+        "planInMatrix": "原样；HTTPS 策略保留（HTTP 需显式勾选）",
+        "deps": "G1",
+        "acceptance": "`cloudsync_*`"
+      }
+    },
+    {
+      "id": "G03",
+      "title": "同步合并（HLC + 90 天墓碑）",
+      "group": "G. 数据",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`cloudsync`",
+        "planInMatrix": "原样",
+        "deps": "—",
+        "acceptance": "`cloudsync_*`"
+      }
+    },
+    {
+      "id": "G04",
+      "title": "`meta.format` epoch 23",
+      "group": "G. 数据",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`tools/README.md:112-118`",
+        "planInMatrix": "**不得抬 epoch**；单向不可回退",
+        "deps": "R18",
+        "acceptance": "跨端双向 round-trip"
+      }
+    },
+    {
+      "id": "G05",
+      "title": "数据目录 / portable 模式",
+      "group": "G. 数据",
+      "level": "T3",
+      "levelRaw": "T2 / portable T3",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`datadir.go:5-16`",
+        "planInMatrix": "映射沙箱 `filesDir`；**portable 删除**",
+        "deps": "R04",
+        "acceptance": "冷启动可写"
+      }
+    },
+    {
+      "id": "G06",
+      "title": "应用数据是否进华为云备份",
+      "group": "G. 数据",
+      "level": "T2",
+      "levelRaw": "T2",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "—",
+        "planInMatrix": "**未验证**；若进备份则必须确保密钥不在数据目录",
+        "deps": "R05",
+        "acceptance": "备份产物审计"
+      }
+    },
+    {
+      "id": "G07",
+      "title": "会话恢复（重启恢复不自动重连）",
+      "group": "G. 数据",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`workspace`",
+        "planInMatrix": "原样",
+        "deps": "—",
+        "acceptance": "`workspace_*`"
+      }
+    },
+    {
+      "id": "H01",
+      "title": "窗口 / 自由窗口 / 多窗口",
+      "group": "H. 平台 / 外壳 / 发行",
+      "level": "T1",
+      "levelRaw": "T1 / 平板 T2",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "Viva app",
+        "planInMatrix": "PC `@ohos.window` 自由窗口；平板 分屏 / 平行视界 / 悬浮窗",
+        "deps": "G3",
+        "acceptance": "双画像手动"
+      }
+    },
+    {
+      "id": "H02",
+      "title": "剪贴板（OSC 52 写）",
+      "group": "H. 平台 / 外壳 / 发行",
+      "level": "T2",
+      "levelRaw": "T2",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`remote_clipboard.go:22-28`（默认 allow）",
+        "planInMatrix": "**默认改 ask**；读需用户手势（未验证）",
+        "deps": "R13",
+        "acceptance": "默认策略负测"
+      }
+    },
+    {
+      "id": "H03",
+      "title": "系统通知 / 状态",
+      "group": "H. 平台 / 外壳 / 发行",
+      "level": "T3",
+      "levelRaw": "T2 / 托盘 T3",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`main.go:201 hasStatusArea`",
+        "planInMatrix": "通知 + 服务卡片；托盘无契约",
+        "deps": "—",
+        "acceptance": "手动"
+      }
+    },
+    {
+      "id": "H04",
+      "title": "后台长连接保活",
+      "group": "H. 平台 / 外壳 / 发行",
+      "level": "T2",
+      "levelRaw": "T2（降级）",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "无",
+        "planInMatrix": "官方长时任务无 SSH 类型；**不伪造**，退后台降级并提示",
+        "deps": "R08",
+        "acceptance": "8h soak"
+      }
+    },
+    {
+      "id": "H05",
+      "title": "自更新（minisign 验签）",
+      "group": "H. 平台 / 外壳 / 发行",
+      "level": "T3",
+      "levelRaw": "**T3**",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/selfupdate`（2,867 行）",
+        "planInMatrix": "市场分发禁自装 → 只保留\"检查更新\"提示",
+        "deps": "—",
+        "acceptance": "UI 无自装入口"
+      }
+    },
+    {
+      "id": "H06",
+      "title": "**串口 / serial**",
+      "group": "H. 平台 / 外壳 / 发行",
+      "level": "T3",
+      "levelRaw": "**T3**（未验证）",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/serial`（1,117 行）",
+        "planInMatrix": "无 `/dev/ttyUSB*`；USB Kit 可否替代**未验证**",
+        "deps": "—",
+        "acceptance": "UI 无入口"
+      }
+    },
+    {
+      "id": "H07",
+      "title": "zmodem / xymodem",
+      "group": "H. 平台 / 外壳 / 发行",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/zmodem`",
+        "planInMatrix": "纯协议（1,751 行），随终端可用",
+        "deps": "G1",
+        "acceptance": "`zmodem_*`"
+      }
+    },
+    {
+      "id": "H08",
+      "title": "i18n（3 语言 × 约 2,580 叶串）",
+      "group": "H. 平台 / 外壳 / 发行",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`internal/i18n`",
+        "planInMatrix": "由 Go 结构体生成 ArkTS 资源",
+        "deps": "R28",
+        "acceptance": "key 集合 1:1"
+      }
+    },
+    {
+      "id": "H09",
+      "title": "应用图标 / 品牌资源",
+      "group": "H. 平台 / 外壳 / 发行",
+      "level": "T1",
+      "levelRaw": "T1",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "`assets`（3.7MB）、`workbench/icons`（0.52MB）",
+        "planInMatrix": "直接复用（体积非风险）",
+        "deps": "—",
+        "acceptance": "目视"
+      }
+    },
+    {
+      "id": "H10",
+      "title": "打包",
+      "group": "H. 平台 / 外壳 / 发行",
+      "level": "T2",
+      "levelRaw": "T2",
+      "needsReview": false,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "Viva `go run ./cmd/viva package`",
+        "planInMatrix": "**hvigor 打 HAP/HSP，双 ABI**",
+        "deps": "R17",
+        "acceptance": "双 ABI 可装"
+      }
+    },
+    {
+      "id": "H11",
+      "title": "上架",
+      "group": "H. 平台 / 外壳 / 发行",
+      "level": null,
+      "levelRaw": "—",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "—",
+        "planInMatrix": "待定",
+        "deps": "需用户决策",
+        "acceptance": "—"
+      }
+    },
+    {
+      "id": "pkg.telnet",
+      "title": "Telnet 协议",
+      "group": "R51. 矩阵漏项",
+      "level": null,
+      "levelRaw": "not-in-matrix",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "internal/（约 387 行）",
+        "planInMatrix": "",
+        "deps": "",
+        "acceptance": ""
+      }
+    },
+    {
+      "id": "pkg.notes",
+      "title": "Notes",
+      "group": "R51. 矩阵漏项",
+      "level": null,
+      "levelRaw": "not-in-matrix",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "internal/（约 6878 行）",
+        "planInMatrix": "",
+        "deps": "",
+        "acceptance": ""
+      }
+    },
+    {
+      "id": "pkg.cmdhistory",
+      "title": "命令历史",
+      "group": "R51. 矩阵漏项",
+      "level": null,
+      "levelRaw": "not-in-matrix",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "internal/（约 853 行）",
+        "planInMatrix": "",
+        "deps": "",
+        "acceptance": ""
+      }
+    },
+    {
+      "id": "pkg.aiproviderimport",
+      "title": "AI 供应商导入",
+      "group": "R51. 矩阵漏项",
+      "level": null,
+      "levelRaw": "not-in-matrix",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "internal/（约 1682 行）",
+        "planInMatrix": "",
+        "deps": "",
+        "acceptance": ""
+      }
+    },
+    {
+      "id": "pkg.remotestats",
+      "title": "远端统计",
+      "group": "R51. 矩阵漏项",
+      "level": null,
+      "levelRaw": "not-in-matrix",
+      "needsReview": true,
+      "aPrime": {
+        "where": null,
+        "evidence": null
+      },
+      "evidence": "E3",
+      "proof": [],
+      "fallback": null,
+      "userText": null,
+      "source": {
+        "where": "internal/（约 1619 行）",
+        "planInMatrix": "",
+        "deps": "",
+        "acceptance": ""
+      }
+    }
+  ]
+}

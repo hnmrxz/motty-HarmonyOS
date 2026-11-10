@@ -1,0 +1,43 @@
+schema: 1
+id: ssh.exec
+title: 应用内 libssh2 完成 SSH 握手 + 密码认证 + exec（A′ 协议层第一块）
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B01
+  - B07
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:ssh/probe
+  - action: wait
+    ms: 2500
+asserts:
+  - kind: screenRegex
+    regex: "fixture-exec-ok"
+    withinMs: 15000
+  - kind: absent
+    value: "error handshake"
+    withinMs: 3000
+  - kind: absent
+    value: "error auth"
+    withinMs: 3000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。链路为 ArkTS → NAPI(mottynapi) → libssh2(1.11.1, mbedTLS 后端)
+    → 宿主 sshfixture。不覆盖：主机密钥校验（未实现）、pty、SFTP/SCP/转发、会话复用、
+    known_hosts 持久化；未在 arm64 真机执行（arm64 的 libssh2 尚未交叉编译）。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 对端为自建 sshfixture（拒绝 pty），不是 upstream e2esshd
+notes: >-
+  这条 spec 是 M1 的第一个"真协议"验收：握手、KEX、密码认证、channel/exec 全部真实发生。
+  断言选择 fixture-exec-ok 而不是任意文本，是为了证明"远端命令确实执行并回了输出"。

@@ -1,0 +1,40 @@
+schema: 1
+id: net.reachability
+title: 设备经 hdc rport 连到宿主 SSH 对端（Transport 层地基）
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B01
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:net/probe
+  - action: wait
+    ms: 1500
+asserts:
+  - kind: screenRegex
+    regex: "SSH-2\\.0-"
+    withinMs: 12000
+  - kind: absent
+    value: "connect failed"
+    withinMs: 3000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。本 spec 只证明"设备→宿主 TCP 通路 + SSH banner 可达"，
+    不覆盖 SSH 握手/认证/密钥交换，不覆盖 pty 行为；对端是 harmonyos/tools/design/sshfixture
+    （Windows 可跑的最小对端，**不是** e2esshd，没有 SFTP/SCP/转发/X11）；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 对端是自建的最小 SSH fixture，不是 upstream 的 tools/e2esshd（后者需要 /bin/bash + 真 pty）
+notes: >-
+  运行前提（见 RUNBOOK §10）：宿主起 sshfixture，然后
+  hdc -t <serial> rport tcp:2222 tcp:<fixture 端口>。设备侧连 127.0.0.1:2222。
+  这条通路是 B1 批次（主机与认证）全部 spec 的地基。

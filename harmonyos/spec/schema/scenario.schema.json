@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motty.page/schema/scenario-v1.json",
+  "title": "Motty HarmonyOS 行为规格 v1",
+  "description": "把 upstream tools/e2e/*.txt 的文案点击脚本转成可机器判定的规格。每条 spec 必须声明它断言哪些 capability id、在哪个画像上跑、以及证据边界（limits）。刻意不含任何坐标依赖：定位只允许 role/label/id 三种选择器，因为坐标在双画像和不同 DPI 下必然失效。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "title",
+    "profile",
+    "steps",
+    "asserts",
+    "evidence"
+  ],
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(\\.[a-z0-9-]+)*$",
+      "description": "稳定 id，由 upstream 脚本名派生，例如 terminal.protocols"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceScript": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "upstream 脚本相对路径，例如 tools/e2e/terminal_protocols_e2e.txt；为 null 表示纯新增规格"
+    },
+    "profile": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "2in1",
+          "tablet"
+        ]
+      },
+      "minItems": 1,
+      "description": "必须两个画像都列；只列一个视为覆盖缺口，由 lint 报错"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "本 spec 断言的 capability id（须存在于 spec/capabilities.json）"
+    },
+    "app": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bundleName"
+      ],
+      "properties": {
+        "bundleName": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$"
+        },
+        "ability": {
+          "type": "string",
+          "default": "EntryAbility"
+        },
+        "settleMs": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 800
+        }
+      },
+      "description": "runner 据此启动应用。缺失则 launch 步骤报错而不是静默跳过"
+    },
+    "preconditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "例如 e2esshd:pty、fakes3、live:vnc；由 runner 负责拉起与拆除"
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hdcReversePort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "设备连宿主用的 hdc rport 端口；不写则默认 2222"
+        },
+        "loopbackOnly": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "launch",
+              "click",
+              "type",
+              "key",
+              "swipe",
+              "longPress",
+              "rightClick",
+              "wait",
+              "setVariable",
+              "invoke"
+            ]
+          },
+          "target": {
+            "type": "string",
+            "description": "选择器：id:<stable-id> | role:<role> | label:<原文案>。禁止坐标。"
+          },
+          "text": {
+            "type": "string"
+          },
+          "ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expect": {
+            "$ref": "#/$defs/assertion"
+          },
+          "secret": {
+            "type": "boolean",
+            "default": false,
+            "description": "口令类字段：注入后不回读校验（掩码文本读不出来），改由后续连接结果间接验证"
+          }
+        }
+      }
+    },
+    "asserts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/assertion"
+      },
+      "description": "至少要有一条可判定的断言；只截图不判定的 spec 不算验收"
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "limits"
+      ],
+      "properties": {
+        "png": {
+          "type": "boolean",
+          "default": true
+        },
+        "tree": {
+          "type": "boolean",
+          "default": true
+        },
+        "testSurface": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "需要从 testSurface.dump 取哪些字段做断言（终端文本、native wire log 等）"
+        },
+        "limits": {
+          "type": "string",
+          "minLength": 8,
+          "description": "证据边界，必填。必须写明这是模拟器还是真机、哪个 ABI、哪些项未覆盖。禁止空话。"
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "deviations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "与原版脚本行为不同之处，逐条写明；空数组表示无差异"
+    }
+  },
+  "$defs": {
+    "assertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "text",
+            "absent",
+            "state",
+            "layout",
+            "screenRegex",
+            "wireLog",
+            "count",
+            "capabilityDisabled"
+          ]
+        },
+        "value": {
+          "type": "string"
+        },
+        "selector": {
+          "type": "string"
+        },
+        "withinMs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "regex": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

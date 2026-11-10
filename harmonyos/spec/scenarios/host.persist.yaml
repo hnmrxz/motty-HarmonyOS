@@ -1,0 +1,54 @@
+schema: 1
+id: host.persist
+title: 新建主机在应用重启后仍然存在（relationalStore 持久化）
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B09
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: wait
+    ms: 400
+  - action: type
+    target: id:shell/dialog-label
+    text: persist-check
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.9.9.9
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: launch
+  - action: wait
+    ms: 900
+asserts:
+  - kind: text
+    value: persist-check
+    withinMs: 6000
+  - kind: text
+    value: 10.9.9.9
+    withinMs: 4000
+  - kind: layout
+    description: 重启后列表仍有正宽高的文本节点
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（2in1 x86_64 / tablet x86_64, API 26）。只验证"同一设备上重启应用后数据仍在"，
+    不覆盖跨端导入（.mottybak）、不覆盖 schema 升级与 epoch 兼容、不覆盖卸载重装后的行为；
+    未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本（upstream 没有"重启后仍在"的 e2e）
+  - 用两次 launch 表示"重启"：runner 的 launch 会 force-stop 再 start，等价于冷启动
+notes: >-
+  这条 spec 存在的意义：host-create 只能证明"界面能建"，不能证明"数据存下来了"。
+  B09 是本轮借用的能力 id；"主机持久化"本身在能力矩阵里还没有条目，属待补（同 R51 的漏项）。

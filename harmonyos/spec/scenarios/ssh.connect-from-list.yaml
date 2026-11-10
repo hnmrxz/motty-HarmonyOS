@@ -1,0 +1,84 @@
+schema: 1
+id: ssh.connect-from-list
+title: 从主机列表发起连接：建主机 → 点行 → 未知主机确认 → 信任后认证执行
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B01
+  - B07
+  - B09
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: list-connect
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "verified SHA256:"
+      withinMs: 12000
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2500
+asserts:
+  - kind: screenRegex
+    regex: "hello-from-list"
+    withinMs: 12000
+  - kind: absent
+    value: "no credentials in memory"
+    withinMs: 2000
+  - kind: absent
+    value: "Unknown host key"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。验证"主机条目携带地址/用户/端口/口令 → 点行连接 →
+    TOFU 确认 → 认证执行 → 二次连接不再确认"。
+    不覆盖：口令持久化（刻意只放内存，保险库未实现）、分组/标签、协议选择（仅 SSH）、
+    终端渲染；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 主机端口填 2222，因为宿主 fixture 经 hdc rport 映射到设备 2222
+  - 口令步骤标 secret:true：掩码字段无法回读，改由"连得上"间接验证
+notes: >-
+  这条 spec 是"协议层接回产品"的关键证据：连接不再依赖固定的诊断按钮，
+  而是从用户建的主机条目发起。断言 hello-from-list（远端 echo 的输出）证明整条链路真实工作。

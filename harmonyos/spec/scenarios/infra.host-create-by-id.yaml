@@ -1,0 +1,77 @@
+schema: 1
+id: infra.host-create-by-id
+title: 用稳定 id 创建两台主机（host_menu_move 的可移植子集，黄金样例）
+sourceScript: tools/e2e/host_menu_move_e2e.txt
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B09
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1500
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: wait
+    ms: 400
+  - action: click
+    target: id:shell/dialog-label
+  - action: type
+    target: id:shell/dialog-label
+    text: alpha
+  - action: click
+    target: id:shell/dialog-address
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.0.0.1
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:shell/add-host
+  - action: wait
+    ms: 400
+  - action: click
+    target: id:shell/dialog-label
+  - action: type
+    target: id:shell/dialog-label
+    text: beta
+  - action: click
+    target: id:shell/dialog-address
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.0.0.2
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 600
+asserts:
+  - kind: text
+    value: alpha
+    withinMs: 3000
+  - kind: text
+    value: beta
+    withinMs: 3000
+  - kind: text
+    value: 10.0.0.2
+    withinMs: 3000
+  - kind: layout
+    description: 列表未出现文字重叠或被裁剪
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器 2in1（x86_64, API 26）。未在 arm64 真机执行；不覆盖真实触控手势与磁吸键盘；
+    截图仅证明当时界面状态，不构成性能证据。
+deviations:
+  - 截图/产物路径由 /tmp 改为本地目录（Windows 无 /tmp）
+  - 写入时去除 UTF-8 BOM（PS 5.1 的 Out-File -Encoding utf8 会加 BOM，导致首行被当成未知命令）
+  - 原脚本用 type 后 key tab 切换字段，在本版 UI 会失焦（no focused text field）→ 改为按稳定 id 点击
+  - 仅覆盖原脚本"创建两台主机"部分；"右键菜单在主机间移动"部分尚未转译
+notes: >-
+  tree 命令取到的稳定 id 为 shell/add-host、shell/dialog-label、shell/dialog-address、
+  shell/dialog-submit。该样例用于验证 schema、lint 与双画像 runner 的最小闭环。
