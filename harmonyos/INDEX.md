@@ -1379,3 +1379,27 @@ Latin-1 以外的编码转换细节、超长文本分片、自动双向同步（
 
 ### 未做
 UI 对非 320×240 的缩放自适应（Canvas 固定尺寸）、ExtendedDesktopSize 变体、多显示器、Tight/ZRLE/Cursor 编码。
+---
+
+## Round 49：VNC 画布自适应
+
+| 产物 | 说明 |
+|---|---|
+| `Index.ets` | 新增 `updateCanvasSize(w,h)`（长边 ≤640、保持比例）；画布 `width/height` 绑定状态；绘制换算改用实际画布尺寸；新增 `vnc/canvas-size` 显示 |
+| `spec/scenarios/vnc.adapt.yaml` | 远端切到 80x60 后断言 `canvas=80x60` 且 `drawn=4800`，并断言 `canvas=320x240` **不存在** |
+
+### 为什么断言 `canvas=320x240` 必须缺席
+写死尺寸的旧实现里，`canvas=320x240` 永远成立，"存在 Canvas 组件"也永远成立。
+只有"尺寸跟着远端变"才是这条用例要证的东西。
+
+### 又一次"锚点没命中"
+第一次只把 `updateCanvasSize` 方法加进去，两个调用点（帧回调、status 回调）都没插入——
+因为锚点缩进/内容与真实代码不一致，而**构建与安装都成功**（方法未被调用，编译当然过）。
+靠 dump 里 `canvas=320x240` 才暴露出来。修法：直接用真实代码片段做锚点，并打印调用点计数确认。
+
+### 双画像
+`vnc.adapt` 在 2in1 与 tablet 均 **passed**。
+
+### 未做
+缩放后的**坐标反算精度**（指针事件仍按 1:1 像素坐标发送，缩放时点击位置会偏）、
+ExtendedDesktopSize、Tight/ZRLE/Cursor 编码、双指缩放。

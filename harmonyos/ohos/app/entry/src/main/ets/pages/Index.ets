@@ -184,6 +184,8 @@ struct Index {
   @State vncStatus: string = '';
   @State vncFrameInfo: string = '';
   @State vncDrawn: number = 0;
+  @State vncCanvasW: number = 320;
+  @State vncCanvasH: number = 240;
   @State vncClip: string = '';
   @State vncClipOut: string = 'app-clip';
   @State vncPassword: string = 'secret';
@@ -1050,6 +1052,7 @@ struct Index {
             if (m !== null) {
               this.vncW = Number.parseInt(m[1], 10);
               this.vncH = Number.parseInt(m[2], 10);
+              this.updateCanvasSize(this.vncW, this.vncH);
             }
           }
         });
@@ -1059,6 +1062,18 @@ struct Index {
   }
 
   // VNC 剪贴板：读出服务端内容 / 把本地内容推给服务端
+  // 画布尺寸跟随远端：长边不超过 640vp，保持宽高比。
+  // 之前写死 320x240，远端换分辨率（如 80x60）后会变形/留白。
+  private updateCanvasSize(w: number, h: number): void {
+    if (w <= 0 || h <= 0) {
+      return;
+    }
+    const maxSide = 640;
+    const scale = Math.min(1.0, maxSide / Math.max(w, h));
+    this.vncCanvasW = Math.max(1, Math.round(w * scale));
+    this.vncCanvasH = Math.max(1, Math.round(h * scale));
+  }
+
   private refreshVncClip(): void {
     if (this.vncId === 0) {
       this.vncClip = '';
@@ -1651,7 +1666,7 @@ struct Index {
         .id('vnc/status').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')
       Canvas(this.vncCtx)
         .id('vnc/canvas')
-        .width(320).height(240)
+        .width(this.vncCanvasW).height(this.vncCanvasH)
         .backgroundColor('#000000')
         .onReady(() => { this.vncReady = true; })
         .onTouch((event: TouchEvent) => {
@@ -1662,7 +1677,9 @@ struct Index {
           }
         })
       Row({ space: 8 }) {
-        Text('drawn=' + this.vncDrawn + ' (fillRect grid)')
+        Text('canvas=' + this.vncCanvasW + 'x' + this.vncCanvasH)
+        .id('vnc/canvas-size').fontSize(11).fontColor('#1A6DD0').width('100%')
+      Text('drawn=' + this.vncDrawn + ' (fillRect grid)')
           .id('vnc/drawn').fontSize(11).fontColor('#0A6C00')
         Button('Send pointer (10,10)')
           .id('vnc/tap')

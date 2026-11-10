@@ -1,0 +1,75 @@
+schema: 1
+id: vnc.adapt
+title: VNC 画布自适应：按远端尺寸等比，尺寸变化后跟随
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - E02
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: adapt-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:diag/open
+  - action: click
+    target: id:vnc/session
+  # 远端尺寸变化后，画布必须跟着变（夹具会切到 80x60）
+  - action: wait
+    ms: 5000
+    expect:
+      kind: screenRegex
+      regex: "canvas=80x60"
+      withinMs: 25000
+asserts:
+  - kind: screenRegex
+    regex: "canvas=80x60"
+    withinMs: 15000
+  - kind: screenRegex
+    regex: "drawn=4800"
+    withinMs: 8000
+  - kind: absent
+    value: "canvas=320x240"
+    withinMs: 3000
+  - kind: absent
+    value: "error"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：画布尺寸由远端尺寸推导（长边不超过 640、保持比例）、
+    尺寸变化后跟随、绘制换算使用实际画布尺寸。
+    **不覆盖**：超大分辨率下的缩放质量、交互坐标反算（指针事件仍按 1:1 像素坐标）、
+    双指缩放、点击坐标在缩放后的精度；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 夹具会把远端从 64x48 切到 80x60；两种尺寸长边都 <640，所以画布按 1:1 显示
+notes: >-
+  断言 canvas=80x60 而不是"存在 Canvas 组件"：后者在写死 320x240 时也成立。
+  absent canvas=320x240 用来确保写死尺寸的旧实现不会混过。
