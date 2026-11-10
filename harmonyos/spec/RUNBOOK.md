@@ -458,3 +458,29 @@ exec(host, port, user, password, command, expectedFingerprint, onData, onDone)
 ### 16.3 fixture 的 term-demo
 `term-demo` 输出 6 行、每行间隔 120ms、末行 `\x1b[32m…\x1b[0m`：
 用来同时验证"流式分块"和"ANSI 序列原样透传"（因为还没有 VT 解析）。
+---
+
+## 17. 交互式会话 API（openShell / sendInput / closeShell）
+
+```
+openShell(host, port, user, password, expectedFingerprint, onData, onDone) -> sessionId (0 = 失败)
+sendInput(sessionId, text) -> 1/0
+closeShell(sessionId) -> 1/0
+```
+
+### 17.1 线程模型（这是它能工作的关键）
+- 每个会话一个工作线程，**所有 libssh2 调用都在该线程内**（读/写/关闭），因为 libssh2 会话不是线程安全的
+- `sendInput` 只把字节追加到 mutex 保护的队列，不触碰 libssh2
+- `closeShell` 只置标志位，由工作线程收尾
+- 会话建立后必须 `libssh2_session_set_blocking(session, 0)`：否则 `channel_read` 会阻塞到 socket 收超时（本工程 8s），**键盘输入的写入要等到超时后才发出**（实测踩过）
+
+### 17.2 写入必须能回退
+`channel_write` 返回 `EAGAIN`（或只写出一部分）时，剩余字节要放回队列，否则会**静默丢字节**。
+
+### 17.3 对端要求
+fixture 的 `term-echo`：读一行、回 `echo: <line>`。真实产品里这里会是 pty + shell，
+但当前对端不支持 pty（Windows 无 `/bin/bash`），所以交互语义用"行回显"近似验证。
+
+### 17.4 UI 侧的一个坑
+终端输入框若不绑定状态，`Send` 后字段仍显示旧内容，下一行会拼成 `old new`。
+必须绑定并清空——这与设置页那些输入框"刻意不绑定"的取舍相反，原因是这里需要**程序化清空**。

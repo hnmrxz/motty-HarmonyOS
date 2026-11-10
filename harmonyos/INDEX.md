@@ -317,3 +317,36 @@ known_hosts 持久化、`@cert-authority`、hostkey 算法白名单、指纹变�
 - **没有 VT 解析**：颜色、光标、备用屏、回滚、宽字符整形一律没有；ESC 序列原样显示
 - 没有真实 shell 会话（远端命令是固定的 `term-demo`）
 - 没有窗口尺寸协商、没有键盘输入、没有选择/复制
+---
+
+## Round 12：交互式终端（键盘输入 → SSH 通道 → 远端回显）
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/ssh_napi.cpp` | `openShell/sendInput/closeShell`：每会话一个工作线程，**所有 libssh2 调用都在该线程**；sendInput 只入队；会话非阻塞轮询 |
+| `Index.ets` | 终端面板加输入框（`terminal/input`）与 `Send`（`terminal/send`）；关面板时 `closeShell` |
+| `tools/design/sshfixture` | 新增 `term-echo`：读一行回一行 |
+| `spec/scenarios/terminal.interactive.yaml` | 输入 `hello-one`、`second-line` 各断言回显 |
+| 顶栏 `terminal/demo` | 保留一次性流式 `exec` 路径的覆盖（`terminal.view` 改指向它） |
+
+### 本轮修掉的三个真实缺陷
+1. **参数索引错位**：`openShell` 把 `expectedFingerprint` 读成第 5 参（onData）→ 指纹恒空 → 日志里出现 `hostkey not trusted`
+2. **会话阻塞**：socket 有 8s 收超时，worker 阻塞在 `channel_read` → 键盘写入被推迟到超时之后。改为 `libssh2_session_set_blocking(session, 0)` 轮询
+3. **写入丢字节**：`channel_write` 遇 EAGAIN 时剩余字节直接丢弃 → 改为放回队列；另修 `g_sessions.erase` 用错 key 的泄漏
+4. **输入框未清空**：发送后字段仍显示上一行，第二行变成 `hello-one second-line` → 输入框绑定状态并在发送后清空
+
+### 双画像验收（8 条 × 2 画像）
+| spec | 2in1 | tablet |
+|---|---|---|
+| `terminal.interactive` | **passed** | **passed** |
+| `terminal.view` | **passed** | **passed** |
+| `ssh.connect-from-list` | **passed** | **passed** |
+| `infra.host-create-by-id` | **passed** | **passed** |
+| `host.persist` | **passed** | **passed** |
+| `net.reachability` | **passed** | **passed** |
+| `ssh.exec` | **passed** | **passed** |
+| `ssh.hostkey` | **passed** | **passed** |
+
+### 仍然不是终端模拟器
+无 VT 解析（无颜色/光标/退格/备用屏/回滚/宽字符整形）；输入按整行 + 换行发送，需点 Send；
+远端是 fixture 的 `term-echo`，不是真 shell。真正的 VT 引擎是 M1 剩余最大块。

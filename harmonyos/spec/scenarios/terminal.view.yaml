@@ -1,6 +1,6 @@
 schema: 1
 id: terminal.view
-title: 终端视图最小闭环：点 Term → TOFU 确认 → 远端流式输出渲染到终端区域
+title: 一次性流式 exec：Term Demo → TOFU 确认 → 多块输出渲染到终端区域
 sourceScript: null
 profile:
   - 2in1
@@ -37,7 +37,7 @@ steps:
   - action: wait
     ms: 700
   - action: click
-    target: id:host-term/0
+    target: id:terminal/demo
   - action: wait
     ms: 2500
     expect:
@@ -73,6 +73,7 @@ evidence:
 deviations:
   - 纯新增规格，无 upstream 对应脚本
   - 远端命令固定为 fixture 的 term-demo（6 行 + 延迟），用于验证流式接收而非一次性返回
+  - 入口是顶栏 `terminal/demo` 诊断按钮，覆盖的是 exec(一次性多块) 路径；交互式路径见 terminal.interactive
 notes: >-
   这条 spec 的价值在于区分"一次性 exec 返回值"与"流式分块到达"：term-demo 每 120ms 吐一行，
   最后一行带 ANSI 颜色序列。断言 term-line-5/term-line-6 证明多块数据都进了终端缓冲区。

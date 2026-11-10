@@ -1,0 +1,92 @@
+schema: 1
+id: terminal.interactive
+title: 交互式终端：键盘输入写入 SSH 通道，远端回显渲染到终端区域
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B01
+  - B09
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: interact-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:host-term/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "term-echo ready"
+      withinMs: 15000
+  - action: type
+    target: id:terminal/input
+    text: hello-one
+  - action: click
+    target: id:terminal/send
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "echo: hello-one"
+      withinMs: 8000
+  - action: type
+    target: id:terminal/input
+    text: second-line
+  - action: click
+    target: id:terminal/send
+  - action: wait
+    ms: 1500
+asserts:
+  - kind: screenRegex
+    regex: "echo: second-line"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "echo: hello-one"
+    withinMs: 3000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。验证"输入 -> SSH 通道写入 -> 远端回显 -> 渲染"闭环。
+    **没有 VT 解析**：不做行编辑、光标、退格、颜色；输入以整行 + 换行发送。
+    远端对端是自建 sshfixture 的 term-echo（不是真 shell，也不支持 pty）；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 每行输入后需点 Send（真实终端应为回车即发送；按钮是当前 UI 的折衷）
+notes: >-
+  两次输入分别断言，是为了排除"只回显最后一行"的假象：hello-one 与 second-line
+  的 echo 必须同时存在于终端缓冲区。
