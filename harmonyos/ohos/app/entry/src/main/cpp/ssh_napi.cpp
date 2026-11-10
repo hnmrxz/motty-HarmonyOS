@@ -1091,6 +1091,133 @@ napi_value Sftp(napi_env env, napi_callback_info info) {
     return nullptr;
 }
 
+// ---- 代理握手（SOCKS5 / HTTP CONNECT）：从客户端请求里取出目标地址 ----
+// 返回 true 表示握手成功且目标已填好，false 表示应关闭连接。
+bool readExactFd(int fd, unsigned char *buf, size_t len) {
+    size_t got = 0;
+    while (got < len) {
+        ssize_t n = recv(fd, buf + got, len - got, 0);
+        if (n <= 0) {
+            return false;
+        }
+        got += static_cast<size_t>(n);
+    }
+    return true;
+}
+
+bool writeAllFd(int fd, const unsigned char *buf, size_t len) {
+    size_t sent = 0;
+    while (sent < len) {
+        ssize_t n = send(fd, buf + sent, len - sent, 0);
+        if (n <= 0) {
+            return false;
+        }
+        sent += static_cast<size_t>(n);
+    }
+    return true;
+}
+
+bool socks5Handshake(int fd, std::string &targetHost, int &targetPort, std::string &err) {
+    unsigned char head[2];
+    if (!readExactFd(fd, head, 2) || head[0] != 5) {
+        err = "socks5: bad greeting";
+        return false;
+    }
+    std::vector<unsigned char> methods(head[1]);
+    if (!methods.empty() && !readExactFd(fd, methods.data(), methods.size())) {
+        err = "socks5: bad methods";
+        return false;
+    }
+    const unsigned char ok[2] = {5, 0};   // 无需认证
+    if (!writeAllFd(fd, ok, 2)) {
+        err = "socks5: write method";
+        return false;
+    }
+    unsigned char req[4];
+    if (!readExactFd(fd, req, 4) || req[0] != 5 || req[1] != 1) {
+        err = "socks5: unsupported request";
+        return false;
+    }
+    if (req[3] == 1) {           // IPv4
+        unsigned char addr[4];
+        if (!readExactFd(fd, addr, 4)) {
+            err = "socks5: bad ipv4";
+            return false;
+        }
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%u.%u.%u.%u", addr[0], addr[1], addr[2], addr[3]);
+        targetHost = buf;
+    } else if (req[3] == 3) {     // 域名
+        unsigned char len = 0;
+        if (!readExactFd(fd, &len, 1)) {
+            err = "socks5: bad domain len";
+            return false;
+        }
+        std::vector<unsigned char> name(len);
+        if (len > 0 && !readExactFd(fd, name.data(), name.size())) {
+            err = "socks5: bad domain";
+            return false;
+        }
+        targetHost.assign(reinterpret_cast<char *>(name.data()), name.size());
+    } else {
+        err = "socks5: unsupported address type";
+        return false;
+    }
+    unsigned char portBuf[2];
+    if (!readExactFd(fd, portBuf, 2)) {
+        err = "socks5: bad port";
+        return false;
+    }
+    targetPort = (portBuf[0] << 8) | portBuf[1];
+    const unsigned char reply[10] = {5, 0, 0, 1, 0, 0, 0, 0, 0, 0};
+    if (!writeAllFd(fd, reply, sizeof(reply))) {
+        err = "socks5: write reply";
+        return false;
+    }
+    return true;
+}
+
+bool httpConnectHandshake(int fd, std::string &targetHost, int &targetPort, std::string &err) {
+    std::string raw;
+    char ch = 0;
+    while (raw.size() < 4096) {
+        if (recv(fd, &ch, 1, 0) != 1) {
+            err = "http: read failed";
+            return false;
+        }
+        raw.push_back(ch);
+        if (raw.size() >= 4 && raw.compare(raw.size() - 4, 4, "\r\n\r\n") == 0) {
+            break;
+        }
+    }
+    // 期望第一行：CONNECT host:port HTTP/1.1
+    const size_t eol = raw.find("\r\n");
+    if (eol == std::string::npos) {
+        err = "http: no request line";
+        return false;
+    }
+    const std::string line = raw.substr(0, eol);
+    if (line.compare(0, 8, "CONNECT ") != 0) {
+        err = "http: only CONNECT is supported";
+        return false;
+    }
+    const size_t space = line.find(' ', 8);
+    const std::string hostport = line.substr(8, space == std::string::npos ? std::string::npos : space - 8);
+    const size_t colon = hostport.rfind(':');
+    if (colon == std::string::npos) {
+        err = "http: no port";
+        return false;
+    }
+    targetHost = hostport.substr(0, colon);
+    targetPort = atoi(hostport.c_str() + colon + 1);
+    const char *resp = "HTTP/1.1 200 Connection Established\r\n\r\n";
+    if (!writeAllFd(fd, reinterpret_cast<const unsigned char *>(resp), strlen(resp))) {
+        err = "http: write 200";
+        return false;
+    }
+    return true;
+}
+
 // ---------------- 端口转发（本地 forward，direct-tcpip）----------------
 // 设计取舍：一个转发任务独占一条 SSH 会话 + 一个监听 socket，串行处理连接。
 // libssh2 会话非线程安全，与其冒险并发多路复用，不如先做"一次连接"的可靠实现。
@@ -1104,6 +1231,7 @@ struct ForwardJob {
     int listenPort = 0;
     std::string targetHost;
     int targetPort = 0;
+    std::string mode;   // local | socks5 | http
     napi_threadsafe_function onEvent = nullptr;
 };
 
@@ -1182,7 +1310,10 @@ void forwardWorker(ForwardJob *job, std::atomic<bool> *stopFlag) {
         struct timeval tv{0, 200000};   // 200ms：让 stopFlag 能被及时看到
         setsockopt(lfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
         emit(job->onEvent, "listening on 127.0.0.1:" + std::to_string(job->listenPort) +
-                           " -> " + job->targetHost + ":" + std::to_string(job->targetPort));
+                           " mode=" + job->mode +
+                           (job->mode == "local"
+                                ? (" -> " + job->targetHost + ":" + std::to_string(job->targetPort))
+                                : std::string(" (target from client)")));
 
         // 串行处理连接
         while (!stopFlag->load()) {
@@ -1193,12 +1324,27 @@ void forwardWorker(ForwardJob *job, std::atomic<bool> *stopFlag) {
                 continue;   // 超时：回到循环检查 stopFlag
             }
             emit(job->onEvent, "accepted local connection");
+            // 代理模式：先从客户端请求里解析目标；本地转发模式则用配置的目标
+            std::string wantHost = job->targetHost;
+            int wantPort = job->targetPort;
+            if (job->mode == "socks5" || job->mode == "http") {
+                std::string herr;
+                const bool ok = (job->mode == "socks5")
+                                    ? socks5Handshake(cfd, wantHost, wantPort, herr)
+                                    : httpConnectHandshake(cfd, wantHost, wantPort, herr);
+                if (!ok) {
+                    emit(job->onEvent, "error " + herr);
+                    close(cfd);
+                    continue;
+                }
+                emit(job->onEvent, "proxy target " + wantHost + ":" + std::to_string(wantPort));
+            }
             int flags = fcntl(cfd, F_GETFL, 0);
             fcntl(cfd, F_SETFL, flags | O_NONBLOCK);
             LIBSSH2_CHANNEL *ch = nullptr;
             for (int attempt = 0; attempt < 100 && ch == nullptr && !stopFlag->load(); attempt++) {
-                ch = libssh2_channel_direct_tcpip_ex(session, job->targetHost.c_str(),
-                    job->targetPort, "127.0.0.1", job->listenPort);
+                ch = libssh2_channel_direct_tcpip_ex(session, wantHost.c_str(),
+                    wantPort, "127.0.0.1", job->listenPort);
                 if (ch == nullptr) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(20));
                 }
@@ -1283,14 +1429,15 @@ done:
     delete job;
 }
 
-// forwardStart(host, port, user, password, expectedFp, listenPort, targetHost, targetPort, onEvent) -> id
+// forwardStart(host, port, user, password, expectedFp, listenPort, targetHost, targetPort, mode, onEvent) -> id
+// mode: "local"（固定目标）| "socks5" | "http"（目标从客户端请求里解析）
 napi_value ForwardStart(napi_env env, napi_callback_info info) {
-    size_t argc = 9;
-    napi_value args[9] = {nullptr};
+    size_t argc = 10;
+    napi_value args[10] = {nullptr};
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    if (argc < 9) {
+    if (argc < 10) {
         napi_throw_type_error(env, nullptr,
-            "forwardStart(host,port,user,password,expectedFp,listenPort,targetHost,targetPort,onEvent)");
+            "forwardStart(host,port,user,password,expectedFp,listenPort,targetHost,targetPort,mode,onEvent)");
         return nullptr;
     }
     auto *job = new ForwardJob();
@@ -1315,10 +1462,14 @@ napi_value ForwardStart(napi_env env, napi_callback_info info) {
     int32_t targetPort = 0;
     napi_get_value_int32(env, args[7], &targetPort);
     job->targetPort = targetPort;
+    readStr(8, job->mode);
+    if (job->mode.empty()) {
+        job->mode = "local";
+    }
 
     napi_value n1 = nullptr;
     napi_create_string_utf8(env, "motty.fwd.event", NAPI_AUTO_LENGTH, &n1);
-    if (napi_create_threadsafe_function(env, args[8], nullptr, n1, 0, 1, nullptr, nullptr, nullptr,
+    if (napi_create_threadsafe_function(env, args[9], nullptr, n1, 0, 1, nullptr, nullptr, nullptr,
                                         callJs, &job->onEvent) != napi_ok) {
         delete job;
         napi_throw_error(env, nullptr, "tsfn failed");

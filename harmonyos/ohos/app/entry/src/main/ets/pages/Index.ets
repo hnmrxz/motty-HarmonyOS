@@ -159,6 +159,7 @@ struct Index {
   @State fwdTargetPort: string = '2223';
   @State fwdEvents: string = '';
   @State fwdResult: string = '';
+  @State fwdMode: string = 'local';
   @State vncResult: string = '';
   @State vncOpen: boolean = false;
   @State vncStatus: string = '';
@@ -655,6 +656,7 @@ struct Index {
       this.fwdResult = '';
       this.fwdId = mottynapi.forwardStart(cred.address, cred.port, cred.user, cred.password, fp,
         Number.parseInt(this.fwdListen, 10), this.fwdTargetHost, Number.parseInt(this.fwdTargetPort, 10),
+        this.fwdMode,
         (event: string) => {
           this.fwdEvents = this.fwdEvents + '\n' + event;
         });
@@ -670,99 +672,119 @@ struct Index {
 
   // 用本机 socket 连自己的转发端口，读回远端 banner —— 这才算"隧道真的通了"
   private testForward(): void {
-    this.fwdResult = 'connecting 127.0.0.1:' + this.fwdListen + ' ...';
+    const port = Number.parseInt(this.fwdListen, 10);
+    this.fwdResult = 'connecting 127.0.0.1:' + port + ' (' + this.fwdMode + ') ...';
     const tcp = socket.constructTCPSocketInstance();
     let acc = '';
+    let greeted = false;
+    let connected = false;
+    const mode = this.fwdMode;
+    const append = (text: string) => { this.fwdResult = acc; };
+
     tcp.on('message', (info: socket.SocketMessageInfo) => {
       const u8 = new Uint8Array(info.message as ArrayBuffer);
       for (let i = 0; i < u8.length; i++) {
         acc += String.fromCharCode(u8[i]);
       }
-      this.fwdResult = acc;
+      if (mode === 'socks5') {
+        if (!greeted && u8.length >= 2 && u8[0] === 5 && u8[1] === 0) {
+          greeted = true;
+          // CONNECT 127.0.0.1:2223（IPv4）
+          const req = new Uint8Array([5, 1, 0, 1, 127, 0, 0, 1, 2223 >> 8, 2223 & 0xFF]);
+          tcp.send({ data: req.buffer as ArrayBuffer }).catch((e: BusinessError) => {
+            this.fwdResult = 'send failed: ' + e.message;
+          });
+          return;
+        }
+        if (greeted && !connected && u8.length >= 4 && u8[0] === 5 && u8[1] === 0) {
+          connected = true;
+          acc = 'tunnel established; ';
+          return;
+        }
+      } else if (mode === 'http') {
+        if (!connected && acc.indexOf('200') >= 0) {
+          connected = true;
+        }
+      }
+      append(acc);
     });
     tcp.on('error', (e: BusinessError) => {
       this.fwdResult = 'socket error: ' + e.message;
     });
-    tcp.connect({
-      address: { address: '127.0.0.1', port: Number.parseInt(this.fwdListen, 10), family: 1 },
-      timeout: 5000
-    }).then(() => {
-      setTimeout(() => { tcp.close(); }, 1500);
-    }).catch((e: BusinessError) => {
-      this.fwdResult = 'connect failed: ' + e.code + ' ' + e.message;
-    });
+    tcp.connect({ address: { address: '127.0.0.1', port: port, family: 1 }, timeout: 5000 })
+      .then(() => {
+        if (mode === 'socks5') {
+          const hello = new Uint8Array([5, 1, 0]);
+          tcp.send({ data: hello.buffer as ArrayBuffer }).catch(() => {});
+        } else if (mode === 'http') {
+          const req = 'CONNECT 127.0.0.1:2223 HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n';
+          const enc = new util.TextEncoder().encodeInto(req);
+          tcp.send({ data: enc.buffer as ArrayBuffer }).catch(() => {});
+        }
+        setTimeout(() => { tcp.close(); }, 2500);
+      })
+      .catch((e: BusinessError) => {
+        this.fwdResult = 'connect failed: ' + e.code + ' ' + e.message;
+      });
   }
 
-  private probeVnc(): void {
-    this.vncResult = 'vnc: connecting 127.0.0.1:5901 ...';
-    mottynapi.vncProbe('127.0.0.1', 5901, (result: string) => {
-      this.vncResult = 'vnc: ' + result;
-      this.probeText = 'vnc: ' + result;
-    });
-  }
-
-  // ---------------- VNC 会话（上屏 + 指针）----------------
+  // ---------------- VNC 会话（自研 RFB 后端）----------------
   private startVnc(pwd: string): void {
     this.vncOpen = true;
     this.vncReady = false;
     this.vncStatus = 'connecting...';
     this.vncFrameInfo = '';
-    this.lookupFp(this.fixtureKey).then((_fp: string) => {
-      try {
-        this.vncId = mottynapi.vncStart('127.0.0.1', 5901, pwd,
-          (frameStr: string) => {
-            // 帧格式："WxH:hexRGB..."。用 Canvas 的 fillRect 画网格，
-            // 不用 putImageData/ImageData——那条路会触发 SkiaImage::Serialize 崩溃。
-            const sep = frameStr.indexOf(':');
-            if (sep <= 0 || !this.vncReady) {
-              return;
-            }
-            const dims = frameStr.substring(0, sep).split('x');
-            const w = Number.parseInt(dims[0], 10);
-            const h = Number.parseInt(dims[1], 10);
-            this.vncW = w;
-            this.vncH = h;
-            try {
-              const hex = frameStr.substring(sep + 1);
-              const scale = 5;                    // 64x48 -> 320x240
-              const cw = 320 / w;
-              const ch = 240 / h;
-              let drawn = 0;
-              for (let y = 0; y < h; y++) {
-                for (let x = 0; x < w; x++) {
-                  const i = (y * w + x) * 6;
-                  if (i + 5 >= hex.length) {
-                    continue;
-                  }
-                  const r = Number.parseInt(hex.substring(i, i + 2), 16);
-                  const g = Number.parseInt(hex.substring(i + 2, i + 4), 16);
-                  const b = Number.parseInt(hex.substring(i + 4, i + 6), 16);
-                  this.vncCtx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
-                  this.vncCtx.fillRect(x * cw, y * ch, cw + 0.5, ch + 0.5);
-                  drawn++;
+    this.vncDrawn = 0;
+    try {
+      this.vncId = mottynapi.vncStart('127.0.0.1', 5901, pwd,
+        (frameStr: string) => {
+          const sep = frameStr.indexOf(':');
+          if (sep <= 0 || !this.vncReady) {
+            return;
+          }
+          const dims = frameStr.substring(0, sep).split('x');
+          const w = Number.parseInt(dims[0], 10);
+          const h = Number.parseInt(dims[1], 10);
+          this.vncW = w;
+          this.vncH = h;
+          try {
+            const hex = frameStr.substring(sep + 1);
+            const cw = 320 / w;
+            const ch = 240 / h;
+            let drawn = 0;
+            for (let y = 0; y < h; y++) {
+              for (let x = 0; x < w; x++) {
+                const i = (y * w + x) * 6;
+                if (i + 5 >= hex.length) {
+                  continue;
                 }
-              }
-              this.vncDrawn = drawn;
-            } catch (e) {
-              hilog.error(DOMAIN, TAG, 'vnc draw failed: %{public}s', JSON.stringify(e));
-            }
-          },
-          (status: string) => {
-            this.vncStatus = status;
-            if (status.indexOf('frame=') === 0) {
-              this.vncFrameInfo = status;
-              // 上屏关闭后帧回调不再触发，尺寸要从状态行取，否则指针事件会被当成"没尺寸"丢掉
-              const m = new RegExp('([0-9]+)x([0-9]+)').exec(status);
-              if (m !== null) {
-                this.vncW = Number.parseInt(m[1], 10);
-                this.vncH = Number.parseInt(m[2], 10);
+                const r = Number.parseInt(hex.substring(i, i + 2), 16);
+                const g = Number.parseInt(hex.substring(i + 2, i + 4), 16);
+                const b = Number.parseInt(hex.substring(i + 4, i + 6), 16);
+                this.vncCtx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+                this.vncCtx.fillRect(x * cw, y * ch, cw + 0.5, ch + 0.5);
+                drawn++;
               }
             }
-          });
-      } catch (e) {
-        this.vncStatus = 'start failed: ' + String(e);
-      }
-    });
+            this.vncDrawn = drawn;
+          } catch (e) {
+            hilog.error(DOMAIN, TAG, 'vnc draw failed: %{public}s', JSON.stringify(e));
+          }
+        },
+        (status: string) => {
+          this.vncStatus = status;
+          if (status.indexOf('frame=') === 0) {
+            this.vncFrameInfo = status;
+            const m = new RegExp('([0-9]+)x([0-9]+)').exec(status);
+            if (m !== null) {
+              this.vncW = Number.parseInt(m[1], 10);
+              this.vncH = Number.parseInt(m[2], 10);
+            }
+          }
+        });
+    } catch (e) {
+      this.vncStatus = 'start failed: ' + String(e);
+    }
   }
 
   private stopVnc(): void {
@@ -776,7 +798,6 @@ struct Index {
     if (this.vncId === 0 || this.vncW === 0) {
       return;
     }
-    // 画布按原始尺寸绘制，坐标直接对应远端像素
     mottynapi.vncPointer(this.vncId, Math.round(localX), Math.round(localY), mask);
   }
 
@@ -1087,6 +1108,22 @@ struct Index {
           .onChange((v: string) => { this.fwdTargetPort = v; })
       }.width('100%')
       Row({ space: 8 }) {
+        Text('mode').fontSize(11).fontColor('#666666')
+        Button('local').id('fwd/mode-local')
+          .backgroundColor(this.fwdMode === 'local' ? '#1A6DD0' : '#E6E6E6')
+          .fontColor(this.fwdMode === 'local' ? Color.White : '#1A1A1A')
+          .onClick(() => { this.fwdMode = 'local'; })
+        Button('SOCKS5').id('fwd/mode-socks5')
+          .backgroundColor(this.fwdMode === 'socks5' ? '#1A6DD0' : '#E6E6E6')
+          .fontColor(this.fwdMode === 'socks5' ? Color.White : '#1A1A1A')
+          .onClick(() => { this.fwdMode = 'socks5'; })
+        Button('HTTP').id('fwd/mode-http')
+          .backgroundColor(this.fwdMode === 'http' ? '#1A6DD0' : '#E6E6E6')
+          .fontColor(this.fwdMode === 'http' ? Color.White : '#1A1A1A')
+          .onClick(() => { this.fwdMode = 'http'; })
+        Text('mode=' + this.fwdMode).id('fwd/mode').fontSize(11).fontColor('#0A6C00')
+      }.width('100%')
+      Row({ space: 8 }) {
         Button('Start').id('fwd/start').onClick(() => { this.startForward(); })
         Button('Stop').id('fwd/stop').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.stopForward(); })
@@ -1188,8 +1225,6 @@ struct Index {
           .onClick(() => { this.connectFixtureDemo('vt'); })
         Button('pty shell').id('terminal/shell').backgroundColor('#0A6C00').fontColor(Color.White)
           .onClick(() => { this.connectFixtureDemo('shell'); })
-        Button('VNC probe').id('vnc/probe').backgroundColor('#6A1B9A').fontColor(Color.White)
-          .onClick(() => { this.probeVnc(); })
         Button('VNC session').id('vnc/session').backgroundColor('#6A1B9A').fontColor(Color.White)
           .onClick(() => { this.diagOpen = false; this.startVnc('secret'); })
         Button('VNC bad pw').id('vnc/session-bad').backgroundColor('#C62828').fontColor(Color.White)

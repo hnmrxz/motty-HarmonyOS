@@ -908,7 +908,8 @@
       },
       "evidence": "E1",
       "proof": [
-        "spec/scenarios/forward.local.yaml"
+        "spec/scenarios/forward.local.yaml",
+        "spec/scenarios/forward.socks5.yaml"
       ],
       "fallback": null,
       "userText": null,
@@ -918,7 +919,7 @@
         "deps": "`@ohos.net.socket` 已有 API",
         "acceptance": "`local_proxy`、`proxy_start_stop`"
       },
-      "partialCoverage": "部分：仅本地(local)转发经双画像实测；远程/SOCKS5/HTTP CONNECT 未做。"
+      "partialCoverage": "部分：local 转发与 SOCKS5(无认证) 已双画像实测；远程转发、SOCKS5 用户名口令、HTTP CONNECT 断言未做。"
     },
     {
       "id": "D02",
@@ -1097,7 +1098,8 @@
       },
       "evidence": "E1",
       "proof": [
-        "spec/scenarios/vnc.auth-hextile.yaml"
+        "spec/scenarios/vnc.auth-hextile.yaml",
+        "spec/scenarios/vnc.negative.yaml"
       ],
       "fallback": null,
       "userText": null,

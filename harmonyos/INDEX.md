@@ -881,3 +881,36 @@ None 模式 18 条 + VNC Auth 模式 2 条（`vnc.auth-hextile`、`vnc.negative`
 ### 下一步
 LibVNC 接入需要**单独一轮**，并且先用设备日志确认帧缓冲与回调时序；在那之前，
 VNC 能力继续由自研 RFB 提供（Raw + Hextile + None/VNC Auth + 上屏 + 指针 + 键盘）。
+---
+
+## Round 29：SOCKS5 动态转发（补完 D01 的一部分）
+
+### 为什么不是 RDP
+FreeRDP 是 Apache-2.0、无许可障碍，但它依赖 OpenSSL；**本机没有 Perl**，而 OpenSSL 的构建脚本是 Perl，
+NDK sysroot 里也没有 libcrypto。因此 FreeRDP 不是"一轮能落地"的东西，我把它降级为待办，
+本轮改为交付**确定能验证**的部分。
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/ssh_napi.cpp` | 转发支持 `mode = local \| socks5 \| http`；SOCKS5 无认证握手 + CONNECT(IPv4/域名) 解析；HTTP CONNECT 解析；目标从客户端请求里取得后走 `direct-tcpip` |
+| `Index.ets` | 转发面板增加模式选择（`fwd/mode-local` / `fwd/mode-socks5` / `fwd/mode-http`、`fwd/mode` 显示），`Test tunnel` 按模式做对应握手 |
+| `spec/scenarios/forward.socks5.yaml` | 起 SOCKS5 → 本机 socket 走 CONNECT → 隧道内读到远端 SSH banner |
+
+### 关键断言
+`SSH-2.0-`：**只有远端 SSH 服务会产生这个 banner**。`05 00` / `05 00 00 01` 只能说明握手成功，
+banner 才能证明"隧道真的在转发数据"。对端日志同时出现 `direct-tcpip open -> 127.0.0.1:2223`。
+事件流里的 `proxy target 127.0.0.1:2223` 则证明目标地址确实来自客户端请求，而不是配置里写死的。
+
+### 清理
+`vnc.handshake` 已删除：它依赖的 probe 入口已并入会话，断言口径（`fb=...`）不再存在；
+其覆盖（握手 + ServerInit + Raw 取色）已被 `vnc.session`（帧/颜色/指针）完整包含。
+UI 里的 `VNC probe` 按钮一并移除，避免"叫 probe 实际开会话"的误导。
+
+### 双画像验收（20 条 × 2 画像 = 40 次）
+None 模式 18 条 + auth 模式 2 条（`vnc.auth-hextile`、`vnc.negative`），2in1 与 tablet 全部 **passed**。
+
+> 一次瞬时失败记录：`sftp.browse` 在 2in1 上出现"聚焦后选择器消失"（对话框尚未渲染完就聚焦），
+> 重跑即通过；属测试时序而非产品缺陷。
+
+### 仍未做
+远程转发、SOCKS5 用户名口令认证、UDP ASSOCIATE、HTTP CONNECT 的断言用例、并发连接、RDP。

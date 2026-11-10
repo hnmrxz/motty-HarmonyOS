@@ -1,0 +1,94 @@
+schema: 1
+id: forward.socks5
+title: 动态转发：SOCKS5 与 HTTP CONNECT 经 SSH 隧道连到目标
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - D01
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: proxy-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "hello-from-list"
+      withinMs: 15000
+  - action: click
+    target: id:fwd/open
+  - action: click
+    target: id:fwd/mode-socks5
+  - action: click
+    target: id:fwd/start
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "mode=socks5"
+      withinMs: 15000
+  - action: click
+    target: id:fwd/test
+  - action: wait
+    ms: 2500
+asserts:
+  - kind: screenRegex
+    regex: "SSH-2\\.0-"
+    withinMs: 12000
+  - kind: screenRegex
+    regex: "proxy target 127\\.0\\.0\\.1:2223"
+    withinMs: 8000
+  - kind: absent
+    value: "error socks5"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：SOCKS5 无认证握手（方法协商 + CONNECT IPv4）、
+    经 SSH direct-tcpip 建隧道、隧道内读到远端 SSH banner；HTTP CONNECT 分支已实现，
+    本用例只断言 SOCKS5（HTTP 由同一套 pump 复用，下一轮补用例）。
+    **不覆盖**：SOCKS5 用户名口令认证、UDP ASSOCIATE、域名地址(0x03)解析的成功路径、
+    IPv6、并发连接（当前串行）、真实浏览器/应用经代理的行为、arm64 真机。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 目标用对端 SSH 自身 2223 端口（banner 可断言）
+notes: >-
+  SOCKS5 的 05 00 · 05 00 00 01 只是握手成功；SSH-2.0- 才能证明隧道真的打通并在转发数据。
+  "proxy target 127.0.0.1:2223" 来自服务端事件流，证明目标地址是从客户端请求里解析出来的。

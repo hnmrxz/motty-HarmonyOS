@@ -810,3 +810,30 @@ hdc -t <serial> rport tcp:2222 tcp:2223   # SSH 夹具
 hdc -t <serial> rport tcp:5901 tcp:5901   # VNC 夹具
 ```
 漏了第二条会让 VNC 用例以"握手失败"报错——是环境问题，不是产品缺陷。
+---
+
+## 29. SOCKS5 / HTTP CONNECT 动态转发
+
+### 29.1 用法
+```
+forwardStart(host, port, user, password, expectedFp, listenPort, targetHost, targetPort, mode, onEvent)
+mode = "local" | "socks5" | "http"
+```
+- `local`：目标固定为 `targetHost:targetPort`
+- `socks5` / `http`：`targetHost/targetPort` 被忽略，目标从客户端请求里解析
+- 事件流会打印 `listening on 127.0.0.1:<p> mode=<mode> ...` 与 `proxy target <host>:<port>`
+
+### 29.2 握手要点
+**SOCKS5（无认证）**：`05 nmethods methods...` → 回 `05 00` → 读请求 `05 01 00 ATYP ...`
+- `ATYP=1` IPv4（4 字节）、`ATYP=3` 域名（1 字节长度 + 名字）
+- 回 `05 00 00 01 00 00 00 00 00 00`，然后双向透传
+
+**HTTP CONNECT**：读到 `\r\n\r\n` 为止，取首行 `CONNECT host:port HTTP/1.1`，回 `HTTP/1.1 200 Connection Established`
+
+### 29.3 怎么验证"真的在转发"
+不要只断言握手码。让隧道另一端是被认可的**特征服务**（本工程用对端 SSH 的 2223），
+断言隧道里读回的 `SSH-2.0-`——这个字符串只可能来自远端。同时看事件流里的 `proxy target`，
+确认目标来自客户端请求而不是配置。
+
+### 29.4 当前限制
+同时只处理一个连接；SOCKS5 仅无认证；无 UDP ASSOCIATE；HTTP 只支持 CONNECT（不是正向代理）。
