@@ -142,6 +142,20 @@ func serveSession(ch ssh.Channel, reqs <-chan *ssh.Request, auth string) {
 			}
 			req.Reply(true, nil)
 			log.Printf("exec: %q", payload.Command)
+			if strings.HasPrefix(payload.Command, "vt-demo") {
+				// 最小 VT 子集的验收脚本：清屏、定位、颜色、擦行、跨行移动
+				fmt.Fprint(ch, "\x1b[2J")            // 清屏
+				fmt.Fprint(ch, "\x1b[1;1Hvt-line-1")  // 第 1 行第 1 列
+				fmt.Fprint(ch, "\x1b[3;5Hvt-moved")   // 第 3 行第 5 列
+				fmt.Fprint(ch, "\x1b[31mred-text\x1b[0m") // 红色后重置
+				fmt.Fprint(ch, "\x1b[4;1Hvt-erase-me")
+				fmt.Fprint(ch, "\x1b[4;1H\x1b[2K")   // 擦掉第 4 行
+				fmt.Fprint(ch, "\x1b[10;1Hvt-line-10") // 跨到第 10 行
+				fmt.Fprint(ch, "\x1b[1;1Hcursor-here") // 光标回到 1,1 覆盖写入
+				status := struct{ Status uint32 }{0}
+				ch.SendRequest("exit-status", false, ssh.Marshal(&status))
+				return
+			}
 			if strings.HasPrefix(payload.Command, "term-echo") {
 				// 交互式会话夹具：读完一行回一行，用来验证"键盘输入 -> 远端 -> 回显"闭环。
 				fmt.Fprint(ch, "term-echo ready\r\n")

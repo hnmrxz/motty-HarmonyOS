@@ -350,3 +350,34 @@ known_hosts 持久化、`@cert-authority`、hostkey 算法白名单、指纹变�
 ### 仍然不是终端模拟器
 无 VT 解析（无颜色/光标/退格/备用屏/回滚/宽字符整形）；输入按整行 + 换行发送，需点 Send；
 远端是 fixture 的 `term-echo`，不是真 shell。真正的 VT 引擎是 M1 剩余最大块。
+---
+
+## Round 13：最小 VT 引擎（网格化，而非字节流）
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/vt_core.cpp` | 最小 VT 解析器：CUP/CUU-CUD-CUF-CUB/CHA/VPA、ED 0/1/2、EL 0/1/2、SGR 前景色与重置、CR/LF/滚动；导出 `vtReset/vtFeed/vtScreen/vtStatus` |
+| `Index.ets` | 终端不再直接拼字节：`chunk → vtFeed → vtScreen` 渲染网格，另显示 `terminal/vt-status`（光标位置与着色格数） |
+| `tools/design/sshfixture` | 新增 `vt-demo`：清屏 → 定位 → 颜色 → 擦行 → 跨行 → 光标回位覆盖 |
+| `spec/scenarios/terminal.vt.yaml` | 5 条断言覆盖四种 VT 能力 |
+| 顶栏两个诊断入口 | `terminal/demo`（原始流式 term-demo）与 `terminal/vt`（VT 子集），一个入口只覆盖一件事 |
+
+### 四条断言各自的含义
+| 断言 | 证明什么 |
+|---|---|
+| `cursor-here` 出现 | CUP 回到 1,1 后覆盖写入生效（旧内容被替换） |
+| `vt-moved` 出现 | CUP 定位到 3,5 生效 |
+| `vt-erase-me` **缺席** | EL 2 真的擦掉了整行 |
+| `colors=[1-9]` | SGR 被记录（着色格数 > 0） |
+
+### 本轮修掉的两个问题
+1. **链接错误**：`RegisterVtFunctions` 声明写在匿名命名空间内 → 内部链接 → `ld.lld: undefined symbol`。移到全局作用域解决
+2. **状态标签硬编码**：`runDemo` 的完成回调固定写 `vt-demo:`，导致 `terminal.view` 的 `[status] ok` 断言失效 → 改为按命令名带出，并同步更新断言
+
+### 双画像验收（9 条 × 2 画像，均为当前构建）
+`terminal.vt`、`terminal.view`、`terminal.interactive`、`ssh.connect-from-list`、`infra.host-create-by-id`、`host.persist`、`net.reachability`、`ssh.exec`、`ssh.hostkey` —— 2in1 与 tablet 全部 **passed**。
+
+### 仍然不做的（写清楚，别当成完整终端）
+备用屏、回滚缓冲、宽字符/组合字符、连字、SIXEL/Kitty/iTerm2 图片、鼠标上报、
+DECSET 2026、选择与复制、真实 pty 尺寸协商。宽字符一项会直接影响 CJK 显示，
+是下一阶段必须补的（当前只处理 0x20–0x7E 可打印 ASCII）。

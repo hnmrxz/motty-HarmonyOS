@@ -60,7 +60,7 @@ asserts:
     regex: "term-line-6 green"
     withinMs: 8000
   - kind: screenRegex
-    regex: "\\[status\\] ok"
+    regex: "term-demo: ok"
     withinMs: 8000
 evidence:
   png: true

@@ -1,0 +1,85 @@
+schema: 1
+id: terminal.vt
+title: 最小 VT 引擎：清屏/光标定位/擦行/颜色属性 + 网格渲染
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B01
+  - B09
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: vt-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:terminal/vt
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3500
+    expect:
+      kind: screenRegex
+      regex: "vt-line-10"
+      withinMs: 15000
+asserts:
+  - kind: screenRegex
+    regex: "cursor-here"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "vt-moved"
+    withinMs: 4000
+  - kind: absent
+    value: "vt-erase-me"
+    withinMs: 3000
+  - kind: screenRegex
+    regex: "colors=[1-9]"
+    withinMs: 4000
+  - kind: absent
+    value: "\\[status\\] error"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。只覆盖最小 VT 子集：CUP/CUU-CUD-CUF-CUB/CHA/VPA、
+    ED 0/1/2、EL 0/1/2、SGR 前景色与重置、CR/LF/换行滚动。
+    **不覆盖**：备用屏、回滚缓冲、宽字符与组合字符、连字、SIXEL/Kitty/iTerm2 图片、
+    鼠标上报、DECSET 2026、选择与复制、真实 pty 尺寸协商；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 用 fixture 的 vt-demo 固定脚本触发序列，而不是真 shell
+notes: >-
+  四条断言分别对应四种 VT 能力：cursor-here(光标回到 1,1 覆盖写入)、vt-moved(CUP 定位)、
+  vt-erase-me 缺席(EL 2 真的擦了)、colors>0(SGR 被记录)。
+  "vt-line-10" 在步骤级 expect 里，证明跨行定位后没有被滚动丢掉。
