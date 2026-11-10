@@ -1,0 +1,60 @@
+schema: 1
+id: vnc.session
+title: VNC 会话与输入：持续帧循环 + 指针事件到达远端并改变画面（不上屏）
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - E01
+  - E06
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:diag/open
+  - action: click
+    target: id:vnc/session
+  - action: wait
+    ms: 3000
+    expect:
+      kind: screenRegex
+      regex: "frame=[1-9][0-9]* 64x48"
+      withinMs: 15000
+  - action: click
+    target: id:vnc/tap
+  - action: wait
+    ms: 2500
+asserts:
+  - kind: screenRegex
+    regex: "green=[1-9][0-9]*"
+    withinMs: 15000
+  - kind: screenRegex
+    regex: "red=[1-9][0-9]*"
+    withinMs: 6000
+  - kind: absent
+    value: "error unsupported encoding"
+    withinMs: 2000
+  - kind: absent
+    value: "error read update"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：会话级帧循环（持续请求增量更新并解码）、
+    指针事件(PointerEvent)发送到远端、远端据指针位置改变画面后可被客户端统计到。
+    **明确未覆盖：画面没有上屏**。ArkTS 侧 putImageData 会触发 lib2d_graphics 的
+    SkiaImage::Serialize 崩溃（已有 cppcrash 证据），因此本轮关闭渲染，UI 明示该限制。
+    另未覆盖：键盘事件断言、真实 VNC 服务器、VNC Auth(DES)、Hextile/ZRLE 编码、
+    剪贴板、缩放/滚动、帧率表现、arm64 真机。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 断言"输入到达远端"依赖夹具收到 PointerEvent 后在指针处画 8x8 绿块
+notes: >-
+  green>0 是"指针事件真的到了对端、新帧也回到了客户端"的机器判据；
+  初始图案只有红蓝，所以这个计数不是自欺。
+  red>0 用来证明图案本身仍然被正确解码（否则 green 可能来自错位）。

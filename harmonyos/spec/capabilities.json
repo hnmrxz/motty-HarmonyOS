@@ -758,7 +758,8 @@
         "planInMatrix": "原样协议层；UI 重做",
         "deps": "G1",
         "acceptance": "`sftp_*`"
-      }
+      },
+      "partialCoverage": "部分：浏览/读取/写入/删除已测；多选、权限、书签未做。"
     },
     {
       "id": "C02",
@@ -916,7 +917,8 @@
         "planInMatrix": "原样；只绑 loopback（`127.0.0.1`）",
         "deps": "`@ohos.net.socket` 已有 API",
         "acceptance": "`local_proxy`、`proxy_start_stop`"
-      }
+      },
+      "partialCoverage": "部分：仅本地(local)转发经双画像实测；远程/SOCKS5/HTTP CONNECT 未做。"
     },
     {
       "id": "D02",
@@ -1041,8 +1043,11 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/vnc.handshake.yaml",
+        "spec/scenarios/vnc.session.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {
@@ -1050,7 +1055,8 @@
         "planInMatrix": "原样协议层；帧上屏走 XComponent GPU 纹理",
         "deps": "G3",
         "acceptance": "`vnc_e2e`"
-      }
+      },
+      "partialCoverage": "部分：仅 RFB 3.8 经双画像实测；3.3/3.7 未测。"
     },
     {
       "id": "E02",
@@ -1151,8 +1157,10 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/vnc.session.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {
@@ -1160,7 +1168,8 @@
         "planInMatrix": "原样；剪贴板受 OS 策略约束",
         "deps": "—",
         "acceptance": "手动"
-      }
+      },
+      "partialCoverage": "部分：仅指针事件经双画像实测；桌面尺寸变化与剪贴板未做。"
     },
     {
       "id": "F01",

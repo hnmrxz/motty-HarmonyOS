@@ -709,3 +709,40 @@ abc|中文|def
 - **不上屏**：本轮只做取色验证，没有把帧渲染到画布（XComponent 纹理待做）
 - 鼠标/键盘事件、剪贴板、resize、增量脏区、多帧、断线重连
 - RDP 完全未动（上游 38k 行，单独立项）
+---
+
+## Round 24：VNC 会话与输入（**上屏被图形崩溃阻塞，已回退**）
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/ssh_napi.cpp` | `vncStart/vncPointer/vncKey/vncStop`：持续帧循环 + 输入事件队列（PointerEvent/KeyEvent） |
+| `tools/design/sshfixture/rfb_fixture.go` | 支持 PointerEvent/KeyEvent：收到按下事件就在指针处画 8×8 绿块（让"输入到达"可断言） |
+| `Index.ets` | VNC 面板：状态行 `vnc/status`、帧信息 `vnc/frame`、`Send pointer (10,10)`（`vnc/tap`） |
+| `spec/scenarios/vnc.session.yaml` | 帧循环 + 指针到达远端 |
+
+### 必须如实写下的失败
+本轮本来是"VNC 上屏 + 交互"。**上屏没做成**：
+
+- ArkTS 侧 `Canvas.putImageData(new ImageData(...))` 触发**原生崩溃**：
+  `SIGSEGV` in `lib2d_graphics.z.so` → `OHOS::Rosen::Drawing::SkiaImage::Serialize()`
+- 证据：`/data/log/faultlog/faultlogger/cppcrash-com.motty.harmony-*.log`（进程生命周期 7s）
+- 最初误判为"首帧早于 Canvas 就绪"（加了就绪门仍崩），又试过把帧从 ArrayBuffer 改成 hex 字符串（仍崩），
+  最终确认崩溃点在图形序列化，而非我们的协议/TSFN 代码
+
+**处置**：关闭渲染（保留解码与统计），UI 明示该限制，spec 命名为 `vnc.session` 并只断言
+"帧循环在跑 + 指针到了对端"。**不把"远程桌面渲染"算作完成。**
+
+### 同时修正的一处夸大
+上一轮把 VNC spec 挂到了 `D02`（跳板链）/`D03`（全局代理）——**挂错了**。
+正确是 `E01`（RFB 版本）与 `E06`（指针）。且 `E02`（其它编码）、`E03`（VNC Auth）**仍是 E3**，
+因为这两项根本没做。能力表已加 `partialCoverage` 字段逐条写明"部分覆盖"的具体范围。
+
+### 双画像验收（18 条 × 2 画像）
+`vnc.session`、`vnc.handshake`、`forward.local`、`vault.persist`、`sftp.write`、`sftp.browse`、
+`session.tabs`、`terminal.pty`、`terminal.scrollback`、`terminal.vt`、`terminal.view`、
+`terminal.interactive`、`ssh.connect-from-list`、`infra.host-create-by-id`、`host.persist`、
+`net.reachability`、`ssh.exec`、`ssh.hostkey` —— 全部 **passed**。
+
+### 未做
+- **VNC 画面渲染**（被 Skia 崩溃阻塞；下一步要评估 Surface/XComponent 纹理路径）
+- VNC Auth (DES)、Hextile/ZRLE/CopyRect、键盘事件的断言、剪贴板、缩放/滚动、RDP

@@ -160,6 +160,9 @@ struct Index {
   @State fwdEvents: string = '';
   @State fwdResult: string = '';
   @State vncResult: string = '';
+  @State vncOpen: boolean = false;
+  @State vncStatus: string = '';
+  @State vncFrameInfo: string = '';
 
   private creds: Map<string, Cred> = new Map<string, Cred>();
   private store: relationalStore.RdbStore | null = null;
@@ -167,6 +170,11 @@ struct Index {
   private shellId: number = 0;
   private tabSeq: number = 0;
   private fwdId: number = 0;
+  private vncId: number = 0;
+  private vncCtx: CanvasRenderingContext2D = new CanvasRenderingContext2D(new RenderingContextSettings(true));
+  private vncW: number = 0;
+  private vncH: number = 0;
+  private vncReady: boolean = false;
   private pendingAction: string = 'connect';
   private pendingLabel: string = '';
 
@@ -691,6 +699,76 @@ struct Index {
     });
   }
 
+  // ---------------- VNC 会话（上屏 + 指针）----------------
+  private startVnc(): void {
+    this.vncOpen = true;
+    this.vncReady = false;
+    this.vncStatus = 'connecting...';
+    this.vncFrameInfo = '';
+    this.lookupFp(this.fixtureKey).then((_fp: string) => {
+      try {
+        this.vncId = mottynapi.vncStart('127.0.0.1', 5901,
+          (frameStr: string) => {
+            // 帧格式："WxH:hexRGB..."（见 ssh_napi.cpp 里的说明）
+            const sep = frameStr.indexOf(':');
+            if (sep <= 0) {
+              return;
+            }
+            const dims = frameStr.substring(0, sep).split('x');
+            const w = Number.parseInt(dims[0], 10);
+            const h = Number.parseInt(dims[1], 10);
+            this.vncW = w;
+            this.vncH = h;
+            if (!this.vncReady) {
+              return;
+            }
+            try {
+              const hex = frameStr.substring(sep + 1);
+              const rgba = new Uint8ClampedArray(w * h * 4);
+              for (let i = 0, p = 0; i + 5 < hex.length; i += 6, p += 4) {
+                rgba[p] = Number.parseInt(hex.substring(i, i + 2), 16);
+                rgba[p + 1] = Number.parseInt(hex.substring(i + 2, i + 4), 16);
+                rgba[p + 2] = Number.parseInt(hex.substring(i + 4, i + 6), 16);
+                rgba[p + 3] = 255;
+              }
+              this.vncCtx.putImageData(new ImageData(w, h, rgba), 0, 0);
+            } catch (e) {
+              hilog.error(DOMAIN, TAG, 'vnc draw failed: %{public}s', JSON.stringify(e));
+            }
+          },
+          (status: string) => {
+            this.vncStatus = status;
+            if (status.indexOf('frame=') === 0) {
+              this.vncFrameInfo = status;
+              // 上屏关闭后帧回调不再触发，尺寸要从状态行取，否则指针事件会被当成"没尺寸"丢掉
+              const m = new RegExp('([0-9]+)x([0-9]+)').exec(status);
+              if (m !== null) {
+                this.vncW = Number.parseInt(m[1], 10);
+                this.vncH = Number.parseInt(m[2], 10);
+              }
+            }
+          });
+      } catch (e) {
+        this.vncStatus = 'start failed: ' + JSON.stringify(e);
+      }
+    });
+  }
+
+  private stopVnc(): void {
+    if (this.vncId !== 0) {
+      mottynapi.vncStop(this.vncId);
+      this.vncId = 0;
+    }
+  }
+
+  private sendVncPointer(localX: number, localY: number, mask: number): void {
+    if (this.vncId === 0 || this.vncW === 0) {
+      return;
+    }
+    // 画布按原始尺寸绘制，坐标直接对应远端像素
+    mottynapi.vncPointer(this.vncId, Math.round(localX), Math.round(localY), mask);
+  }
+
   private probeNet(): void {
     this.probeText = 'connecting...';
     const tcp = socket.constructTCPSocketInstance();
@@ -1022,6 +1100,35 @@ struct Index {
   }
 
   @Builder
+  vncPanel() {
+    Column({ space: 8 }) {
+      Row() {
+        Text('VNC (RFB 3.8, Raw, no auth)').fontSize(16).fontWeight(FontWeight.Bold)
+        Blank()
+        Button('Stop').id('vnc/stop').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.stopVnc(); })
+        Button('Close').id('vnc/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.stopVnc(); this.vncOpen = false; })
+      }.width('100%')
+      Text(this.vncStatus.length > 0 ? this.vncStatus : 'vnc: (idle)')
+        .id('vnc/status').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')
+      Column({ space: 4 }) {
+        Text('framebuffer rendering is disabled: putImageData crashes in '
+          + 'lib2d_graphics (SkiaImage::Serialize).  Protocol + input still work.')
+          .fontSize(11).fontColor('#C62828').width('100%')
+        Button('Send pointer (10,10)')
+          .id('vnc/tap')
+          .onClick(() => { this.sendVncPointer(10, 10, 1); this.sendVncPointer(10, 10, 0); })
+      }.width('100%').padding(8).backgroundColor('#FFF3E0').borderRadius(8)
+
+      Text(this.vncFrameInfo.length > 0 ? this.vncFrameInfo : 'frame: (none)')
+        .id('vnc/frame').fontSize(11).fontFamily('monospace').width('100%')
+    }
+    .id('vnc/panel').width(700).padding(16).backgroundColor(Color.White).borderRadius(12)
+    .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
+  }
+
+  @Builder
   diagPanel() {
     Column({ space: 10 }) {
       Row() {
@@ -1051,8 +1158,10 @@ struct Index {
           .onClick(() => { this.connectFixtureDemo('vt'); })
         Button('pty shell').id('terminal/shell').backgroundColor('#0A6C00').fontColor(Color.White)
           .onClick(() => { this.connectFixtureDemo('shell'); })
-        Button('VNC').id('vnc/probe').backgroundColor('#6A1B9A').fontColor(Color.White)
+        Button('VNC probe').id('vnc/probe').backgroundColor('#6A1B9A').fontColor(Color.White)
           .onClick(() => { this.probeVnc(); })
+        Button('VNC session').id('vnc/session').backgroundColor('#6A1B9A').fontColor(Color.White)
+          .onClick(() => { this.diagOpen = false; this.startVnc(); })
       }.width('100%')
       Text(this.vncResult.length > 0 ? this.vncResult : 'vnc: (not probed)')
         .id('vnc/result').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')
@@ -1194,6 +1303,10 @@ struct Index {
       }
       .width('100%').height('100%').backgroundColor('#FAFAFA')
 
+      if (this.vncOpen) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
+        this.vncPanel()
+      }
       if (this.fwdOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
         this.forwardPanel()

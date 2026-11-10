@@ -6,7 +6,7 @@ profile:
   - 2in1
   - tablet
 capabilities:
-  - D02
+  - E01
 app:
   bundleName: com.motty.harmony
   ability: EntryAbility

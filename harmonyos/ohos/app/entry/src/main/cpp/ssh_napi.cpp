@@ -1592,6 +1592,354 @@ napi_value VncProbe(napi_env env, napi_callback_info info) {
     return nullptr;
 }
 
+// ---------------- VNC 会话（帧循环 + 输入事件）----------------
+// 与 vncProbe 的区别：那是一次性取色验证，这里是持续会话：
+// 每帧把 RGBA 以 ArrayBuffer 交给 ArkTS 上屏，并把指针/键盘事件回送对端。
+// 仍只支持 Raw 编码与 None 安全类型（VNC Auth/DES 未实现）。
+struct VncSession {
+    int fd = -1;
+    int width = 0;
+    int height = 0;
+    int redShift = 16;
+    int greenShift = 8;
+    int blueShift = 0;
+    std::string name;
+    std::mutex mtx;
+    std::string pendingEvents;   // 每行：P x y mask / K keysym down
+    std::atomic<bool> closed{false};
+    napi_threadsafe_function onFrame = nullptr;   // (ArrayBuffer, w, h)
+    napi_threadsafe_function onStatus = nullptr;  // (string)
+};
+
+std::mutex g_vncMtx;
+std::map<int, VncSession *> g_vncSessions;
+std::atomic<int> g_nextVnc{1};
+
+VncSession *findVnc(int id) {
+    std::lock_guard<std::mutex> lock(g_vncMtx);
+    auto it = g_vncSessions.find(id);
+    return it == g_vncSessions.end() ? nullptr : it->second;
+}
+
+void vncStatus(VncSession *s, const std::string &text) {
+    auto *payload = new std::string(text);
+    napi_call_threadsafe_function(s->onStatus, payload, napi_tsfn_blocking);
+}
+
+// 单独的回调：ArrayBuffer 帧（callJs 只处理字符串）
+void callJsBuffer(napi_env env, napi_value jsCb, void * /*context*/, void *data) {
+    auto *payload = static_cast<std::pair<std::vector<unsigned char> *, std::pair<int, int>> *>(data);
+    napi_value obj = nullptr;
+    void *raw = nullptr;
+    if (napi_create_arraybuffer(env, payload->first->size(), &raw, &obj) == napi_ok) {
+        if (raw != nullptr && !payload->first->empty()) {
+            memcpy(raw, payload->first->data(), payload->first->size());
+        }
+        napi_value global = nullptr;
+        napi_get_global(env, &global);
+        napi_value argv[3] = {obj, nullptr, nullptr};
+        napi_create_int32(env, payload->second.first, &argv[1]);
+        napi_create_int32(env, payload->second.second, &argv[2]);
+        napi_call_function(env, global, jsCb, 3, argv, nullptr);
+    }
+    delete payload->first;
+    delete payload;
+}
+
+bool vncHandshake(VncSession *sess, const std::string &host, int port, std::string &err) {
+    int fd = tcpConnect(host, port, err);
+    if (fd < 0) {
+        return false;
+    }
+    sess->fd = fd;
+    unsigned char buf[12];
+    if (!readExact(fd, buf, 12)) { err = "no version"; return false; }
+    const unsigned char ourVer[12] = {'R', 'F', 'B', ' ', '0', '0', '3', '.', '0', '0', '8', '\n'};
+    if (!writeAll(fd, ourVer, 12)) { err = "write version"; return false; }
+    unsigned char nTypes = 0;
+    if (!readExact(fd, &nTypes, 1) || nTypes == 0) { err = "no security types"; return false; }
+    std::vector<unsigned char> types(nTypes);
+    if (!readExact(fd, types.data(), types.size())) { err = "read security types"; return false; }
+    bool hasNone = false;
+    for (unsigned char t : types) { if (t == 1) hasNone = true; }
+    if (!hasNone) { err = "server requires auth (VNC Auth/DES not implemented)"; return false; }
+    const unsigned char pick = 1;
+    if (!writeAll(fd, &pick, 1)) { err = "write security choice"; return false; }
+    unsigned char secRes[4];
+    if (!readExact(fd, secRes, 4)) { err = "security result"; return false; }
+    const unsigned char shared = 1;
+    if (!writeAll(fd, &shared, 1)) { err = "client init"; return false; }
+    unsigned char si[24];
+    if (!readExact(fd, si, 24)) { err = "server init"; return false; }
+    sess->width = (si[0] << 8) | si[1];
+    sess->height = (si[2] << 8) | si[3];
+    const int bpp = si[4];
+    const bool trueColor = si[7] != 0;
+    sess->redShift = si[14];
+    sess->greenShift = si[15];
+    sess->blueShift = si[16];
+    const uint32_t nameLen = (static_cast<uint32_t>(si[20]) << 24) |
+                             (static_cast<uint32_t>(si[21]) << 16) |
+                             (static_cast<uint32_t>(si[22]) << 8) |
+                             static_cast<uint32_t>(si[23]);
+    sess->name.assign(nameLen, '\0');
+    if (nameLen > 0 && !readExact(fd, reinterpret_cast<unsigned char *>(&sess->name[0]), nameLen)) {
+        err = "server init name";
+        return false;
+    }
+    if (bpp != 32 || !trueColor) { err = "unsupported pixel format"; return false; }
+    std::vector<unsigned char> enc = {2, 0, 0, 1, 0, 0, 0, 0};   // 只请求 Raw
+    if (!writeAll(fd, enc.data(), enc.size())) { err = "set encodings"; return false; }
+    return true;
+}
+
+void vncLoop(VncSession *sess, int id) {
+    const int w = sess->width;
+    const int h = sess->height;
+    int frameNo = 0;
+    std::vector<unsigned char> rgba(static_cast<size_t>(w) * static_cast<size_t>(h) * 4, 0);
+    while (!sess->closed.load()) {
+        std::string ev;
+        {
+            std::lock_guard<std::mutex> lock(sess->mtx);
+            ev.swap(sess->pendingEvents);
+        }
+        if (!ev.empty()) {
+            std::vector<unsigned char> out;
+            size_t pos = 0;
+            while (pos < ev.size()) {
+                size_t nl = ev.find('\n', pos);
+                if (nl == std::string::npos) break;
+                std::string line = ev.substr(pos, nl - pos);
+                pos = nl + 1;
+                if (line.empty()) continue;
+                if (line[0] == 'P') {
+                    int x = 0, y = 0, mask = 0;
+                    sscanf(line.c_str() + 1, "%d %d %d", &x, &y, &mask);
+                    out.push_back(5); out.push_back(0);
+                    out.push_back(static_cast<unsigned char>((x >> 8) & 0xFF));
+                    out.push_back(static_cast<unsigned char>(x & 0xFF));
+                    out.push_back(static_cast<unsigned char>((y >> 8) & 0xFF));
+                    out.push_back(static_cast<unsigned char>(y & 0xFF));
+                    out.push_back(static_cast<unsigned char>(mask & 0xFF));
+                } else if (line[0] == 'K') {
+                    long keysym = 0;
+                    int down = 1;
+                    sscanf(line.c_str() + 1, "%ld %d", &keysym, &down);
+                    out.push_back(4);
+                    out.push_back(static_cast<unsigned char>(down ? 1 : 0));
+                    out.push_back(0); out.push_back(0);
+                    out.push_back(static_cast<unsigned char>((keysym >> 24) & 0xFF));
+                    out.push_back(static_cast<unsigned char>((keysym >> 16) & 0xFF));
+                    out.push_back(static_cast<unsigned char>((keysym >> 8) & 0xFF));
+                    out.push_back(static_cast<unsigned char>(keysym & 0xFF));
+                }
+            }
+            if (!out.empty()) {
+                writeAll(sess->fd, out.data(), out.size());
+            }
+        }
+
+        std::vector<unsigned char> req = {3, 1, 0, 0, 0, 0,
+            static_cast<unsigned char>((w >> 8) & 0xFF), static_cast<unsigned char>(w & 0xFF),
+            static_cast<unsigned char>((h >> 8) & 0xFF), static_cast<unsigned char>(h & 0xFF)};
+        if (!writeAll(sess->fd, req.data(), req.size())) { vncStatus(sess, "error fb request"); break; }
+        unsigned char head[4];
+        if (!readExact(sess->fd, head, 4)) { vncStatus(sess, "error read update"); break; }
+        if (head[0] != 0) { vncStatus(sess, "error unexpected message " + std::to_string(head[0])); break; }
+        const int nRects = (head[2] << 8) | head[3];
+        for (int r = 0; r < nRects && !sess->closed.load(); r++) {
+            unsigned char rh[12];
+            if (!readExact(sess->fd, rh, 12)) break;
+            const int rx = (rh[0] << 8) | rh[1];
+            const int ry = (rh[2] << 8) | rh[3];
+            const int rw = (rh[4] << 8) | rh[5];
+            const int rhh = (rh[6] << 8) | rh[7];
+            const int32_t encoding = (static_cast<int32_t>(rh[8]) << 24) | (rh[9] << 16) | (rh[10] << 8) | rh[11];
+            if (encoding != 0) {
+                vncStatus(sess, "error unsupported encoding " + std::to_string(encoding));
+                sess->closed.store(true);
+                break;
+            }
+            std::vector<unsigned char> px(static_cast<size_t>(rw) * static_cast<size_t>(rhh) * 4);
+            if (!readExact(sess->fd, px.data(), px.size())) break;
+            for (int y = 0; y < rhh; y++) {
+                for (int x = 0; x < rw; x++) {
+                    const size_t off = (static_cast<size_t>(y) * rw + x) * 4;
+                    const unsigned int raw = static_cast<unsigned int>(px[off]) |
+                                             (static_cast<unsigned int>(px[off + 1]) << 8) |
+                                             (static_cast<unsigned int>(px[off + 2]) << 16) |
+                                             (static_cast<unsigned int>(px[off + 3]) << 24);
+                    const unsigned int rv = (raw >> sess->redShift) & 0xFF;
+                    const unsigned int gv = (raw >> sess->greenShift) & 0xFF;
+                    const unsigned int bv = (raw >> sess->blueShift) & 0xFF;
+                    const int gx = rx + x;
+                    const int gy = ry + y;
+                    if (gx < 0 || gy < 0 || gx >= w || gy >= h) continue;
+                    const size_t dst = (static_cast<size_t>(gy) * static_cast<size_t>(w) + gx) * 4;
+                    rgba[dst] = static_cast<unsigned char>(rv);
+                    rgba[dst + 1] = static_cast<unsigned char>(gv);
+                    rgba[dst + 2] = static_cast<unsigned char>(bv);
+                    rgba[dst + 3] = 0xFF;
+                }
+            }
+        }
+        frameNo++;
+        long reds = 0, greens = 0, blues = 0;
+        for (size_t i = 0; i + 3 < rgba.size(); i += 4) {
+            if (rgba[i] > 200 && rgba[i + 1] < 60) reds++;
+            if (rgba[i + 1] > 200 && rgba[i] < 60) greens++;
+            if (rgba[i + 2] > 200 && rgba[i] < 60) blues++;
+        }
+        // 帧以 "WxH:<hex RGB>" 交给 ArkTS。为什么不用 ArrayBuffer：
+        // 在 TSFN 回调里 napi_create_arraybuffer + napi_call_function 实测会让进程崩溃；
+        // 字符串通道稳定。代价是体积（每像素 6 字符），对当前尺寸可接受，
+        // 真正上屏应换成 Surface/XComponent 纹理，这一点写在 RUNBOOK §26。
+        static const char *kHex = "0123456789ABCDEF";
+        std::string frameStr = std::to_string(w) + "x" + std::to_string(h) + ":";
+        frameStr.reserve(frameStr.size() + static_cast<size_t>(w) * h * 6);
+        for (size_t i = 0; i + 3 < rgba.size(); i += 4) {
+            unsigned char rgb[3] = {rgba[i], rgba[i + 1], rgba[i + 2]};
+            for (unsigned char c : rgb) {
+                frameStr.push_back(kHex[c >> 4]);
+                frameStr.push_back(kHex[c & 0x0F]);
+            }
+        }
+        // 上屏暂时关闭：ArkTS 侧 putImageData 会触发 SkiaImage::Serialize 崩溃（见 RUNBOOK §26）。
+        // 帧仍然解码并统计，只是不渲染；等找到可用的渲染通路（Surface/XComponent）再打开。
+        // napi_call_threadsafe_function(sess->onFrame, new std::string(frameStr), napi_tsfn_blocking);
+        (void)frameStr;
+        char status[192];
+        snprintf(status, sizeof(status), "frame=%d %dx%d red=%ld green=%ld blue=%ld",
+                 frameNo, w, h, reds, greens, blues);
+        vncStatus(sess, std::string(status));
+        std::this_thread::sleep_for(std::chrono::milliseconds(120));
+    }
+    if (sess->fd >= 0) { close(sess->fd); sess->fd = -1; }
+    vncStatus(sess, "closed");
+    napi_release_threadsafe_function(sess->onFrame, napi_tsfn_release);
+    napi_release_threadsafe_function(sess->onStatus, napi_tsfn_release);
+    {
+        std::lock_guard<std::mutex> lock(g_vncMtx);
+        g_vncSessions.erase(id);
+    }
+    delete sess;
+}
+
+// vncStart(host, port, onFrame, onStatus) -> id
+napi_value VncStart(napi_env env, napi_callback_info info) {
+    size_t argc = 4;
+    napi_value args[4] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 4) {
+        napi_throw_type_error(env, nullptr, "vncStart(host, port, onFrame, onStatus)");
+        return nullptr;
+    }
+    std::string host;
+    size_t len = 0;
+    napi_get_value_string_utf8(env, args[0], static_cast<char *>(nullptr), 0, &len);
+    host.resize(len);
+    napi_get_value_string_utf8(env, args[0], &host[0], len + 1, &len);
+    int32_t port = 5900;
+    napi_get_value_int32(env, args[1], &port);
+
+    auto *sess = new VncSession();
+    std::string err;
+    if (!vncHandshake(sess, host, port, err)) {
+        if (sess->fd >= 0) {
+            close(sess->fd);
+        }
+        delete sess;
+        napi_throw_error(env, nullptr, ("vnc handshake failed: " + err).c_str());
+        return nullptr;
+    }
+    napi_value n1 = nullptr;
+    napi_value n2 = nullptr;
+    napi_create_string_utf8(env, "motty.vnc.frame", NAPI_AUTO_LENGTH, &n1);
+    napi_create_string_utf8(env, "motty.vnc.status", NAPI_AUTO_LENGTH, &n2);
+    if (napi_create_threadsafe_function(env, args[2], nullptr, n1, 0, 1, nullptr, nullptr, nullptr,
+                                        callJs, &sess->onFrame) != napi_ok ||
+        napi_create_threadsafe_function(env, args[3], nullptr, n2, 0, 1, nullptr, nullptr, nullptr,
+                                        callJs, &sess->onStatus) != napi_ok) {
+        close(sess->fd);
+        delete sess;
+        napi_throw_error(env, nullptr, "tsfn failed");
+        return nullptr;
+    }
+    const int id = g_nextVnc.fetch_add(1);
+    {
+        std::lock_guard<std::mutex> lock(g_vncMtx);
+        g_vncSessions[id] = sess;
+    }
+    std::thread(vncLoop, sess, id).detach();
+    napi_value out = nullptr;
+    napi_create_int32(env, id, &out);
+    return out;
+}
+
+// vncPointer(id, x, y, mask)
+napi_value VncPointer(napi_env env, napi_callback_info info) {
+    size_t argc = 4;
+    napi_value args[4] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int32_t id = 0, x = 0, y = 0, mask = 0;
+    napi_get_value_int32(env, args[0], &id);
+    napi_get_value_int32(env, args[1], &x);
+    napi_get_value_int32(env, args[2], &y);
+    napi_get_value_int32(env, args[3], &mask);
+    VncSession *sess = findVnc(id);
+    int ok = 0;
+    if (sess != nullptr && !sess->closed.load()) {
+        std::lock_guard<std::mutex> lock(sess->mtx);
+        sess->pendingEvents += "P " + std::to_string(x) + " " + std::to_string(y) + " " +
+                               std::to_string(mask) + "\n";
+        ok = 1;
+    }
+    napi_value out = nullptr;
+    napi_create_int32(env, ok, &out);
+    return out;
+}
+
+// vncKey(id, keysym, down)
+napi_value VncKey(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int32_t id = 0, down = 1;
+    int64_t keysym = 0;
+    napi_get_value_int32(env, args[0], &id);
+    napi_get_value_int64(env, args[1], &keysym);
+    napi_get_value_int32(env, args[2], &down);
+    VncSession *sess = findVnc(id);
+    int ok = 0;
+    if (sess != nullptr && !sess->closed.load()) {
+        std::lock_guard<std::mutex> lock(sess->mtx);
+        sess->pendingEvents += "K " + std::to_string(keysym) + " " + std::to_string(down) + "\n";
+        ok = 1;
+    }
+    napi_value out = nullptr;
+    napi_create_int32(env, ok, &out);
+    return out;
+}
+
+// vncStop(id)
+napi_value VncStop(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int32_t id = 0;
+    napi_get_value_int32(env, args[0], &id);
+    VncSession *sess = findVnc(id);
+    int ok = 0;
+    if (sess != nullptr) {
+        sess->closed.store(true);
+        ok = 1;
+    }
+    napi_value out = nullptr;
+    napi_create_int32(env, ok, &out);
+    return out;
+}
+
 // closeShell(id)
 napi_value CloseShell(napi_env env, napi_callback_info info) {
     size_t argc = 1;
@@ -1623,6 +1971,10 @@ napi_value Init(napi_env env, napi_value exports) {
         {"forwardStart", nullptr, ForwardStart, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"forwardStop", nullptr, ForwardStop, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"vncProbe", nullptr, VncProbe, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"vncStart", nullptr, VncStart, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"vncPointer", nullptr, VncPointer, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"vncKey", nullptr, VncKey, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"vncStop", nullptr, VncStop, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     RegisterVtFunctions(env, exports);

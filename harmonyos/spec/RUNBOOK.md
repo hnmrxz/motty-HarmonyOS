@@ -686,3 +686,38 @@ nameLength(20..23)   ← 不要再额外读 4 字节
 ### 25.4 夹具
 `-vnc 127.0.0.1:5901` 起最小 RFB 服务，图案固定：左半红、右半蓝、64×48。
 设备侧需要 `hdc rport tcp:5901 tcp:5901`。
+---
+
+## 26. VNC 上屏为什么被关掉（重要）
+
+### 26.1 现象
+ArkTS 里对 `Canvas` 执行 `putImageData(new ImageData(w, h, rgba), 0, 0)` 会让**整个进程崩溃**：
+
+```
+Reason:Signal:SIGSEGV(SEGV_MAPERR)
+#00 ld-musl-x86_64.so.1
+#01 lib2d_graphics.z.so(OHOS::Rosen::Drawing::SkiaImage::Serialize())
+Process life time: 7s
+```
+证据文件：`/data/log/faultlog/faultlogger/cppcrash-com.motty.harmony-*.log`
+（用 `hdc file recv` 取回即可，不要靠猜）。
+
+### 26.2 排除过的假设（避免重复踩）
+| 假设 | 结果 |
+|---|---|
+| 首帧早于 Canvas 就绪 | 加 `onReady` 门后**仍崩** |
+| `ImageData` 参数顺序 | ArkTS 是 `(width, height, data)`，改正后**仍崩** |
+| ArrayBuffer 传给 TSFN 的方式 | 改成 hex 字符串传帧，**仍崩** |
+
+结论：崩溃点在**图形序列化**，不在协议层与 TSFN。因此本轮关闭渲染，
+**保留解码与统计**，UI 上明写"rendering disabled"，spec 只断言协议与输入。
+
+### 26.3 当前状态与下一步
+- 帧循环、像素解码、RGB 统计、指针/键盘事件发送**都是通的**（对端日志可见 `PointerEvent x=.. y=.. mask=1`）
+- 画面**没有上屏**：这是本工程的已知残缺，不是"没测"
+- 下一步应评估 Surface/XComponent 纹理路径（拿 `OH_NativeWindow` + `OH_NativeVSync`，
+  把 RGBA 直接写进缓冲区），而不是继续在 Canvas 上试 `putImageData`
+
+### 26.4 断言口径
+不要用"画面显示了"这类主观判断。本工程用 `green=N` 计数：初始图案只有红/蓝，
+收到指针事件后对端画绿块，客户端统计到 `green>0` 才是"输入真的到了对端并且新帧回来了"。

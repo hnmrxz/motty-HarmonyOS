@@ -27,6 +27,11 @@ const (
 	rfbHeight = 48
 )
 
+type pointerMark struct {
+	valid bool
+	x, y  int
+}
+
 // serveRFB 处理一个 VNC 客户端连接
 func serveRFB(conn net.Conn) {
 	defer conn.Close()
@@ -82,6 +87,8 @@ func serveRFB(conn net.Conn) {
 		return
 	}
 
+	var mark pointerMark
+
 	// 消息循环
 	for {
 		_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
@@ -117,20 +124,30 @@ func serveRFB(conn net.Conn) {
 			w := binary.BigEndian.Uint16(req[5:])
 			h := binary.BigEndian.Uint16(req[7:])
 			log.Printf("rfb: FBUpdateRequest inc=%d %d,%d %dx%d", req[0], x, y, w, h)
-			if err := sendRawUpdate(conn); err != nil {
+			if err := sendRawUpdate(conn, mark); err != nil {
 				log.Printf("rfb: send update failed: %v", err)
 				return
 			}
 		case 4: // KeyEvent
-			if _, err := io.ReadFull(conn, make([]byte, 7)); err != nil {
+			ke := make([]byte, 7)
+			if _, err := io.ReadFull(conn, ke); err != nil {
 				return
 			}
-			log.Printf("rfb: KeyEvent")
-		case 5: // PointerEvent
-			if _, err := io.ReadFull(conn, make([]byte, 5)); err != nil {
+			ks := binary.BigEndian.Uint32(ke[3:])
+			log.Printf("rfb: KeyEvent down=%d keysym=%d", ke[0], ks)
+		case 5: // PointerEvent：type(1)+pad(1)+x(2)+y(2)+mask(1) = 共 7 字节
+			// 曾经只读 5 字节（少读 mask），导致下一个字节被当成消息类型，报 unsupported message type
+			pe := make([]byte, 6)
+			if _, err := io.ReadFull(conn, pe); err != nil {
 				return
 			}
-			log.Printf("rfb: PointerEvent")
+			px := int(binary.BigEndian.Uint16(pe[1:]))
+			py := int(binary.BigEndian.Uint16(pe[3:]))
+			mask := int(pe[5] & 1)
+			log.Printf("rfb: PointerEvent x=%d y=%d mask=%d", px, py, mask)
+			if mask == 1 {
+				mark = pointerMark{valid: true, x: px, y: py}
+			}
 		default:
 			log.Printf("rfb: unsupported message type %d", head[0])
 			return
@@ -138,8 +155,9 @@ func serveRFB(conn net.Conn) {
 	}
 }
 
-// sendRawUpdate 发一帧 Raw 编码的固定图案：左半红、右半蓝
-func sendRawUpdate(conn net.Conn) error {
+// sendRawUpdate 发一帧 Raw 编码的固定图案：左半红、右半蓝。
+// 若收到过按下事件，再在该位置画 8x8 绿色方块——这样"输入到达对端"就是可断言的。
+func sendRawUpdate(conn net.Conn, mark pointerMark) error {
 	head := make([]byte, 0, 16)
 	head = append(head, 0, 0)                          // message type 0, padding
 	head = binary.BigEndian.AppendUint16(head, 1)      // 1 rect
@@ -165,6 +183,13 @@ func sendRawUpdate(conn net.Conn) error {
 			} else {
 				pixels[i+0] = 0xFF // B -> 0000FF
 				pixels[i+1] = 0x00
+				pixels[i+2] = 0x00
+				pixels[i+3] = 0x00
+			}
+			if mark.valid &&
+				x >= mark.x-4 && x <= mark.x+4 && y >= mark.y-4 && y <= mark.y+4 {
+				pixels[i+0] = 0x00 // B
+				pixels[i+1] = 0xFF // G -> 00FF00
 				pixels[i+2] = 0x00
 				pixels[i+3] = 0x00
 			}
