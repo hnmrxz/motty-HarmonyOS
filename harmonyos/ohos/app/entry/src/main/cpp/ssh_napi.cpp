@@ -17,9 +17,13 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <atomic>
 #include <cstring>
+#include <map>
+#include <mutex>
 #include <string>
 #include <thread>
+#include <chrono>
 
 namespace {
 
@@ -386,10 +390,270 @@ napi_value Probe(napi_env env, napi_callback_info info) {
     return nullptr;
 }
 
+// ---- 交互式会话：把"一条命令"升级为"可写入的通道" ----
+//
+// 线程模型（刻意简单，避免 libssh2 的线程安全问题）：
+//   * 每个会话一个工作线程，**所有 libssh2 调用都在这个线程里**（读、写、关）。
+//   * sendInput 只把字节追加到 mutex 保护的待写队列，不碰 libssh2。
+//   * close 只置标志位，由工作线程收尾。
+struct ShellSession {
+    LIBSSH2_SESSION *session = nullptr;
+    LIBSSH2_CHANNEL *channel = nullptr;
+    int fd = -1;
+    std::mutex mtx;
+    std::string pending;
+    std::atomic<bool> closed{false};
+    napi_threadsafe_function onData = nullptr;
+    napi_threadsafe_function onDone = nullptr;
+};
+
+std::mutex g_sessionsMtx;
+std::map<int, ShellSession *> g_sessions;
+std::atomic<int> g_nextId{1};
+
+ShellSession *findSession(int id) {
+    std::lock_guard<std::mutex> lock(g_sessionsMtx);
+    auto it = g_sessions.find(id);
+    return it == g_sessions.end() ? nullptr : it->second;
+}
+
+void shellLoop(ShellSession *sess, int id) {
+    std::string done = "ok";
+    char buf[512];
+    while (!sess->closed.load()) {
+        bool progressed = false;
+
+        // 1) 先把待写数据送出去
+        std::string out;
+        {
+            std::lock_guard<std::mutex> lock(sess->mtx);
+            if (!sess->pending.empty()) {
+                out.swap(sess->pending);
+            }
+        }
+        if (!out.empty()) {
+            size_t sent = 0;
+            while (sent < out.size() && !sess->closed.load()) {
+                ssize_t n = libssh2_channel_write(sess->channel, out.data() + sent, out.size() - sent);
+                if (n > 0) {
+                    sent += static_cast<size_t>(n);
+                    progressed = true;
+                } else if (n == LIBSSH2_ERROR_EAGAIN) {
+                    // 写满/暂不可写：把没送出去的部分放回队列，否则会静默丢字节
+                    std::lock_guard<std::mutex> lock(sess->mtx);
+                    sess->pending = out.substr(sent) + sess->pending;
+                    break;
+                } else {
+                    done = "error write";
+                    sess->closed.store(true);
+                    break;
+                }
+            }
+        }
+
+        // 2) 再读远端输出
+        ssize_t n = libssh2_channel_read(sess->channel, buf, sizeof(buf));
+        if (n > 0) {
+            auto *chunk = new std::string(buf, static_cast<size_t>(n));
+            napi_call_threadsafe_function(sess->onData, chunk, napi_tsfn_blocking);
+            progressed = true;
+        } else if (n < 0 && n != LIBSSH2_ERROR_EAGAIN) {
+            done = "error read";
+            sess->closed.store(true);
+        }
+
+        if (libssh2_channel_eof(sess->channel) == 1) {
+            done = "eof";
+            break;
+        }
+        if (!progressed) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(15));
+        }
+    }
+
+    libssh2_channel_close(sess->channel);
+    libssh2_channel_free(sess->channel);
+    libssh2_session_disconnect(sess->session, "bye");
+    libssh2_session_free(sess->session);
+    if (sess->fd >= 0) {
+        close(sess->fd);
+    }
+    {
+        std::lock_guard<std::mutex> lock(g_sessionsMtx);
+        g_sessions.erase(id);   // 用真实会话 id 摘除（此前误用了 g_nextId，会泄漏条目）
+    }
+    auto *payload = new std::string(done);
+    napi_call_threadsafe_function(sess->onDone, payload, napi_tsfn_blocking);
+    napi_release_threadsafe_function(sess->onDone, napi_tsfn_release);
+    napi_release_threadsafe_function(sess->onData, napi_tsfn_release);
+    delete sess;
+}
+
+// openShell(host, port, user, password, expectedFingerprint, onData, onDone) -> 会话 id（>0 成功，0 失败）
+napi_value OpenShell(napi_env env, napi_callback_info info) {
+    size_t argc = 7;
+    napi_value args[7] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 7) {
+        napi_throw_type_error(env, nullptr, "openShell(host, port, user, password, expectedFp, onData, onDone)");
+        return nullptr;
+    }
+    auto readStr = [&](size_t i, std::string &dst) {
+        size_t len = 0;
+        napi_get_value_string_utf8(env, args[i], static_cast<char *>(nullptr), 0, &len);
+        if (len == 0) {
+            dst.clear();
+            return;
+        }
+        dst.resize(len);
+        napi_get_value_string_utf8(env, args[i], &dst[0], len + 1, &len);
+    };
+    std::string host, user, pass, expected;
+    readStr(0, host);
+    int32_t port = 22;
+    napi_get_value_int32(env, args[1], &port);
+    readStr(2, user);
+    readStr(3, pass);
+    readStr(4, expected);   // 曾误写成 5（那是 onData 回调），导致指纹恒空 -> hostkey not trusted
+
+    auto reply = [&](int code, const char *msg) {
+        napi_value out = nullptr;
+        napi_create_int32(env, code, &out);
+        if (msg != nullptr) {
+            napi_throw_error(env, nullptr, msg);
+        }
+        return out;
+    };
+
+    std::string err;
+    int fd = tcpConnect(host, port, err);
+    if (fd < 0) {
+        return reply(0, ("connect failed: " + err).c_str());
+    }
+    LIBSSH2_SESSION *session = libssh2_session_init();
+    if (session == nullptr) {
+        close(fd);
+        return reply(0, "session init failed");
+    }
+    if (libssh2_session_handshake(session, fd) != 0) {
+        libssh2_session_free(session);
+        close(fd);
+        return reply(0, "handshake failed");
+    }
+    const char *hash = libssh2_hostkey_hash(session, LIBSSH2_HOSTKEY_HASH_SHA256);
+    std::string fp = hash ? "SHA256:" + base64(reinterpret_cast<const unsigned char *>(hash), 32) : "unavailable";
+    if (expected.empty() || expected != fp) {
+        libssh2_session_disconnect(session, "hostkey not trusted");
+        libssh2_session_free(session);
+        close(fd);
+        return reply(0, expected.empty() ? "unknown host key" : "host key mismatch");
+    }
+    if (libssh2_userauth_password(session, user.c_str(), pass.c_str()) != 0) {
+        libssh2_session_disconnect(session, "auth failed");
+        libssh2_session_free(session);
+        close(fd);
+        return reply(0, "auth failed");
+    }
+    LIBSSH2_CHANNEL *channel = libssh2_channel_open_session(session);
+    if (channel == nullptr) {
+        libssh2_session_disconnect(session, "channel failed");
+        libssh2_session_free(session);
+        close(fd);
+        return reply(0, "channel open failed");
+    }
+    if (libssh2_channel_exec(channel, "term-echo") != 0) {
+        libssh2_channel_free(channel);
+        libssh2_session_disconnect(session, "exec failed");
+        libssh2_session_free(session);
+        close(fd);
+        return reply(0, "exec failed");
+    }
+
+    // 交互式会话必须非阻塞：否则 worker 会阻塞在 channel_read 上（受 SO_RCVTIMEO 影响
+    // 最长 8 秒），键盘输入的写入要等到读超时才发出去。
+    libssh2_session_set_blocking(session, 0);
+
+    auto *sess = new ShellSession();
+    sess->session = session;
+    sess->channel = channel;
+    sess->fd = fd;
+
+    napi_value n1 = nullptr;
+    napi_value n2 = nullptr;
+    napi_create_string_utf8(env, "motty.ssh.shell.data", NAPI_AUTO_LENGTH, &n1);
+    napi_create_string_utf8(env, "motty.ssh.shell.done", NAPI_AUTO_LENGTH, &n2);
+    if (napi_create_threadsafe_function(env, args[5], nullptr, n1, 0, 1, nullptr, nullptr, nullptr, callJs, &sess->onData) != napi_ok ||
+        napi_create_threadsafe_function(env, args[6], nullptr, n2, 0, 1, nullptr, nullptr, nullptr, callJs, &sess->onDone) != napi_ok) {
+        libssh2_channel_free(channel);
+        libssh2_session_free(session);
+        close(fd);
+        delete sess;
+        return reply(0, "tsfn failed");
+    }
+
+    int id = g_nextId.fetch_add(1);
+    {
+        std::lock_guard<std::mutex> lock(g_sessionsMtx);
+        g_sessions[id] = sess;
+    }
+    // 会话 id 交给工作线程，用于结束时从表里摘除
+    std::thread([sess, id]() { shellLoop(sess, id); }).detach();
+    return reply(id, nullptr);
+}
+
+// sendInput(id, text)
+napi_value SendInput(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int32_t id = 0;
+    napi_get_value_int32(env, args[0], &id);
+    size_t len = 0;
+    napi_get_value_string_utf8(env, args[1], static_cast<char *>(nullptr), 0, &len);
+    std::string text;
+    if (len > 0) {
+        text.resize(len);
+        napi_get_value_string_utf8(env, args[1], &text[0], len + 1, &len);
+    }
+    ShellSession *sess = findSession(id);
+    if (sess == nullptr || sess->closed.load()) {
+        napi_value out = nullptr;
+        napi_create_int32(env, 0, &out);
+        return out;
+    }
+    {
+        std::lock_guard<std::mutex> lock(sess->mtx);
+        sess->pending += text;
+        sess->pending += "\n";   // 交互式行输入：每次发送补一个换行
+    }
+    napi_value out = nullptr;
+    napi_create_int32(env, 1, &out);
+    return out;
+}
+
+// closeShell(id)
+napi_value CloseShell(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int32_t id = 0;
+    napi_get_value_int32(env, args[0], &id);
+    ShellSession *sess = findSession(id);
+    if (sess != nullptr) {
+        sess->closed.store(true);
+    }
+    napi_value out = nullptr;
+    napi_create_int32(env, sess == nullptr ? 0 : 1, &out);
+    return out;
+}
+
 napi_value Init(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
         {"probe", nullptr, Probe, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"exec", nullptr, Exec, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"openShell", nullptr, OpenShell, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"sendInput", nullptr, SendInput, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"closeShell", nullptr, CloseShell, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     return exports;

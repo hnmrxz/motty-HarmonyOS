@@ -73,6 +73,8 @@ struct Index {
   @State termText: string = '';
   private pendingAction: string = 'connect';   // connect | terminal
   private termIndex: number = -1;
+  private shellId: number = 0;
+  @State termInput: string = '';
 
   // 密码只在内存：键为 address:port。进程退出即失，这是刻意的。
   private creds: Map<string, Cred> = new Map<string, Cred>();
@@ -248,13 +250,70 @@ struct Index {
     this.termVisible = true;
     this.termText = '';
     this.setStatus(index, 'terminal streaming...');
-    mottynapi.exec(cred.address, cred.port, cred.user, cred.password, 'term-demo', fp,
+    const id: number = mottynapi.openShell(cred.address, cred.port, cred.user, cred.password, fp,
       (chunk: string) => { this.termText = this.termText + chunk; },
       (status: string) => {
         this.termText = this.termText + '\n[status] ' + status;
         this.setStatus(index, 'terminal: ' + status);
+        this.shellId = 0;
       });
+    this.shellId = id;
+    if (id === 0) {
+      this.termText = 'failed to open interactive shell';
+    }
   }
+
+  // 诊断用：一次性流式 exec（term-demo，多块到达）。与交互式 openShell 覆盖不同性质：
+  //   - exec: 一条命令、多块输出、无输入
+  //   - openShell: 长通道、可写入、远端回显
+  private openTerminalDemo(): void {
+    this.pendingAction = 'demo';
+    const cred = this.creds.get(this.fixtureKey);
+    if (cred === undefined) {
+      this.probeText = 'no fixture credentials';
+      return;
+    }
+    this.lookupFp(this.fixtureKey).then((fp: string) => {
+      if (fp.length === 0) {
+        mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo no-auth-yet', '',
+          (first: string) => {
+            const m = new RegExp('SHA256:[A-Za-z0-9+/]+').exec(first);
+            if (m === null || first.indexOf('unknown_host') !== 0) {
+              this.probeText = first;
+              return;
+            }
+            this.pendingFp = m[0];
+            this.pendingKey = this.fixtureKey;
+            this.keyDialog = true;
+          });
+        return;
+      }
+      this.runDemo(cred, fp);
+    });
+  }
+
+  private runDemo(cred: Cred, fp: string): void {
+    this.termVisible = true;
+    this.termText = '';
+    mottynapi.exec(cred.address, cred.port, cred.user, cred.password, 'term-demo', fp,
+      (chunk: string) => { this.termText = this.termText + chunk; },
+      (status: string) => { this.termText = this.termText + '\n[status] ' + status; });
+  }
+
+  private sendTermInput(): void {
+    if (this.shellId === 0) {
+      this.termText = this.termText + '\n[no session]';
+      return;
+    }
+    const text = this.termInput;
+    if (text.length === 0) {
+      return;
+    }
+    this.termText = this.termText + text + '\n';
+    mottynapi.sendInput(this.shellId, text);
+    this.termInput = '';
+  }
+
 
   // ---- 连接：未知主机先取指纹并要用户确认，已知则直接连 ----
   private async connectRow(index: number): Promise<void> {
@@ -313,7 +372,9 @@ struct Index {
       for (let i = 0; i < this.hosts.length; i++) {
         if (this.hostKey(this.hosts[i].address, this.hosts[i].port) === key) {
           this.setStatus(i, 'trusted ' + fp + ', connecting...');
-          if (this.pendingAction === 'terminal') {
+          if (this.pendingAction === 'demo') {
+            this.runDemo(cred, fp);
+          } else if (this.pendingAction === 'terminal') {
             this.startTerminal(i, cred, fp);
           } else {
             this.runProbe(i, cred, fp);
@@ -472,7 +533,13 @@ struct Index {
           .id('terminal/close')
           .backgroundColor('#E6E6E6')
           .fontColor('#1A1A1A')
-          .onClick(() => { this.termVisible = false; })
+          .onClick(() => {
+            if (this.shellId !== 0) {
+              mottynapi.closeShell(this.shellId);
+              this.shellId = 0;
+            }
+            this.termVisible = false;
+          })
       }.width('100%')
       Scroll() {
         Text(this.termText.length > 0 ? this.termText : '(no output yet)')
@@ -487,6 +554,16 @@ struct Index {
       .align(Alignment.TopStart)
       .border({ width: 1, color: '#CCCCCC' })
       .padding(8)
+
+      Row({ space: 8 }) {
+        TextInput({ text: this.termInput, placeholder: 'type a line and press Send' })
+          .id('terminal/input')
+          .layoutWeight(1)
+          .onChange((v: string) => { this.termInput = v; })
+        Button('Send')
+          .id('terminal/send')
+          .onClick(() => { this.sendTermInput(); })
+      }.width('100%')
     }
     .id('terminal/panel')
     .width(680)
@@ -533,6 +610,8 @@ struct Index {
         Row({ space: 8 }) {
           Text('Motty').fontSize(20).fontWeight(FontWeight.Bold)
           Blank()
+          Button('Term Demo').id('terminal/demo').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+            .onClick(() => { this.openTerminalDemo(); })
           Button('SSH Test').id('ssh/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
             .onClick(() => { this.probeSsh(); })
           Button('Hostkey Check').id('ssh/hostkey-check').backgroundColor('#E6E6E6').fontColor('#1A1A1A')

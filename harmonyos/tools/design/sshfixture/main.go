@@ -142,6 +142,26 @@ func serveSession(ch ssh.Channel, reqs <-chan *ssh.Request, auth string) {
 			}
 			req.Reply(true, nil)
 			log.Printf("exec: %q", payload.Command)
+			if strings.HasPrefix(payload.Command, "term-echo") {
+				// 交互式会话夹具：读完一行回一行，用来验证"键盘输入 -> 远端 -> 回显"闭环。
+				fmt.Fprint(ch, "term-echo ready\r\n")
+				buf := make([]byte, 256)
+				for {
+					n, rerr := ch.Read(buf)
+					if n > 0 {
+						line := strings.TrimRight(string(buf[:n]), "\r\n")
+						if line != "" {
+							fmt.Fprintf(ch, "echo: %s\r\n", line)
+						}
+					}
+					if rerr != nil {
+						break
+					}
+				}
+				status := struct{ Status uint32 }{0}
+				ch.SendRequest("exit-status", false, ssh.Marshal(&status))
+				return
+			}
 			if strings.HasPrefix(payload.Command, "term-demo") {
 				// 多行 + 延迟：终端渲染/流式接收的验证用。刻意带 \r\n 与转义序列，
 				// 让后续真正的 VT 解析有东西可吃。
