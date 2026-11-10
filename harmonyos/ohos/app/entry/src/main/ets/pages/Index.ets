@@ -164,6 +164,7 @@ struct Index {
   @State vncStatus: string = '';
   @State vncFrameInfo: string = '';
   @State vncDrawn: number = 0;
+  @State vncPassword: string = 'secret';
 
   private creds: Map<string, Cred> = new Map<string, Cred>();
   private store: relationalStore.RdbStore | null = null;
@@ -708,7 +709,7 @@ struct Index {
     this.vncFrameInfo = '';
     this.lookupFp(this.fixtureKey).then((_fp: string) => {
       try {
-        this.vncId = mottynapi.vncStart('127.0.0.1', 5901,
+        this.vncId = mottynapi.vncStart('127.0.0.1', 5901, this.vncPassword,
           (frameStr: string) => {
             // 帧格式："WxH:hexRGB..."。用 Canvas 的 fillRect 画网格，
             // 不用 putImageData/ImageData——那条路会触发 SkiaImage::Serialize 崩溃。
@@ -759,7 +760,7 @@ struct Index {
             }
           });
       } catch (e) {
-        this.vncStatus = 'start failed: ' + JSON.stringify(e);
+        this.vncStatus = 'start failed: ' + String(e);
       }
     });
   }
@@ -1113,7 +1114,7 @@ struct Index {
   vncPanel() {
     Column({ space: 8 }) {
       Row() {
-        Text('VNC (RFB 3.8, Raw, no auth)').fontSize(16).fontWeight(FontWeight.Bold)
+        Text('VNC (RFB 3.8)').fontSize(16).fontWeight(FontWeight.Bold)
         Blank()
         Button('Stop').id('vnc/stop').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.stopVnc(); })

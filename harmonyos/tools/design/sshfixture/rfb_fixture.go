@@ -14,6 +14,7 @@
 package main
 
 import (
+	"crypto/des"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -26,6 +27,34 @@ const (
 	rfbWidth  = 64
 	rfbHeight = 48
 )
+
+var rfbPassword string
+
+// reverseBits 与客户端保持一致：VNC Auth 的 key 是口令每字节位反序
+func reverseBits(b byte) byte {
+	var r byte
+	for i := 0; i < 8; i++ {
+		r = (r << 1) | ((b >> uint(i)) & 1)
+	}
+	return r
+}
+
+// vncAuthExpect 计算期望响应：DES-ECB(key=位反序口令, challenge 两段)
+func vncAuthExpect(challenge []byte, password string) []byte {
+	key := make([]byte, 8)
+	copy(key, []byte(password))
+	for i := 0; i < 8; i++ {
+		key[i] = reverseBits(key[i])
+	}
+	block, err := des.NewCipher(key)
+	if err != nil {
+		return nil
+	}
+	out := make([]byte, 16)
+	block.Encrypt(out[0:8], challenge[0:8])
+	block.Encrypt(out[8:16], challenge[8:16])
+	return out
+}
 
 type pointerMark struct {
 	valid bool
@@ -46,15 +75,50 @@ func serveRFB(conn net.Conn) {
 	}
 	log.Printf("rfb: client version %q", string(ver))
 
-	// 安全类型列表：只有 None(1)
-	if _, err := conn.Write([]byte{1, 1}); err != nil {
-		return
+	// 安全类型：配置了口令就只提供 VNC Auth(2)，否则提供 None(1)
+	offerAuth := rfbPassword != ""
+	if offerAuth {
+		if _, err := conn.Write([]byte{1, 2}); err != nil {
+			return
+		}
+	} else {
+		if _, err := conn.Write([]byte{1, 1}); err != nil {
+			return
+		}
 	}
+	log.Printf("rfb: offered auth=%v", offerAuth)
 	sel := make([]byte, 1)
 	if _, err := io.ReadFull(conn, sel); err != nil {
+		log.Printf("rfb: reading security choice failed: %v", err)
 		return
 	}
-	if sel[0] != 1 {
+	log.Printf("rfb: client chose security type %d", sel[0])
+	if offerAuth {
+		if sel[0] != 2 {
+			log.Printf("rfb: client picked unsupported security type %d", sel[0])
+			return
+		}
+		// 16 字节挑战
+		challenge := make([]byte, 16)
+		for i := range challenge {
+			challenge[i] = byte(i*7 + 3)
+		}
+		if _, err := conn.Write(challenge); err != nil {
+			return
+		}
+		resp := make([]byte, 16)
+		if _, err := io.ReadFull(conn, resp); err != nil {
+			return
+		}
+		if string(resp) != string(vncAuthExpect(challenge, rfbPassword)) {
+			log.Printf("rfb: vnc auth FAILED (wrong password)")
+			_ = binary.Write(conn, binary.BigEndian, uint32(1))
+			// 3.8: 失败后还会发一段原因字符串
+			_ = binary.Write(conn, binary.BigEndian, uint32(0))
+			return
+		}
+		log.Printf("rfb: vnc auth ok")
+	} else if sel[0] != 1 {
 		log.Printf("rfb: client picked unsupported security type %d", sel[0])
 		return
 	}
@@ -88,6 +152,7 @@ func serveRFB(conn net.Conn) {
 	}
 
 	var mark pointerMark
+	useHextile := false
 
 	// 消息循环
 	for {
@@ -113,7 +178,13 @@ func serveRFB(conn net.Conn) {
 			if _, err := io.ReadFull(conn, body); err != nil {
 				return
 			}
-			log.Printf("rfb: SetEncodings count=%d", count)
+			useHextile = false
+			for i := 0; i < count; i++ {
+				if int32(binary.BigEndian.Uint32(body[i*4:])) == 5 {
+					useHextile = true
+				}
+			}
+			log.Printf("rfb: SetEncodings count=%d hextile=%v", count, useHextile)
 		case 3: // FramebufferUpdateRequest
 			req := make([]byte, 9)
 			if _, err := io.ReadFull(conn, req); err != nil {
@@ -124,7 +195,13 @@ func serveRFB(conn net.Conn) {
 			w := binary.BigEndian.Uint16(req[5:])
 			h := binary.BigEndian.Uint16(req[7:])
 			log.Printf("rfb: FBUpdateRequest inc=%d %d,%d %dx%d", req[0], x, y, w, h)
-			if err := sendRawUpdate(conn, mark); err != nil {
+			var uerr error
+			if useHextile {
+				uerr = sendHextileUpdate(conn, mark)
+			} else {
+				uerr = sendRawUpdate(conn, mark)
+			}
+			if err := uerr; err != nil {
 				log.Printf("rfb: send update failed: %v", err)
 				return
 			}
@@ -199,8 +276,111 @@ func sendRawUpdate(conn net.Conn, mark pointerMark) error {
 	return err
 }
 
-// startRFBFixture 在指定地址起 RFB 监听（每连接一个 goroutine）
-func startRFBFixture(addr string) (net.Listener, error) {
+// sendHextileUpdate 用 Hextile(5) 编码发同一图案。
+// 每个 16x16 瓦片：BackgroundSpecified + AnySubrects + SubrectsColoured，
+// 于是"左红右蓝 + 指针绿块"用少量 subrect 表达，客户端必须真的解码 Hextile。
+func sendHextileUpdate(conn net.Conn, mark pointerMark) error {
+	head := make([]byte, 0, 16)
+	head = append(head, 0, 0)
+	head = binary.BigEndian.AppendUint16(head, 1)
+	head = binary.BigEndian.AppendUint16(head, 0)
+	head = binary.BigEndian.AppendUint16(head, 0)
+	head = binary.BigEndian.AppendUint16(head, rfbWidth)
+	head = binary.BigEndian.AppendUint16(head, rfbHeight)
+	head = binary.BigEndian.AppendUint32(head, 5) // encoding = Hextile
+	if _, err := conn.Write(head); err != nil {
+		return err
+	}
+
+	redPx := []byte{0x00, 0x00, 0xFF, 0x00}
+	bluePx := []byte{0xFF, 0x00, 0x00, 0x00}
+	greenPx := []byte{0x00, 0xFF, 0x00, 0x00}
+
+	for ty := 0; ty < rfbHeight; ty += 16 {
+		for tx := 0; tx < rfbWidth; tx += 16 {
+			tileW := 16
+			if tx+tileW > rfbWidth {
+				tileW = rfbWidth - tx
+			}
+			tileH := 16
+			if ty+tileH > rfbHeight {
+				tileH = rfbHeight - ty
+			}
+			// 以瓦片左列颜色作为背景，其它颜色用 subrect 覆盖
+			isLeft := tx+tileW/2 <= rfbWidth/2
+			var bg []byte
+			if isLeft {
+				bg = redPx
+			} else {
+				bg = bluePx
+			}
+			// subencoding: BackgroundSpecified(2) | AnySubrects(8) | SubrectsColoured(16)
+			sub := byte(2 | 8 | 16)
+			if _, err := conn.Write([]byte{sub}); err != nil {
+				return err
+			}
+			if _, err := conn.Write(bg); err != nil {
+				return err
+			}
+			// 收集需要覆盖的 subrect：跨色的半瓦片 + 绿块
+			type subrect struct {
+				px          []byte
+				x, y, w, h  int
+			}
+			var subs []subrect
+			// 跨色：瓦片横跨中线时，右半用蓝色覆盖
+			if tx < rfbWidth/2 && tx+tileW > rfbWidth/2 {
+				half := rfbWidth/2 - tx
+				subs = append(subs, subrect{bluePx, half, 0, tileW - half, tileH})
+			}
+			// 绿块：与 Raw 路径保持一致的 8x8
+			if mark.valid {
+				x0 := mark.x - 4
+				y0 := mark.y - 4
+				// 与本瓦片求交
+				ix := x0
+				if ix < tx {
+					ix = tx
+				}
+				iy := y0
+				if iy < ty {
+					iy = ty
+				}
+				ix2 := x0 + 9
+				if ix2 > tx+tileW {
+					ix2 = tx + tileW
+				}
+				iy2 := y0 + 9
+				if iy2 > ty+tileH {
+					iy2 = ty + tileH
+				}
+				if ix2 > ix && iy2 > iy {
+					subs = append(subs, subrect{greenPx, ix - tx, iy - ty, ix2 - ix, iy2 - iy})
+				}
+			}
+			if err := binary.Write(conn, binary.BigEndian, byte(len(subs))); err != nil {
+				return err
+			}
+			for _, sr := range subs {
+				if _, err := conn.Write(sr.px); err != nil {
+					return err
+				}
+				if _, err := conn.Write([]byte{byte(sr.x<<4 | sr.y)}); err != nil {
+					return err
+				}
+				if _, err := conn.Write([]byte{byte((sr.w - 1) << 4 | (sr.h - 1))}); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// startRFBFixture 在指定地址起 RFB 监听（每连接一个 goroutine）。
+// password 非空时只提供 VNC Auth，用于验证 DES 认证路径。
+func startRFBFixture(addr, password string) (net.Listener, error) {
+	rfbPassword = password
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err

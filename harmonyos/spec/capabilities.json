@@ -1045,6 +1045,7 @@
       },
       "evidence": "E1",
       "proof": [
+        "spec/scenarios/vnc.auth-hextile.yaml",
         "spec/scenarios/vnc.handshake.yaml",
         "spec/scenarios/vnc.session.yaml"
       ],
@@ -1069,8 +1070,10 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/vnc.auth-hextile.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {
@@ -1078,7 +1081,8 @@
         "planInMatrix": "原样",
         "deps": "G1",
         "acceptance": "`vnc_e2e`"
-      }
+      },
+      "partialCoverage": "部分：Raw + Hextile 已实测；CopyRect/RRE/ZRLE/Tight 未做。"
     },
     {
       "id": "E03",
@@ -1091,8 +1095,10 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/vnc.auth-hextile.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {
@@ -1100,7 +1106,8 @@
         "planInMatrix": "原样",
         "deps": "G1",
         "acceptance": "`vnc_e2e`"
-      }
+      },
+      "partialCoverage": "None 与 VNC Auth(DES) 均已双画像实测。"
     },
     {
       "id": "E04",

@@ -46,15 +46,16 @@ func main() {
 	user := flag.String("user", "tester", "only this user is accepted")
 	pass := flag.String("password", "secret", "password for password auth")
 	vncAddr := flag.String("vnc", "127.0.0.1:5901", "VNC(RFB) fixture listen address")
+	vncAuth := flag.String("vnc-auth", "", "VNC Auth password (empty = security type None)")
 	printKey := flag.Bool("print-client-key", true, "print the generated client key path/passphrase")
 	flag.Parse()
 
-	if err := run(*addr, *hostkeyPath, *hostkeyType, *user, *pass, *vncAddr, *printKey); err != nil {
+	if err := run(*addr, *hostkeyPath, *hostkeyType, *user, *pass, *vncAddr, *vncAuth, *printKey); err != nil {
 		log.Fatalf("sshfixture: %v", err)
 	}
 }
 
-func run(addr, hostkeyPath, hostkeyType, user, pass, vncAddr string, printKey bool) error {
+func run(addr, hostkeyPath, hostkeyType, user, pass, vncAddr, vncAuth string, printKey bool) error {
 	hostSigner, _, err := loadOrCreateHostKey(hostkeyPath, hostkeyType)
 	if err != nil {
 		return fmt.Errorf("host key: %w", err)
@@ -93,7 +94,7 @@ func run(addr, hostkeyPath, hostkeyType, user, pass, vncAddr string, printKey bo
 	}
 	defer ln.Close()
 
-	if _, verr := startRFBFixture(vncAddr); verr != nil {
+	if _, verr := startRFBFixture(vncAddr, vncAuth); verr != nil {
 		log.Printf("rfb fixture disabled: %v", verr)
 	}
 

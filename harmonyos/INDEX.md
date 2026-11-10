@@ -781,3 +781,35 @@ abc|中文|def
 - 只支持 `Raw` 编码：真实 VNC 服务器的常见编码（Hextile/ZRLE/Tight）一个都没做
 - 无 VNC Auth(DES)：只给 VNC Auth 的服务器连不上（会明确报错）
 - 键盘事件未断言；剪贴板、缩放、滚动、断线重连未做
+---
+
+## Round 26：VNC Auth(DES) 与 Hextile 编码
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/ssh_napi.cpp` | VNC Auth：口令按位反序成 DES key，加密 16 字节挑战（**用 mbedTLS 的 DES，不自己搓**）；Hextile(5) 解码（Background/Foreground/AnySubrects/SubrectsColoured，含 Raw 瓦片）；状态行加 `auth=vncauth\|none` 与 `enc=hextile\|raw` |
+| `tools/design/sshfixture/rfb_fixture.go` | `-vnc-auth <pw>` 只提供 VNC Auth（`crypto/des` 校验响应）；按客户端 SetEncodings 自动改用 Hextile 发送 |
+| `spec/scenarios/vnc.auth-hextile.yaml` | 认证 + Hextile + 指针 → 绿块回归 |
+
+### 修掉的两个真问题
+1. **C++ 补丁静默未生效**：我改了"安全类型选择"，但锚点文本与文件实际内容不符，替换没发生，
+   编译后仍跑旧逻辑（错误信息还是老的）。**教训：批量文本替换必须回读校验**，这次靠
+   "状态行显示的是旧错误文案"才暴露。
+2. **Go 变量遮蔽**：夹具里 `useHextile := false` 在 switch 分支内遮蔽了外层变量，
+   导致"客户端请求了 Hextile"的结论从未生效，服务器一直发 Raw。
+
+### 夹具两种模式（证据分别记录，不混在一起）
+| 模式 | 启动参数 | 用于 |
+|---|---|---|
+| None | 无 | 18 条标准 spec |
+| VNC Auth | `-vnc-auth secret` | `vnc.auth-hextile` |
+
+### 双画像验收（19 条 × 2 画像 = 38 次）
+标准矩阵 18 条（None 模式）全绿；`vnc.auth-hextile` 单独在 auth 模式下双画像通过。
+对端日志实证：`client chose security type 2` → `vnc auth ok`；`SetEncodings count=2 hextile=true`。
+
+### 仍未做
+- 编码：CopyRect / RRE / ZRLE / Tight 一个都没有
+- RFB 3.3 / 3.7（只实现 3.8）
+- 错误口令的负向用例（需夹具以另一口令启动）
+- 键盘事件断言、剪贴板、缩放滚动、VeNCrypt/TLS、真实 VNC 服务器、RDP

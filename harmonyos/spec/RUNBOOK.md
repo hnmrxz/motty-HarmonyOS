@@ -752,3 +752,29 @@ Canvas.putImageData(new ImageData(w, h, rgba), 0, 0)
 不要用"画面看起来对了"当判据。本工程用三个机器判据：
 `drawn=3072`（渲染路径真的执行了）、`green>0`（输入真的到对端且新帧回来了）、
 `red>0`（图案本身解码正确）。截图只作人工复核，不作为唯一证据。
+---
+
+## 27. VNC Auth(DES) 与 Hextile
+
+### 27.1 VNC Auth 的两个坑
+1. **不是说"发口令"**：服务器发 16 字节挑战，客户端把口令转成 DES key（**每字节位反序**，
+   不足 8 字节补 0），再用 DES-ECB 分两段加密挑战，回 16 字节响应。
+2. **别自己搓 DES**：mbedTLS 已经链进来了，`mbedtls_des_setkey_enc` + `mbedtls_des_crypt_ecb`
+   直接用。先确认静态库里有符号（`llvm-nm libmbedcrypto.a | grep mbedtls_des`），
+   否则链接期才发现就晚了。
+
+### 27.2 Hextile 解码要点
+16×16 瓦片，先读 1 字节 subencoding：
+`1=Raw 瓦片`、`2=BackgroundSpecified`、`4=ForegroundSpecified`、`8=AnySubrects`、`16=SubrectsColoured`。
+subrect 用两字节 `(x<<4|y)` 与 `((w-1)<<4|(h-1))` 表示。
+漏掉任一标志位都会导致后续字节错位、画面花屏。
+
+### 27.3 夹具的两种模式
+`-vnc-auth <pw>` 时只提供 VNC Auth(2)（用 Go 的 `crypto/des` 校验）；不带该参数则只提供 None(1)。
+**标准 spec 用 None 模式，认证 spec 用 auth 模式**——两种模式的证据分别记录，不要混为一次运行。
+
+### 27.4 两个本轮的教训
+- **批量文本替换必须回读校验**：C++ 补丁因锚点不匹配静默未生效，编译通过但跑的是旧逻辑；
+  这次是靠"状态行里还是旧错误文案"才发现的。
+- **Go 的 `:=` 会遮蔽外层变量**：夹具里 `useHextile := false` 写进 switch 分支后，
+  外层的判断永远不生效，服务器一直发 Raw，客户端自然看不到 `enc=hextile`。

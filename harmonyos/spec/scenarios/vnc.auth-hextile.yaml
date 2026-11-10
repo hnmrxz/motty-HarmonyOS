@@ -1,0 +1,70 @@
+schema: 1
+id: vnc.auth-hextile
+title: VNC Auth(DES) 与 Hextile 编码：用口令认证成功并解码 Hextile 画面
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - E01
+  - E02
+  - E03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:diag/open
+  - action: click
+    target: id:vnc/session
+  - action: wait
+    ms: 3000
+    expect:
+      kind: screenRegex
+      regex: "auth=vncauth"
+      withinMs: 15000
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "enc=hextile"
+      withinMs: 12000
+  - action: click
+    target: id:vnc/tap
+  - action: wait
+    ms: 2500
+asserts:
+  - kind: screenRegex
+    regex: "auth=vncauth"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "enc=hextile"
+    withinMs: 6000
+  - kind: screenRegex
+    regex: "green=[1-9][0-9]*"
+    withinMs: 12000
+  - kind: screenRegex
+    regex: "red=[1-9][0-9]*"
+    withinMs: 6000
+  - kind: absent
+    value: "error unsupported encoding"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：VNC Auth(2) 的 DES 挑战-响应（口令按位反序成 key）、
+    Hextile(5) 解码（BackgroundSpecified/AnySubrects/SubrectsColoured 组合）。
+    **不覆盖**：错误口令的失败路径断言（夹具需以错误口令启动，属另一条用例）、
+    Raw 之外的其它编码（ZRLE/Tight/CopyRect）、VeNCrypt/TLS、
+    真实 VNC 服务器（TightVNC/RealVNC）、键盘事件、剪贴板、缩放滚动、arm64 真机。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 夹具以 `-vnc-auth secret` 启动，只提供 VNC Auth；客户端口令同为 secret
+notes: >-
+  auth=vncauth 与 enc=hextile 都来自客户端自己上报的状态，但都不是"自称"：
+  auth=vncauth 只有在 DES 响应被服务器接受（SecurityResult=0）后才成立；
+  enc=hextile 只有在真的解出 Hextile 矩形后才会被置位。
+  green>0 说明 Hextile 解出的画面里指针绿块位置正确。

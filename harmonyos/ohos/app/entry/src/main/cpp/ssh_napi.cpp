@@ -12,6 +12,7 @@
 #include <napi/native_api.h>
 #include <libssh2.h>
 #include <libssh2_sftp.h>
+#include <mbedtls/des.h>
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -1604,6 +1605,9 @@ struct VncSession {
     int greenShift = 8;
     int blueShift = 0;
     std::string name;
+    std::string password;      // VNC Auth 口令（空 = 只用 None）
+    bool usedVncAuth = false;
+    bool usedHextile = false;
     std::mutex mtx;
     std::string pendingEvents;   // 每行：P x y mask / K keysym down
     std::atomic<bool> closed{false};
@@ -1646,6 +1650,31 @@ void callJsBuffer(napi_env env, napi_value jsCb, void * /*context*/, void *data)
     delete payload;
 }
 
+unsigned char reverseBits(unsigned char b) {
+    unsigned char r = 0;
+    for (int i = 0; i < 8; i++) {
+        r = static_cast<unsigned char>((r << 1) | ((b >> i) & 1u));
+    }
+    return r;
+}
+
+// VNC Auth：口令 -> 8 字节 DES key（每字节位反序，不足补 0），DES-ECB 加密 16 字节挑战
+bool vncAuthResponse(const std::string &password, const unsigned char *challenge, unsigned char *response) {
+    unsigned char key[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+    for (size_t i = 0; i < password.size() && i < 8; i++) {
+        key[i] = reverseBits(static_cast<unsigned char>(password[i]));
+    }
+    mbedtls_des_context ctx;
+    mbedtls_des_init(&ctx);
+    bool ok = mbedtls_des_setkey_enc(&ctx, key) == 0;
+    if (ok) {
+        ok = mbedtls_des_crypt_ecb(&ctx, challenge, response) == 0;
+        ok = ok && mbedtls_des_crypt_ecb(&ctx, challenge + 8, response + 8) == 0;
+    }
+    mbedtls_des_free(&ctx);
+    return ok;
+}
+
 bool vncHandshake(VncSession *sess, const std::string &host, int port, std::string &err) {
     int fd = tcpConnect(host, port, err);
     if (fd < 0) {
@@ -1661,12 +1690,43 @@ bool vncHandshake(VncSession *sess, const std::string &host, int port, std::stri
     std::vector<unsigned char> types(nTypes);
     if (!readExact(fd, types.data(), types.size())) { err = "read security types"; return false; }
     bool hasNone = false;
-    for (unsigned char t : types) { if (t == 1) hasNone = true; }
-    if (!hasNone) { err = "server requires auth (VNC Auth/DES not implemented)"; return false; }
-    const unsigned char pick = 1;
+    bool hasVncAuth = false;
+    for (unsigned char t : types) {
+        if (t == 1) hasNone = true;
+        if (t == 2) hasVncAuth = true;
+    }
+    // 优先 VNC Auth（给了口令就走认证）；否则回落到 None
+    unsigned char pick = 0;
+    if (hasVncAuth && !sess->password.empty()) {
+        pick = 2;
+    } else if (hasNone) {
+        pick = 1;
+    } else {
+        err = hasVncAuth
+                  ? ("server requires VNC Auth but no password was supplied (pwlen=" +
+                     std::to_string(sess->password.size()) + ")")
+                  : "no supported security type";
+        return false;
+    }
     if (!writeAll(fd, &pick, 1)) { err = "write security choice"; return false; }
+    if (pick == 2) {
+        // 3.8：选完类型后服务器发 16 字节挑战，客户端回 16 字节 DES 响应
+        unsigned char challenge[16];
+        if (!readExact(fd, challenge, 16)) { err = "auth challenge"; return false; }
+        unsigned char response[16];
+        if (!vncAuthResponse(sess->password, challenge, response)) {
+            err = "auth des failed";
+            return false;
+        }
+        if (!writeAll(fd, response, 16)) { err = "auth response"; return false; }
+        sess->usedVncAuth = true;
+    }
     unsigned char secRes[4];
     if (!readExact(fd, secRes, 4)) { err = "security result"; return false; }
+    if (secRes[0] != 0 || secRes[1] != 0 || secRes[2] != 0 || secRes[3] != 0) {
+        err = (pick == 2) ? "authentication failed (wrong password?)" : "security result not ok";
+        return false;
+    }
     const unsigned char shared = 1;
     if (!writeAll(fd, &shared, 1)) { err = "client init"; return false; }
     unsigned char si[24];
@@ -1688,7 +1748,7 @@ bool vncHandshake(VncSession *sess, const std::string &host, int port, std::stri
         return false;
     }
     if (bpp != 32 || !trueColor) { err = "unsupported pixel format"; return false; }
-    std::vector<unsigned char> enc = {2, 0, 0, 1, 0, 0, 0, 0};   // 只请求 Raw
+    std::vector<unsigned char> enc = {2, 0, 0, 2, 0, 0, 0, 5, 0, 0, 0, 0};   // Hextile(5) + Raw(0)
     if (!writeAll(fd, enc.data(), enc.size())) { err = "set encodings"; return false; }
     return true;
 }
@@ -1756,6 +1816,84 @@ void vncLoop(VncSession *sess, int id) {
             const int rw = (rh[4] << 8) | rh[5];
             const int rhh = (rh[6] << 8) | rh[7];
             const int32_t encoding = (static_cast<int32_t>(rh[8]) << 24) | (rh[9] << 16) | (rh[10] << 8) | rh[11];
+            auto decodePixel = [&](const unsigned char *p) -> unsigned int {
+                const unsigned int raw = static_cast<unsigned int>(p[0]) |
+                                         (static_cast<unsigned int>(p[1]) << 8) |
+                                         (static_cast<unsigned int>(p[2]) << 16) |
+                                         (static_cast<unsigned int>(p[3]) << 24);
+                const unsigned int rv = (raw >> sess->redShift) & 0xFF;
+                const unsigned int gv = (raw >> sess->greenShift) & 0xFF;
+                const unsigned int bv = (raw >> sess->blueShift) & 0xFF;
+                return (rv << 16) | (gv << 8) | bv;
+            };
+            auto storePixel = [&](int gx, int gy, unsigned int rgb) {
+                if (gx < 0 || gy < 0 || gx >= w || gy >= h) return;
+                const size_t dst = (static_cast<size_t>(gy) * static_cast<size_t>(w) + gx) * 4;
+                rgba[dst] = static_cast<unsigned char>((rgb >> 16) & 0xFF);
+                rgba[dst + 1] = static_cast<unsigned char>((rgb >> 8) & 0xFF);
+                rgba[dst + 2] = static_cast<unsigned char>(rgb & 0xFF);
+                rgba[dst + 3] = 0xFF;
+            };
+
+            if (encoding == 5) {
+                // Hextile：16x16 瓦片，subencoding 控制背景/前景/subrect
+                sess->usedHextile = true;
+                for (int ty = 0; ty < rhh; ty += 16) {
+                    for (int tx = 0; tx < rw; tx += 16) {
+                        unsigned char sub = 0;
+                        if (!readExact(sess->fd, &sub, 1)) { break; }
+                        const int tw = (tx + 16 <= rw) ? 16 : (rw - tx);
+                        const int th = (ty + 16 <= rhh) ? 16 : (rhh - ty);
+                        unsigned char pix[4];
+                        unsigned int bg = 0, fg = 0;
+                        if ((sub & 1) != 0) {   // Raw 瓦片
+                            for (int y = 0; y < th; y++) {
+                                for (int x = 0; x < tw; x++) {
+                                    if (!readExact(sess->fd, pix, 4)) { break; }
+                                    storePixel(rx + tx + x, ry + ty + y, decodePixel(pix));
+                                }
+                            }
+                            continue;
+                        }
+                        if ((sub & 2) != 0) {
+                            if (!readExact(sess->fd, pix, 4)) { break; }
+                            bg = decodePixel(pix);
+                        }
+                        if ((sub & 4) != 0) {
+                            if (!readExact(sess->fd, pix, 4)) { break; }
+                            fg = decodePixel(pix);
+                        }
+                        for (int y = 0; y < th; y++) {
+                            for (int x = 0; x < tw; x++) {
+                                storePixel(rx + tx + x, ry + ty + y, bg);
+                            }
+                        }
+                        if ((sub & 8) != 0) {
+                            unsigned char nSub = 0;
+                            if (!readExact(sess->fd, &nSub, 1)) { break; }
+                            for (int i = 0; i < nSub; i++) {
+                                unsigned int colour = fg;
+                                if ((sub & 16) != 0) {
+                                    if (!readExact(sess->fd, pix, 4)) { break; }
+                                    colour = decodePixel(pix);
+                                }
+                                unsigned char xy = 0, wh = 0;
+                                if (!readExact(sess->fd, &xy, 1) || !readExact(sess->fd, &wh, 1)) { break; }
+                                const int sx = (xy >> 4) & 0x0F;
+                                const int sy = xy & 0x0F;
+                                const int sw = ((wh >> 4) & 0x0F) + 1;
+                                const int sh = (wh & 0x0F) + 1;
+                                for (int y = 0; y < sh; y++) {
+                                    for (int x = 0; x < sw; x++) {
+                                        storePixel(rx + tx + sx + x, ry + ty + sy + y, colour);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                continue;
+            }
             if (encoding != 0) {
                 vncStatus(sess, "error unsupported encoding " + std::to_string(encoding));
                 sess->closed.store(true);
@@ -1809,8 +1947,10 @@ void vncLoop(VncSession *sess, int id) {
         // 不用 putImageData/ImageData：那条路会触发 SkiaImage::Serialize 崩溃（RUNBOOK §26）。
         napi_call_threadsafe_function(sess->onFrame, new std::string(frameStr), napi_tsfn_blocking);
         char status[192];
-        snprintf(status, sizeof(status), "frame=%d %dx%d red=%ld green=%ld blue=%ld",
-                 frameNo, w, h, reds, greens, blues);
+        snprintf(status, sizeof(status), "frame=%d %dx%d red=%ld green=%ld blue=%ld auth=%s enc=%s",
+                 frameNo, w, h, reds, greens, blues,
+                 sess->usedVncAuth ? "vncauth" : "none",
+                 sess->usedHextile ? "hextile" : "raw");
         vncStatus(sess, std::string(status));
         std::this_thread::sleep_for(std::chrono::milliseconds(120));
     }
@@ -1825,13 +1965,13 @@ void vncLoop(VncSession *sess, int id) {
     delete sess;
 }
 
-// vncStart(host, port, onFrame, onStatus) -> id
+// vncStart(host, port, password, onFrame, onStatus) -> id
 napi_value VncStart(napi_env env, napi_callback_info info) {
-    size_t argc = 4;
-    napi_value args[4] = {nullptr};
+    size_t argc = 5;
+    napi_value args[5] = {nullptr};
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    if (argc < 4) {
-        napi_throw_type_error(env, nullptr, "vncStart(host, port, onFrame, onStatus)");
+    if (argc < 5) {
+        napi_throw_type_error(env, nullptr, "vncStart(host, port, password, onFrame, onStatus)");
         return nullptr;
     }
     std::string host;
@@ -1841,8 +1981,16 @@ napi_value VncStart(napi_env env, napi_callback_info info) {
     napi_get_value_string_utf8(env, args[0], &host[0], len + 1, &len);
     int32_t port = 5900;
     napi_get_value_int32(env, args[1], &port);
+    std::string password;
+    size_t plen = 0;
+    napi_get_value_string_utf8(env, args[2], static_cast<char *>(nullptr), 0, &plen);
+    if (plen > 0) {
+        password.resize(plen);
+        napi_get_value_string_utf8(env, args[2], &password[0], plen + 1, &plen);
+    }
 
     auto *sess = new VncSession();
+    sess->password = password;
     std::string err;
     if (!vncHandshake(sess, host, port, err)) {
         if (sess->fd >= 0) {
@@ -1856,9 +2004,9 @@ napi_value VncStart(napi_env env, napi_callback_info info) {
     napi_value n2 = nullptr;
     napi_create_string_utf8(env, "motty.vnc.frame", NAPI_AUTO_LENGTH, &n1);
     napi_create_string_utf8(env, "motty.vnc.status", NAPI_AUTO_LENGTH, &n2);
-    if (napi_create_threadsafe_function(env, args[2], nullptr, n1, 0, 1, nullptr, nullptr, nullptr,
+    if (napi_create_threadsafe_function(env, args[3], nullptr, n1, 0, 1, nullptr, nullptr, nullptr,
                                         callJs, &sess->onFrame) != napi_ok ||
-        napi_create_threadsafe_function(env, args[3], nullptr, n2, 0, 1, nullptr, nullptr, nullptr,
+        napi_create_threadsafe_function(env, args[4], nullptr, n2, 0, 1, nullptr, nullptr, nullptr,
                                         callJs, &sess->onStatus) != napi_ok) {
         close(sess->fd);
         delete sess;
