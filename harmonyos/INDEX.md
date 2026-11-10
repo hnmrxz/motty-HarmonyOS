@@ -1403,3 +1403,30 @@ UI 对非 320×240 的缩放自适应（Canvas 固定尺寸）、ExtendedDesktop
 ### 未做
 缩放后的**坐标反算精度**（指针事件仍按 1:1 像素坐标发送，缩放时点击位置会偏）、
 ExtendedDesktopSize、Tight/ZRLE/Cursor 编码、双指缩放。
+---
+
+## Round 50：收口（全量回归未完成，如实记录）
+
+### 一、本轮完成
+| 项 | 说明 |
+|---|---|
+| `tools/sweep.ps1` | 按用例需要自动切换夹具模式（VNC Auth / None）、重启夹具、重建 rport，逐条回归并输出矩阵 JSON |
+| `spec/run.py` | **dumpLayout 重试 3 次**：设备侧会间歇报 `Wait for subscribe uitest.broadcast.command.reply timeout`，此时 dump 文件为空，旧实现直接以"选择器未命中"这种误导性错误失败 |
+| `COMPLETION-REPORT.md` | 完成度与差距清单（能力矩阵、P0/P1/P2 缺口、证据形态） |
+| `RUNBOOK.md` | 新增 §30 VNC 消息分发/DesktopSize/画布自适应、§31 SFTP 导航、§32 测试原语（shell/swipe）、§33 全量回归 |
+
+### 二、全量回归：**没有完成**（不写成通过）
+- 计划 39 条 × 2 画像；实际：平板跑了 8 条（每条最多 2 次尝试），**通过 3 条**
+- 失败集中在**第 1 步 `shell/add-host` 未命中**，与功能无关：本机 `uitest dumpLayout` 出现间歇性
+  `Wait for subscribe uitest.broadcast.command.reply timeout`（实测连续 3 次 dump 中有 1 次返回空文件）
+- 已做缓解：runner 对 dump 增加 3 次重试（本轮提交）
+- 结果落在 `spec/runs/matrix-tablet-partial.json`，**没有**伪造通过率
+
+### 三、为什么这不影响既有 E1 结论
+每条功能在**其实现的当轮**都做过双画像验证（41 条用例、逐条通过记录见各 Round 条目）。
+本轮是"再回归一遍"的额外保险，失败原因是测试基础设施抖动，不是被测功能回退。
+但按诚实原则：**本轮没有新增可引用的通过证据**，也不把旧结果冒充本轮结果。
+
+### 四、目标状态
+**未完成**。剩余缺口（RDP 完整链路、AI 能力、i18n、上架材料、arm64 真机、SBOM/渗透测试）见
+[COMPLETION-REPORT.md](./COMPLETION-REPORT.md)。

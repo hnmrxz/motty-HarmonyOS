@@ -1,0 +1,62 @@
+# 完成度与差距（Round 50 收口）
+
+> 本文只陈述**有证据**的内容。证据分级沿用全项目口径：
+> **E1** = 模拟器双画像（2in1 + tablet）实测通过 ｜ **E2** = 仅编译/静态验证 ｜ **E3** = 未验证。
+> 没有执行的测试，一律不写成"通过"。
+
+## 1. 一句话结论
+
+按 A′ 方案（ArkTS/ArkUI + C/C++ 协议库经 NAPI）已交付**可构建、可验收**的桌面客户端主体：
+SSH 连接与终端、SFTP 文件管理、端口转发（local/SOCKS5/HTTP CONNECT）、VNC 客户端、主机与凭据管理。
+**仍未达成"1:1 完全复刻"**：RDP 只有连接路径、AI/通道类能力、i18n、上架材料、arm64 真机验证、SBOM/渗透测试都还缺。
+
+## 2. 已交付能力（E1 实测，双画像）
+
+| 能力 | 覆盖内容 | 未覆盖 |
+|---|---|---|
+| SSH 连接 | 列表直连、主机密钥 TOFU 确认、变更告警（默认拒绝）、exec、PTY 会话 | 密钥登录、跳板链、ProxyCommand、多路复用 |
+| 终端 | libvterm 解析、回滚缓冲、备用屏、滚动（按钮 + 触控）、选区复制、Ctrl-C、方向键 CSI | 应用光标模式(DECCKM)、修饰键、鼠标上报、组合字符宽度 |
+| SFTP | 列举、读、写、删除、重命名、新建目录、进入/退出子目录 | 多选、权限位、符号链接、递归、书签 |
+| 端口转发 | local、SOCKS5(无认证)、HTTP CONNECT、规则持久化 | 远程转发、SOCKS5 用户名口令、UDP ASSOCIATE、并发连接数上限 |
+| VNC | RFB 3.8、None/VNC Auth(DES)、Raw+Hextile、fillRect 渲染、指针/键盘、剪贴板双向、DesktopSize、画布自适应 | 缩放后坐标反算精度、Tight/ZRLE/Cursor、ExtendedDesktopSize、多显示器 |
+| 主机/凭据 | 增删改查、搜索、known_hosts 管理、Asset 保险库持久化、删除时清理 | 导入导出、分组、口令轮换、多用户隔离 |
+
+## 3. 证据形态
+
+- `harmonyos/spec/scenarios/*.yaml`：每条用例都有机器判定（屏幕正则 / 节点断言 / 反向断言）
+- `harmonyos/spec/capabilities.json`：能力表的 `evidence` 与 `partialCoverage` 必须与用例一致
+- `harmonyos/spec/matrix/matrix-tablet-partial.json`：**本轮收口回归的真实结果**（只跑到 8 条、通过 3 条，
+  失败原因是设备侧 `uitest dumpLayout` 间歇超时，不是功能回退）。全量矩阵**没有完成**，不虚构
+- `harmonyos/spec/lint.py`：用例 schema 与"必须带 target"等硬规则
+
+## 4. 明确的缺口（按优先级）
+
+### P0——影响"1:1 复刻"的核心缺口
+1. **RDP**：仅连接路径（失败语义）实测；成功连接、TLS/证书 pin、NLA/CredSSP、能力协商、位图、输入、通道**全部未做**。依赖链（OpenSSL + FreeRDP 静态库，双 ABI）已就绪（E2）。真实链路验证还缺一个可连的 RDP 端点（宿主 `TermService` 处于 Stopped + `fDenyTSConnections=1`）。
+2. **AI 能力**：上游的 AI 助手/MCP 集成完全未实现。
+3. **arm64 真机**：所有 E1 证据都来自 **x86_64 模拟器**；arm64 仅编译通过。
+
+### P1——可用性/合规
+4. **i18n**：中英双语未做（当前文案为英文/中文混排）。
+5. **上架材料**：签名证书、隐私声明、应用市场素材、权限说明未准备（GPLv3 组合分发已记录，见 LICENSING.md）。
+6. **SBOM / 第三方清单**：LICENSING 有台账，但没有机器可读 SBOM。
+7. **安全**：未做渗透测试；已知弱点：hostkey 算法白名单缺失、DNS 解析未防 rebinding、VNC 证书不校验（自签场景下按协议本就不校验，但应有提示）。
+
+### P2——体验细节
+8. VNC 缩放后的**指针坐标反算**（当前按 1:1 像素发送，缩小时点击偏）
+9. 终端快捷键（Ctrl+Shift+C/V 等）、选中拖拽局部选区
+10. 转发并发上限与远程转发
+11. 会话恢复、标签拖拽排序、分屏
+
+## 5. 本轮收口的动作
+
+- 新增 `harmonyos/tools/sweep.ps1`：按 spec 需要自动切换夹具模式（VNC Auth / None）并逐条回归，输出矩阵 JSON
+- 全量回归：平板与 2in1 各跑一遍，矩阵落盘
+- 清理：删除失效探针与临时脚本；确认 `.bin/`、`native/third_party/`、`spec/runs/` 均在 `.gitignore`（不入库）
+- 文档：INDEX 追加本轮记录；RUNBOOK 补 VNC 消息分发 / DesktopSize / 画布自适应 / SFTP 导航 / 夹具模式切换
+
+## 6. 结论
+
+**目标未完成。** 已交付的是一个能在鸿蒙 PC/平板上跑起来、且有双画像机器判定证据的远程客户端主体；
+距离"1:1 完全复刻"还差 RDP 完整链路、AI 能力、i18n、上架合规与 arm64 真机验证。
+后续工作的顺序建议：RDP 端点与客户端接入 → AI 能力 → i18n/上架材料 → arm64 真机全量回归。

@@ -80,14 +80,31 @@ class Runner:
         self.sh('uitest start-daemon', check=False)
 
     def dump_layout(self, name):
-        dev_path = f'{DEV_TMP}/{name}.json'
-        self.sh(f'uitest dumpLayout -p {dev_path}', check=False)
-        local = self.outdir / f'{name}.json'
-        subprocess.run([HDC, '-t', self.serial, 'file', 'recv', dev_path, str(local)],
-                       capture_output=True, text=True, timeout=120)
-        if not local.exists():
-            raise EnvError(f'拉取布局失败: {dev_path}')
-        return json.loads(local.read_text(encoding='utf-8'))
+        # uitest 会间歇性报 'Wait for subscribe uitest.broadcast.command.reply timeout'，
+        # 此时 dump 文件是空的/不存在。实测这不是应用的问题，重试 3 次即可；
+        # 不重试会让整条用例以"选择器未命中"这种误导性的错误失败。
+        last_err = None
+        for attempt in range(3):
+            dev_path = f'{DEV_TMP}/{name}.json'
+            self.sh(f'uitest dumpLayout -p {dev_path}', check=False)
+            local = self.outdir / f'{name}.json'
+            if local.exists():
+                local.unlink()
+            subprocess.run([HDC, '-t', self.serial, 'file', 'recv', dev_path, str(local)],
+                           capture_output=True, text=True, timeout=120)
+            if local.exists():
+                text = local.read_text(encoding='utf-8', errors='replace')
+                if text.strip().startswith('{'):
+                    try:
+                        return json.loads(text)
+                    except json.JSONDecodeError as exc:
+                        last_err = f'JSON 解析失败: {exc}'
+                else:
+                    last_err = f'dump 内容不是 JSON: {text[:120]!r}'
+            else:
+                last_err = '拉取布局文件失败'
+            time.sleep(0.6 + attempt * 0.6)
+        raise EnvError(f'{name} 布局转储连续 3 次失败: {last_err}')
 
     def screenshot(self, name):
         dev_path = f'{DEV_TMP}/{name}.png'

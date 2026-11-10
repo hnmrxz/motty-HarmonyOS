@@ -837,3 +837,46 @@ mode = "local" | "socks5" | "http"
 
 ### 29.4 当前限制
 同时只处理一个连接；SOCKS5 仅无认证；无 UDP ASSOCIATE；HTTP 只支持 CONNECT（不是正向代理）。
+---
+
+## §30 VNC 消息分发与尺寸变化（Round 47–49）
+
+**问题**：旧帧循环"读 4 字节并断言类型必须是 `FramebufferUpdate(0)`"，
+服务端只要发一条 `ServerCutText(3)` 就会被判成 `unexpected message 3` 并**断开连接**。
+
+**改法**：先读 1 字节类型，再分发：
+- `0` = FramebufferUpdate：读 3 字节（pad + nRects），按矩形解码
+- `3` = ServerCutText：pad(3) + len(4) + text → 存入会话，`continue` 重新请求
+- 其他：报错退出（保持"不静默跳过"的原则）
+
+**DesktopSize(-223)**：`SetEncodings` 必须显式带上该伪编码，否则收不到尺寸变化。
+收到时：更新会话 `w/h`、**重分配像素缓冲**、丢弃本帧剩余矩形、重新请求。
+注意 `w/h` 不能是 `const`——这是曾经"远端改分辨率后花屏"的根因。
+
+**画布自适应**：Canvas 宽高由远端尺寸推导（长边 ≤640、保持比例），
+绘制换算 `cw = canvasW / w`；写死 320×240 会让非 4:3 远端变形。
+
+## §31 SFTP 目录导航（Round 46）
+
+- 列表条目格式 `name|size`，**目录带尾斜杠**（C 层已用 `LIBSSH2_SFTP_ATTR_PERMISSIONS` 判定）
+- 进入子目录：`sftpPath = join(sftpPath, name)` 后重新列举
+- 返回上级：去掉最后一段；`.` 或 `/` 时为根
+- `sftp/up` 的 id 必须**精确匹配**插入：`"sftp/up" in line` 会被 `sftp/upload-name` 前缀误匹配
+
+## §32 测试驱动能力（Round 35/43）
+
+runner 新增两个宿主侧/触控原语：
+- `shell`：在**宿主**上执行命令（轮换夹具 host key 等）。输出必须写**临时文件**而不是管道——
+  命令里的 `Start-Process -RedirectXxx` 会让子进程继承句柄，管道永远等不到 EOF（曾把整轮挂死 10 分钟）
+- `swipe`：`uitest uiInput swipe`，支持 `dx/dy/durationMs/settleMs`（触控滚动用例依赖它）
+
+**原则**：先有原语，再实现功能。否则功能只能停在 E3（未验证）。
+
+## §33 全量回归（Round 50）
+
+`harmonyos/tools/sweep.ps1` 按用例需要切换夹具模式并逐条回归：
+- `vnc.auth-hextile`、`vnc.negative` 需要 `-vnc-auth secret`；其余走 None
+- 每条前重启夹具、重建 `rport tcp:2222/5901`（模拟器切换后 rport 会丢）
+- 结果写 `harmonyos/spec/runs/matrix-<profile>.json`
+
+**注意**：`/data` 干净不代表通过——`--fresh` 会清应用数据，但夹具状态（临时 SFTP 根）随进程重启而重置。
