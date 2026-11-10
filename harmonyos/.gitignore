@@ -1,0 +1,34 @@
+# ---- 鏋勫缓浜х墿 ----
+.bin/
+.shots/
+.home-*/
+*.log
+
+# ---- 绗笁鏂规簮鐮佷笌鏋勫缓浜х墿锛堢敱 native/build-thirdparty.ps1 閲嶆柊鐢熸垚锛屼笉杩涘簱锛?---
+native/third_party/src/
+native/build/
+native/third_party/ohos/
+
+# ---- HarmonyOS 宸ョ▼浜х墿 ----
+ohos/app/.hvigor/
+ohos/app/.idea/
+ohos/app/oh_modules/
+ohos/app/entry/.cxx/
+ohos/app/entry/build/
+ohos/app/build/
+ohos/app/oh-package-lock.json5
+
+# ---- 绛惧悕鏉愭枡锛氱湡瀹?build-profile 鍐呭祵鏄庢枃鍙ｄ护涓庣粷瀵硅矾寰勶紝缁濅笉鍏ュ簱 ----
+ohos/app/build-profile.json5
+
+# ---- spec 杩愯璇佹嵁鐗╋紙鍙鐜帮紝缁撹鍐欒繘鏂囨。鑰屼笉鏄彁浜?PNG锛?---
+spec/runs/
+# ---- spike 探针工程：同样含签名口令与构建产物，只保留源码 ----
+spike/*/build-profile.json5
+spike/*/.hvigor/
+spike/*/.idea/
+spike/*/oh_modules/
+spike/*/oh-package-lock.json5
+spike/*/entry/.cxx/
+spike/*/entry/build/
+spike/*/build/
