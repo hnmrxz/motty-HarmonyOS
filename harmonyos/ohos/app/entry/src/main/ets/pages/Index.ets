@@ -46,6 +46,13 @@ interface HostItem {
   proto: string;
 }
 
+interface TabInfo {
+  id: string;
+  label: string;
+  shellId: number;
+  vtId: number;
+}
+
 interface Cred {
   address: string;
   port: number;
@@ -70,7 +77,9 @@ struct Index {
   @State pendingKey: string = '';
   @State diagOpen: boolean = false;
   @State termVisible: boolean = false;
-  @State sessionLabel: string = '';
+  @State tabs: TabInfo[] = [];
+  @State activeId: string = '';
+  @State showHosts: boolean = true;
   @State termText: string = '';
   @State termInput: string = '';
   @State vtStatus: string = '';
@@ -81,7 +90,9 @@ struct Index {
   private store: relationalStore.RdbStore | null = null;
   private readonly fixtureKey: string = '127.0.0.1:2222';
   private shellId: number = 0;
+  private tabSeq: number = 0;
   private pendingAction: string = 'connect';
+  private pendingLabel: string = '';
 
   aboutToAppear(): void {
     this.creds.set(this.fixtureKey, { address: '127.0.0.1', port: 2222, user: 'tester', password: 'secret' });
@@ -225,10 +236,10 @@ struct Index {
       this.setStatus(index, 'no credentials in memory (vault not implemented yet)');
       return;
     }
-    this.sessionLabel = label;
+    this.pendingLabel = label;
     this.lookupFp(key).then((fp: string) => {
       if (fp.length > 0) {
-        this.startSession(cred, fp);
+        this.startSession(cred, fp, h.label);
         return;
       }
       this.setStatus(index, 'unknown host, fetching key...');
@@ -247,36 +258,97 @@ struct Index {
     });
   }
 
-  private startSession(cred: Cred, fp: string): void {
-    this.termVisible = true;
+  private refreshTab(vtId: number): void {
+    this.termText = mottynapi.vtScreen(vtId);
+    this.vtStatus = mottynapi.vtStatus(vtId);
+    this.vtHistory = mottynapi.vtScrollBack(vtId, 3);
+  }
+
+  private startSession(cred: Cred, fp: string, label: string): void {
     this.diagOpen = false;
-    this.termText = '';
-    this.vtHistory = '';
-    this.ptyStatus = '';
-    mottynapi.vtReset(80, 24);
-    this.vtStatus = mottynapi.vtStatus();
+    this.tabSeq = this.tabSeq + 1;
+    const tabId: string = 't' + this.tabSeq;
+    const tabLabel: string = label + ' #' + this.tabSeq;
+    const vtId: number = mottynapi.vtNew(80, 24);
     const id: number = mottynapi.openChannel(cred.address, cred.port, cred.user, cred.password,
       fp, 80, 24, true,
       (chunk: string) => {
-        mottynapi.vtFeed(chunk);
-        this.termText = mottynapi.vtScreen();
-        this.vtStatus = mottynapi.vtStatus();
-        this.vtHistory = mottynapi.vtScrollBack(3);
+        mottynapi.vtFeed(vtId, chunk);
+        if (this.activeId === tabId) {
+          this.refreshTab(vtId);
+        }
       },
       (status: string) => {
-        this.termText = mottynapi.vtScreen();
-        this.vtStatus = mottynapi.vtStatus();
-        this.probeText = 'session ' + status;
-        this.shellId = 0;
+        if (this.activeId === tabId) {
+          this.refreshTab(vtId);
+        }
+        this.probeText = tabLabel + ': ' + status;
       });
-    this.shellId = id;
     if (id === 0) {
-      this.termText = 'failed to open session';
+      mottynapi.vtFree(vtId);
+      this.probeText = 'failed to open session';
+      return;
+    }
+    const next: TabInfo[] = this.tabs.slice();
+    next.push({ id: tabId, label: tabLabel, shellId: id, vtId: vtId });
+    this.tabs = next;
+    this.activeId = tabId;
+    this.shellId = id;
+    this.showHosts = false;
+    this.termVisible = true;
+    this.ptyStatus = '';
+    this.refreshTab(vtId);
+  }
+
+  private selectTab(tabId: string): void {
+    for (let i = 0; i < this.tabs.length; i++) {
+      if (this.tabs[i].id === tabId) {
+        this.activeId = tabId;
+        this.shellId = this.tabs[i].shellId;
+        this.showHosts = false;
+        this.refreshTab(this.tabs[i].vtId);
+        return;
+      }
     }
   }
 
+  private closeTab(tabId: string): void {
+    const remain: TabInfo[] = [];
+    for (let i = 0; i < this.tabs.length; i++) {
+      const t = this.tabs[i];
+      if (t.id === tabId) {
+        mottynapi.closeShell(t.shellId);
+        mottynapi.vtFree(t.vtId);
+      } else {
+        remain.push(t);
+      }
+    }
+    this.tabs = remain;
+    if (this.activeId === tabId) {
+      if (remain.length > 0) {
+        this.selectTab(remain[remain.length - 1].id);
+      } else {
+        this.activeId = '';
+        this.shellId = 0;
+        this.termVisible = false;
+        this.showHosts = true;
+        this.termText = '';
+      }
+    }
+  }
+
+  private activeTab(): TabInfo | null {
+    for (let i = 0; i < this.tabs.length; i++) {
+      if (this.tabs[i].id === this.activeId) {
+        return this.tabs[i];
+      }
+    }
+    return null;
+  }
+
   private sendTermInput(): void {
-    if (this.shellId === 0) {
+    const tab = this.activeTab();
+    if (tab === null) {
       this.ptyStatus = 'no session';
       return;
     }
@@ -284,25 +356,17 @@ struct Index {
     if (text.length === 0) {
       return;
     }
-    mottynapi.sendInput(this.shellId, text);
+    mottynapi.sendInput(tab.shellId, text);
     this.termInput = '';
   }
 
-  private closeSession(): void {
-    if (this.shellId !== 0) {
-      mottynapi.closeShell(this.shellId);
-      this.shellId = 0;
-    }
-    this.termVisible = false;
-    this.sessionLabel = '';
-  }
-
   private resizeSession(): void {
-    if (this.shellId === 0) {
+    const tab = this.activeTab();
+    if (tab === null) {
       this.ptyStatus = 'resize: no session';
       return;
     }
-    mottynapi.resizeShell(this.shellId, 100, 30);
+    mottynapi.resizeShell(tab.shellId, 100, 30);
     this.ptyStatus = 'resize->100x30';
   }
 
@@ -335,38 +399,54 @@ struct Index {
 
   private runDemoWith(cred: Cred, fp: string, kind: string): void {
     if (kind === 'shell') {
-      this.sessionLabel = 'fixture shell';
-      this.startSession(cred, fp);
+      this.startSession(cred, fp, 'fixture shell');
       return;
     }
-    this.termVisible = true;
     this.diagOpen = false;
-    this.sessionLabel = kind;
-    this.termText = '';
-    mottynapi.vtReset(80, 24);
-    this.vtStatus = mottynapi.vtStatus();
+    this.tabSeq = this.tabSeq + 1;
+    const tabId: string = 't' + this.tabSeq;
+    const tabLabel: string = kind + ' #' + this.tabSeq;
+    const vtId: number = mottynapi.vtNew(80, 24);
+    const next: TabInfo[] = this.tabs.slice();
+    next.push({ id: tabId, label: tabLabel, shellId: 0, vtId: vtId });
+    this.tabs = next;
+    this.activeId = tabId;
+    this.showHosts = false;
+    this.termVisible = true;
+    this.ptyStatus = '';
+    this.refreshTab(vtId);
+
     if (kind === 'term-echo') {
       const id: number = mottynapi.openShell(cred.address, cred.port, cred.user, cred.password, fp,
         (chunk: string) => {
-          mottynapi.vtFeed(chunk);
-          this.termText = mottynapi.vtScreen();
-          this.vtStatus = mottynapi.vtStatus();
+          mottynapi.vtFeed(vtId, chunk);
+          if (this.activeId === tabId) {
+            this.refreshTab(vtId);
+          }
         },
-        (status: string) => { this.probeText = 'term-echo ' + status; this.shellId = 0; });
+        (status: string) => { this.probeText = tabLabel + ': ' + status; });
+      const withId: TabInfo[] = [];
+      for (let i = 0; i < this.tabs.length; i++) {
+        const t = this.tabs[i];
+        withId.push(t.id === tabId ? { id: t.id, label: t.label, shellId: id, vtId: t.vtId } : t);
+      }
+      this.tabs = withId;
       this.shellId = id;
       return;
     }
+
     const cmd = kind === 'vt' ? 'vt-demo' : (kind === 'vt2' ? 'vt-demo2' : 'term-demo');
     mottynapi.exec(cred.address, cred.port, cred.user, cred.password, cmd, fp,
       (chunk: string) => {
-        mottynapi.vtFeed(chunk);
-        this.termText = mottynapi.vtScreen();
-        this.vtStatus = mottynapi.vtStatus();
-        this.vtHistory = mottynapi.vtScrollBack(3);
+        mottynapi.vtFeed(vtId, chunk);
+        if (this.activeId === tabId) {
+          this.refreshTab(vtId);
+        }
       },
       (status: string) => {
-        this.termText = mottynapi.vtScreen();
-        this.vtStatus = mottynapi.vtStatus();
+        if (this.activeId === tabId) {
+          this.refreshTab(vtId);
+        }
         this.probeText = cmd + ': ' + status;
       });
   }
@@ -453,7 +533,7 @@ struct Index {
         return;
       }
       if (this.pendingAction === 'open') {
-        this.startSession(cred, fp);
+        this.startSession(cred, fp, this.pendingLabel);
         return;
       }
       this.runDemoWith(cred, fp, this.pendingAction);
@@ -593,9 +673,40 @@ struct Index {
   }
 
   @Builder
+  tabBar() {
+    Row({ space: 6 }) {
+      Scroll() {
+        Row({ space: 6 }) {
+          ForEach(this.tabs, (t: TabInfo) => {
+            Row({ space: 4 }) {
+              Button(t.label)
+                .id('session-tab/' + t.id)
+                .backgroundColor(this.activeId === t.id ? '#1A6DD0' : '#E6E6E6')
+                .fontColor(this.activeId === t.id ? Color.White : '#1A1A1A')
+                .fontSize(12)
+                .onClick(() => { this.selectTab(t.id); })
+              Button('\u00d7')
+                .id('session-close/' + t.id)
+                .backgroundColor('#F0F0F0')
+                .fontColor('#666666')
+                .fontSize(12)
+                .onClick(() => { this.closeTab(t.id); })
+            }
+          }, (t: TabInfo) => t.id)
+        }
+      }
+      .scrollable(ScrollDirection.Horizontal)
+      .layoutWeight(1)
+      Text(this.tabs.length > 1 ? this.tabs.length + ' sessions' : '1 session')
+        .id('session/count').fontSize(11).fontColor('#666666')
+    }
+    .id('session/tabbar').width('100%').padding({ left: 16, right: 16, top: 8, bottom: 8 })
+    .backgroundColor('#EFEFEF')
+  }
+
+  @Builder
   terminalView() {
     Column({ space: 8 }) {
-      Text(this.sessionLabel).fontSize(14).fontWeight(FontWeight.Medium).width('100%')
       Row({ space: 8 }) {
         TextInput({ text: this.termInput, placeholder: 'type a line and press Send' })
           .id('terminal/input').layoutWeight(1).onChange((v: string) => { this.termInput = v; })
@@ -665,9 +776,9 @@ struct Index {
         Row({ space: 8 }) {
           Text('Motty').fontSize(20).fontWeight(FontWeight.Bold)
           Blank()
-          if (this.termVisible) {
+          if (this.tabs.length > 0) {
             Button('Hosts').id('nav/hosts').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-              .onClick(() => { this.closeSession(); })
+              .onClick(() => { this.showHosts = true; })
           }
           Button('Diagnostics').id('diag/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
             .onClick(() => { this.diagOpen = true; })
@@ -676,10 +787,13 @@ struct Index {
         }
         .width('100%').padding({ left: 16, right: 16, top: 12, bottom: 12 }).backgroundColor('#F5F5F5')
 
-        if (this.termVisible) {
-          this.terminalView()
-        } else {
+        if (this.tabs.length > 0) {
+          this.tabBar()
+        }
+        if (this.showHosts || this.tabs.length === 0) {
           this.hostListView()
+        } else {
+          this.terminalView()
         }
       }
       .width('100%').height('100%').backgroundColor('#FAFAFA')

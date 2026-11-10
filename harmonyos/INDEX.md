@@ -520,3 +520,31 @@ abc|中文|def
   （每标签一个网格 + 各自的历史缓冲），这是下一轮的工作，本轮不假装支持。
 - 分屏、会话恢复、标签重排、设置页。
 - 凭据仍只在内存（保险库未做）。
+---
+
+## Round 18：VT 实例化 + 多标签会话
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/vt_core.cpp` | 网格从**全局单例**改为**实例注册表**：`vtNew/vtFree` 管理实例，`vtFeed/vtScreen/vtStatus/vtScrollBack` 均支持带 id；旧的"默认实例 0"接口保留，既有代码与 spec 不受影响 |
+| `Index.ets` | 多标签：`tabs[]` + `activeId`，每个标签独立 `vtId` 与 `shellId`；标签栏 `session/tabbar`（`session-tab/<id>`、`session-close/<id>`、`session/count`）；`Hosts` 只是切回列表，**不再销毁会话** |
+| `spec/scenarios/session.tabs.yaml` | 同一主机开两个会话、切回列表、关闭排序 |
+
+### 为什么必须先实例化 VT
+之前 `vt_core` 只有一个全局网格。若直接做多标签，第二个会话的输出会把第一个的屏幕覆盖掉——
+"看起来有标签，实际只有一个终端"。所以这轮先改 C 层，再做 UI。
+
+### 关键断言
+- `tab-host #1` 与 `tab-host #2` 同时存在 → 两个会话都在
+- `2 sessions` → 标签计数来自真实数组长度
+- 关闭一个后 `#2` 缺席、计数回到 `1 session`
+- 第二次 `Open` **不再弹信任框**（known_hosts 已落盘），证明信任持久化在多会话下依然生效
+
+### 双画像验收（12 条 × 2 画像）
+`session.tabs`、`terminal.pty`、`terminal.scrollback`、`terminal.vt`、`terminal.view`、`terminal.interactive`、
+`ssh.connect-from-list`、`infra.host-create-by-id`、`host.persist`、`net.reachability`、`ssh.exec`、`ssh.hostkey` —— 全部 **passed**。
+
+### 未做
+- 标签拖动/重排、分屏、会话恢复（应用重启后丢失）
+- 会话数量增长时的内存与切换开销未测量
+- 终端仍缺组合字符/emoji 宽度、鼠标上报、DECSET 2026、选择复制

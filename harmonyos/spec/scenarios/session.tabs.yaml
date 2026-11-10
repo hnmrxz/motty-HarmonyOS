@@ -1,0 +1,90 @@
+schema: 1
+id: session.tabs
+title: 多标签会话：同一主机开两个独立会话、切换、关闭其一
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B01
+  - B09
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: tab-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 4000
+    expect:
+      kind: screenRegex
+      regex: "[A-Z]:\\\\"
+      withinMs: 20000
+  - action: click
+    target: id:nav/hosts
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 4000
+    expect:
+      kind: screenRegex
+      regex: "tab-host #2"
+      withinMs: 20000
+asserts:
+  - kind: screenRegex
+    regex: "2 sessions"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "tab-host #1"
+    withinMs: 4000
+  - kind: screenRegex
+    regex: "[A-Z]:\\\\"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。验证：两个会话各自一块 VT 网格、标签栏计数、
+    切回主机列表不销毁会话、关闭一个标签后另一个仍在且计数更新。
+    **不覆盖**：标签重排/拖动、会话恢复（应用重启）、超过 2 个会话时的内存与切换开销、
+    分屏；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 第二次 Open 不应再弹信任框（known_hosts 已落盘），spec 依赖这一点
+notes: >-
+  多标签的关键是 vt 实例化：每个标签一块网格，否则两个会话的屏幕会互相覆盖。
+  本 spec 通过"#2 存在且 #1 仍在"以及关闭后 #2 缺席来证明两侧独立。

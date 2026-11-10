@@ -12,6 +12,7 @@
 // 若按 1 列存放，`abc|中文|def` 这类行会与真实终端错位，中文用户第一眼就能看出不对。
 #include <napi/native_api.h>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -196,7 +197,21 @@ struct Screen {
     }
 };
 
-Screen g_screen;
+// 实例注册表：每个会话标签一个网格（含自己的历史缓冲与备用屏）。
+// NAPI 调用都发生在一个 JS 线程上（含 TSFN 回调），所以这里不加锁；
+// 若将来从 C 线程直接调用，需要补 mutex。
+std::map<int, Screen *> g_screens;
+int g_nextScreenId = 1;
+
+Screen &screenOf(int id) {
+    auto it = g_screens.find(id);
+    if (it == g_screens.end()) {
+        // 未知 id：返回一个进程内的兜底屏幕，避免解引用空指针
+        static Screen fallback;
+        return fallback;
+    }
+    return *it->second;
+}
 
 std::vector<int> parseParams(const std::string &body) {
     std::vector<int> out;
@@ -220,14 +235,14 @@ int argOr(const std::vector<int> &p, size_t i, int fallback) {
     return p[i];
 }
 
-void clampCursor() {
-    if (g_screen.curRow < 0) g_screen.curRow = 0;
-    if (g_screen.curRow >= g_screen.rows) g_screen.curRow = g_screen.rows - 1;
-    if (g_screen.curCol < 0) g_screen.curCol = 0;
-    if (g_screen.curCol >= g_screen.cols) g_screen.curCol = g_screen.cols - 1;
+void clampCursor(Screen &s) {
+    if (s.curRow < 0) s.curRow = 0;
+    if (s.curRow >= s.rows) s.curRow = s.rows - 1;
+    if (s.curCol < 0) s.curCol = 0;
+    if (s.curCol >= s.cols) s.curCol = s.cols - 1;
 }
 
-void dispatchCsi(const std::string &body, char final) {
+void dispatchCsi(Screen &s, const std::string &body, char final) {
     // 私有模式：形如 "?1049h" / "?47l"。parseParams 会忽略 '?'，这里据首字符判定。
     if (!body.empty() && body[0] == '?' && (final == 'h' || final == 'l')) {
         const std::vector<int> mp = parseParams(body.substr(1));
@@ -235,9 +250,9 @@ void dispatchCsi(const std::string &body, char final) {
         for (int mode : mp) {
             if (mode == 47 || mode == 1047 || mode == 1049) {
                 if (enable) {
-                    g_screen.enterAlt(mode == 1049);
+                    s.enterAlt(mode == 1049);
                 } else {
-                    g_screen.leaveAlt();
+                    s.leaveAlt();
                 }
             }
         }
@@ -248,36 +263,36 @@ void dispatchCsi(const std::string &body, char final) {
     switch (final) {
         case 'H':
         case 'f':
-            g_screen.curRow = argOr(p, 0, 1) - 1;
-            g_screen.curCol = argOr(p, 1, 1) - 1;
+            s.curRow = argOr(p, 0, 1) - 1;
+            s.curCol = argOr(p, 1, 1) - 1;
             break;
-        case 'A': g_screen.curRow -= argOr(p, 0, 1); break;
-        case 'B': g_screen.curRow += argOr(p, 0, 1); break;
-        case 'C': g_screen.curCol += argOr(p, 0, 1); break;
-        case 'D': g_screen.curCol -= argOr(p, 0, 1); break;
-        case 'G': g_screen.curCol = argOr(p, 0, 1) - 1; break;
-        case 'd': g_screen.curRow = argOr(p, 0, 1) - 1; break;
+        case 'A': s.curRow -= argOr(p, 0, 1); break;
+        case 'B': s.curRow += argOr(p, 0, 1); break;
+        case 'C': s.curCol += argOr(p, 0, 1); break;
+        case 'D': s.curCol -= argOr(p, 0, 1); break;
+        case 'G': s.curCol = argOr(p, 0, 1) - 1; break;
+        case 'd': s.curRow = argOr(p, 0, 1) - 1; break;
         case 'J': {
             const int mode = p.empty() ? 0 : p[0];
             if (mode == 2) {
-                for (int r = 0; r < g_screen.rows; r++) g_screen.clearRow(r);
+                for (int r = 0; r < s.rows; r++) s.clearRow(r);
             } else if (mode == 1) {
-                for (int c = 0; c <= g_screen.curCol && c < g_screen.cols; c++) g_screen.at(g_screen.curRow, c) = Cell{};
-                for (int r = 0; r < g_screen.curRow; r++) g_screen.clearRow(r);
+                for (int c = 0; c <= s.curCol && c < s.cols; c++) s.at(s.curRow, c) = Cell{};
+                for (int r = 0; r < s.curRow; r++) s.clearRow(r);
             } else {
-                for (int c = g_screen.curCol; c < g_screen.cols; c++) g_screen.at(g_screen.curRow, c) = Cell{};
-                for (int r = g_screen.curRow + 1; r < g_screen.rows; r++) g_screen.clearRow(r);
+                for (int c = s.curCol; c < s.cols; c++) s.at(s.curRow, c) = Cell{};
+                for (int r = s.curRow + 1; r < s.rows; r++) s.clearRow(r);
             }
             break;
         }
         case 'K': {
             const int mode = p.empty() ? 0 : p[0];
             if (mode == 2) {
-                g_screen.clearRow(g_screen.curRow);
+                s.clearRow(s.curRow);
             } else if (mode == 1) {
-                for (int c = 0; c <= g_screen.curCol && c < g_screen.cols; c++) g_screen.at(g_screen.curRow, c) = Cell{};
+                for (int c = 0; c <= s.curCol && c < s.cols; c++) s.at(s.curRow, c) = Cell{};
             } else {
-                for (int c = g_screen.curCol; c < g_screen.cols; c++) g_screen.at(g_screen.curRow, c) = Cell{};
+                for (int c = s.curCol; c < s.cols; c++) s.at(s.curRow, c) = Cell{};
             }
             break;
         }
@@ -285,22 +300,22 @@ void dispatchCsi(const std::string &body, char final) {
             for (size_t i = 0; i < p.size(); i++) {
                 const int v = p[i];
                 if (v == 0 || v == 39) {
-                    g_screen.fg = 0;
+                    s.fg = 0;
                 } else if (v >= 30 && v <= 37) {
-                    g_screen.fg = v;
+                    s.fg = v;
                 }
             }
             break;
         }
         default: break;
     }
-    clampCursor();
+    clampCursor(s);
 }
 
 // UTF-8 解码：把累积的 pending 里能完整解出的码点逐个交给 putGlyph，
 // 半截序列留在 pending 里等下一个 chunk（流式场景下这个边界必然发生）。
-void drainUtf8() {
-    std::string &buf = g_screen.utf8Pending;
+void drainUtf8(Screen &s) {
+    std::string &buf = s.utf8Pending;
     size_t i = 0;
     while (i < buf.size()) {
         const unsigned char b0 = static_cast<unsigned char>(buf[i]);
@@ -343,7 +358,7 @@ void drainUtf8() {
         if (cp < 0x20) {
             // 控制字符已在别处处理；这里丢弃
         } else {
-            g_screen.putGlyph(encodeUtf8(cp), isWideRune(cp) ? 2 : 1);
+            s.putGlyph(encodeUtf8(cp), isWideRune(cp) ? 2 : 1);
         }
         i += need;
     }
@@ -352,7 +367,7 @@ void drainUtf8() {
     }
 }
 
-void feed(const char *data, size_t len) {
+void feed(Screen &s, const char *data, size_t len) {
     enum class State { Ground, Esc, Csi, Osc, OscEsc } state = State::Ground;
     std::string csiBody;
     for (size_t i = 0; i < len; i++) {
@@ -360,22 +375,22 @@ void feed(const char *data, size_t len) {
         switch (state) {
             case State::Ground:
                 if (raw == 0x1B) {
-                    drainUtf8();  // 先把挂起的多字节收干净
+                    drainUtf8(s);  // 先把挂起的多字节收干净
                     state = State::Esc;
                 } else if (raw == '\r') {
-                    drainUtf8();
-                    g_screen.curCol = 0;
+                    drainUtf8(s);
+                    s.curCol = 0;
                 } else if (raw == '\n') {
-                    drainUtf8();
-                    g_screen.newline();
+                    drainUtf8(s);
+                    s.newline();
                 } else if (raw == '\b') {
-                    drainUtf8();
-                    if (g_screen.curCol > 0) g_screen.curCol--;
+                    drainUtf8(s);
+                    if (s.curCol > 0) s.curCol--;
                 } else if (raw < 0x20) {
                     // 其它控制字符忽略
                 } else {
-                    g_screen.utf8Pending.push_back(static_cast<char>(raw));
-                    drainUtf8();
+                    s.utf8Pending.push_back(static_cast<char>(raw));
+                    drainUtf8(s);
                 }
                 break;
             case State::Esc:
@@ -401,7 +416,7 @@ void feed(const char *data, size_t len) {
                 break;
             case State::Csi:
                 if (raw >= 0x40 && raw <= 0x7E) {
-                    dispatchCsi(csiBody, static_cast<char>(raw));
+                    dispatchCsi(s, csiBody, static_cast<char>(raw));
                     state = State::Ground;
                 } else {
                     csiBody.push_back(static_cast<char>(raw));
@@ -409,15 +424,15 @@ void feed(const char *data, size_t len) {
                 break;
         }
     }
-    drainUtf8();
+    drainUtf8(s);
 }
 
-std::string screenText() {
+std::string screenText(Screen &s) {
     std::string out;
-    for (int r = 0; r < g_screen.rows; r++) {
+    for (int r = 0; r < s.rows; r++) {
         std::string line;
-        for (int c = 0; c < g_screen.cols; c++) {
-            const Cell &cell = g_screen.at(r, c);
+        for (int c = 0; c < s.cols; c++) {
+            const Cell &cell = s.at(r, c);
             if (cell.blank) {
                 line.push_back(' ');
             } else {
@@ -427,7 +442,7 @@ std::string screenText() {
         while (!line.empty() && line.back() == ' ') {
             line.pop_back();
         }
-        if (line.empty() && r == g_screen.rows - 1) {
+        if (line.empty() && r == s.rows - 1) {
             break;
         }
         out += line;
@@ -439,35 +454,35 @@ std::string screenText() {
     return out;
 }
 
-std::string screenStatus() {
+std::string screenStatus(Screen &s) {
     int colored = 0;
     int wide = 0;
-    for (const Cell &cell : g_screen.cells) {
+    for (const Cell &cell : s.cells) {
         if (!cell.blank && cell.fg != 0) colored++;
     }
-    for (int r = 0; r < g_screen.rows; r++) {
-        for (int c = 0; c < g_screen.cols; c++) {
-            const Cell &cell = g_screen.at(r, c);
+    for (int r = 0; r < s.rows; r++) {
+        for (int c = 0; c < s.cols; c++) {
+            const Cell &cell = s.at(r, c);
             if (!cell.blank && cell.glyph.size() >= 3) wide++;
         }
     }
     char buf[160];
     snprintf(buf, sizeof(buf), "cur=%d,%d colors=%d wide=%d hist=%d alt=%d size=%dx%d",
-             g_screen.curRow + 1, g_screen.curCol + 1, colored, wide,
-             static_cast<int>(g_screen.history.size()), g_screen.altActive ? 1 : 0,
-             g_screen.cols, g_screen.rows);
+             s.curRow + 1, s.curCol + 1, colored, wide,
+             static_cast<int>(s.history.size()), s.altActive ? 1 : 0,
+             s.cols, s.rows);
     return std::string(buf);
 }
 
-std::string historyTail(int n) {
-    if (n <= 0 || g_screen.history.empty()) {
+std::string historyTail(Screen &s, int n) {
+    if (n <= 0 || s.history.empty()) {
         return std::string();
     }
-    const size_t total = g_screen.history.size();
+    const size_t total = s.history.size();
     const size_t take = static_cast<size_t>(n) < total ? static_cast<size_t>(n) : total;
     std::string out;
     for (size_t i = total - take; i < total; i++) {
-        out += g_screen.history[i];
+        out += s.history[i];
         out.push_back('\n');
     }
     while (!out.empty() && out.back() == '\n') {
@@ -488,7 +503,22 @@ std::string getString(napi_env env, napi_value v) {
     return s;
 }
 
-napi_value vtReset(napi_env env, napi_callback_info info) {
+// ---------------- NAPI ----------------
+// 旧接口（不带 id）作用于"默认实例"0，保持已有 spec 与代码不变；
+// 新接口带 id，供多标签会话各用一块网格。
+
+Screen &defaultScreen() {
+    static bool inited = false;
+    if (!inited) {
+        auto *s = new Screen();
+        s->resize(80, 24);
+        g_screens[0] = s;
+        inited = true;
+    }
+    return screenOf(0);
+}
+
+napi_value vtNew(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2] = {nullptr};
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
@@ -496,44 +526,130 @@ napi_value vtReset(napi_env env, napi_callback_info info) {
     int32_t rows = 24;
     if (argc > 0) napi_get_value_int32(env, args[0], &cols);
     if (argc > 1) napi_get_value_int32(env, args[1], &rows);
-    g_screen.resize(cols, rows);
+    auto *screen = new Screen();
+    screen->resize(cols, rows);
+    const int id = g_nextScreenId++;
+    g_screens[id] = screen;
+    napi_value out = nullptr;
+    napi_create_int32(env, id, &out);
+    return out;
+}
+
+napi_value vtFree(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int32_t id = 0;
+    napi_get_value_int32(env, args[0], &id);
+    auto it = g_screens.find(id);
+    int freed = 0;
+    if (it != g_screens.end() && id != 0) {   // 默认实例不允许释放
+        delete it->second;
+        g_screens.erase(it);
+        freed = 1;
+    }
+    napi_value out = nullptr;
+    napi_create_int32(env, freed, &out);
+    return out;
+}
+
+napi_value vtReset(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    // vtReset(cols, rows) 或 vtReset(id, cols, rows)
+    int id = 0;
+    int base = 0;
+    if (argc >= 3) {
+        napi_get_value_int32(env, args[0], &id);
+        base = 1;
+    }
+    int32_t cols = 80;
+    int32_t rows = 24;
+    if (argc > base) napi_get_value_int32(env, args[base], &cols);
+    if (argc > base + 1) napi_get_value_int32(env, args[base + 1], &rows);
+    if (argc >= 3) {
+        Screen &s = screenOf(id);
+        s.resize(cols, rows);
+    } else {
+        defaultScreen().resize(cols, rows);
+    }
     napi_value out = nullptr;
     napi_get_undefined(env, &out);
     return out;
 }
 
 napi_value vtFeed(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1] = {nullptr};
+    size_t argc = 2;
+    napi_value args[2] = {nullptr};
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    const std::string data = getString(env, args[0]);
-    feed(data.data(), data.size());
+    // vtFeed(data) 或 vtFeed(id, data)
+    if (argc >= 2) {
+        int32_t id = 0;
+        napi_get_value_int32(env, args[0], &id);
+        const std::string data = getString(env, args[1]);
+        feed(screenOf(id), data.data(), data.size());
+    } else {
+        const std::string data = getString(env, args[0]);
+        feed(defaultScreen(), data.data(), data.size());
+    }
     napi_value out = nullptr;
     napi_get_undefined(env, &out);
     return out;
 }
 
-napi_value vtScreen(napi_env env, napi_callback_info) {
-    const std::string text = screenText();
+napi_value vtScreen(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    std::string text;
+    if (argc >= 1) {
+        int32_t id = 0;
+        napi_get_value_int32(env, args[0], &id);
+        text = screenText(screenOf(id));
+    } else {
+        text = screenText(defaultScreen());
+    }
+    napi_value out = nullptr;
+    napi_create_string_utf8(env, text.c_str(), text.size(), &out);
+    return out;
+}
+
+napi_value vtStatus(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    std::string text;
+    if (argc >= 1) {
+        int32_t id = 0;
+        napi_get_value_int32(env, args[0], &id);
+        text = screenStatus(screenOf(id));
+    } else {
+        text = screenStatus(defaultScreen());
+    }
     napi_value out = nullptr;
     napi_create_string_utf8(env, text.c_str(), text.size(), &out);
     return out;
 }
 
 napi_value vtScrollBack(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1] = {nullptr};
+    size_t argc = 2;
+    napi_value args[2] = {nullptr};
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    // vtScrollBack(n) 或 vtScrollBack(id, n)
+    if (argc >= 2) {
+        int32_t id = 0;
+        napi_get_value_int32(env, args[0], &id);
+        int32_t n = 5;
+        napi_get_value_int32(env, args[1], &n);
+        const std::string text = historyTail(screenOf(id), n);
+        napi_value out = nullptr;
+        napi_create_string_utf8(env, text.c_str(), text.size(), &out);
+        return out;
+    }
     int32_t n = 5;
-    if (argc > 0) napi_get_value_int32(env, args[0], &n);
-    const std::string text = historyTail(n);
-    napi_value out = nullptr;
-    napi_create_string_utf8(env, text.c_str(), text.size(), &out);
-    return out;
-}
-
-napi_value vtStatus(napi_env env, napi_callback_info) {
-    const std::string text = screenStatus();
+    if (argc >= 1) napi_get_value_int32(env, args[0], &n);
+    const std::string text = historyTail(defaultScreen(), n);
     napi_value out = nullptr;
     napi_create_string_utf8(env, text.c_str(), text.size(), &out);
     return out;
@@ -543,6 +659,8 @@ napi_value vtStatus(napi_env env, napi_callback_info) {
 
 void RegisterVtFunctions(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
+        {"vtNew", nullptr, vtNew, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"vtFree", nullptr, vtFree, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"vtReset", nullptr, vtReset, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"vtFeed", nullptr, vtFeed, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"vtScreen", nullptr, vtScreen, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -550,5 +668,5 @@ void RegisterVtFunctions(napi_env env, napi_value exports) {
         {"vtScrollBack", nullptr, vtScrollBack, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
-    g_screen.resize(80, 24);
+    (void)defaultScreen();
 }
