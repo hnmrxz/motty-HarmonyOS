@@ -1,0 +1,21 @@
+﻿feat(harmonyos): FreeRDP server 组件成功为 OHOS 编译（RDP 对端方案 C）
+
+背景: 开启宿主远程桌面需管理员授权并改宿主安全设置，未经授权不做。
+改为方案 C: 复用 FreeRDP 服务端(Apache-2.0)，只补"虚拟屏幕"capture 子系统，
+协议协商/位图/输入通道全部由 FreeRDP 完成，与客户端同一套协议栈 -> 真实协议互通。
+
+E2 实测:
+- -DWITH_SERVER=ON -DWITH_SHADOW=OFF 配置在 x86_64 与 arm64 均成功
+- libfreerdp-server3.a: x86_64 850KB / arm64 950KB
+- 链接探针引用 shadow_server_new/shadow_server_start + rdpShadowServer，
+  与 freerdp/winpr/ssl/crypto 链成 10KB .so，EM_X86_64
+- native/build-freerdp.ps1 已改为同时构建 freerdp-server 目标
+
+关键发现: 安装后的 freerdp/server/shadow.h 已含 RDP_SHADOW_ENTRY_POINTS、
+rdpShadowSubsystem 全字段与 shadow_capture_* API，因此自定义子系统不需要源码树内部头
+(约 300-600 行 C)
+
+SBOM 闸门生效: 新库落地后 gen-sbom --check 立即失败(未登记)，登记后 14 组件/31 份产物通过
+
+文档: 新增 RDP-SERVER-PATH.md（三条路对比、已完成的 E2、下一步实现要点与验收计划、诚实边界）
+诚实边界: 服务端是自验组件，不等于与真实 Windows RDP 互通；客户端仍只有连接路径

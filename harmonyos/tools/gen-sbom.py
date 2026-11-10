@@ -52,6 +52,8 @@ COMPONENTS = {
                       "use": "RDP 协议栈（当前仅连接路径）"},
     "libfreerdp-client3.a": {"name": "FreeRDP (client)", "version": "3.9.0", "license": "Apache-2.0",
                              "use": "RDP 客户端上下文（随 FreeRDP）"},
+    "libfreerdp-server3.a": {"name": "FreeRDP (server)", "version": "3.9.0", "license": "Apache-2.0",
+                             "use": "RDP 服务端组件（用于构造可验证对端；尚未在应用内启用）"},
     "libwinpr3.a": {"name": "WinPR", "version": "3.9.0", "license": "Apache-2.0",
                     "use": "FreeRDP 的 Win32 兼容层（随 FreeRDP）"},
     "libwinpr-tools3.a": {"name": "WinPR tools", "version": "3.9.0", "license": "Apache-2.0",

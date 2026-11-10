@@ -1547,3 +1547,38 @@ lint 通过（41 用例 + SBOM 校验）。E1 能力 16。
 ### 诚实边界
 **真机未执行**。所以能力表里相关条目 evidence 保持 **E2**，没有改成 E1。
 `sweep` 里 `--profile device` 的 smoke 是在模拟器上跑的，只验证"开关机制可用"，不作为真机证据。
+---
+
+## Round 54：RDP 对端选定方案 C —— FreeRDP server 组件已可为 OHOS 编译
+
+### 一、为什么不用"开宿主远程桌面"
+那需要管理员授权并修改宿主安全设置（`TermService` + `fDenyTSConnections`），且真实 RDP 还需要凭据。
+未经授权不动宿主——所以选 **方案 C**：复用 FreeRDP 的服务端实现（Apache-2.0），
+只补一个"虚拟屏幕"capture 子系统。协议协商/位图编码/输入通道全部由 FreeRDP 完成，
+与我们客户端用的是**同一套协议栈**，因此是真实协议互通而不是自说自话。
+
+### 二、已完成（E2，实测）
+| 项 | 结果 |
+|---|---|
+| `-DWITH_SERVER=ON -DWITH_SHADOW=OFF` 配置 | **x86_64 与 arm64 均成功** |
+| `libfreerdp-server3.a` | x86_64 **850 KB**、arm64 **950 KB** |
+| 链接探针 | 引用 `shadow_server_new/shadow_server_start` + `rdpShadowServer`，与 freerdp/winpr/ssl/crypto 一起链成 **10 KB `.so`**，`EM_X86_64` |
+| `native/build-freerdp.ps1` | 已改为同时构建 `freerdp-server` 目标（可复现） |
+
+### 三、关键发现（决定了工作量）
+**不需要 FreeRDP 源码树内部头**：安装后的 `freerdp/server/shadow.h` 里已含
+`RDP_SHADOW_ENTRY_POINTS`、`rdpShadowSubsystem` 全部字段与 `shadow_capture_*` API。
+因此自定义子系统可以只用公开头实现（约 300–600 行 C）。
+
+### 四、SBOM 闸门再次生效
+新库一落地，`gen-sbom.py --check` 立刻失败（未登记 `libfreerdp-server3.a`），
+登记后 14 组件 / 31 份产物通过。**这说明上一轮的机器判定确实在起作用**，不是摆设。
+
+### 五、下一步（Round 55）
+实现 `vss_new/free/init/uninit/start/stop/enum_monitors` 六件套 + 帧生产线程，
+`shadow_subsystem_set_entry` 注册后 `shadow_server_start`；
+验收：App 内起服务端 → `rdpProbe` 连 `127.0.0.1:<port>` → 断言 `connected`。
+
+### 六、诚实边界
+服务端是"用来验证自己"的组件，不等于与真实 Windows RDP 互通；
+客户端仍只有连接路径（无画面/输入/通道）。

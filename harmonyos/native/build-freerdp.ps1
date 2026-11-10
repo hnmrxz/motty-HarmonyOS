@@ -56,13 +56,13 @@ foreach ($arch in @(
         -DWITH_KRB5=OFF -DWITH_PCSC=OFF -DWITH_PKCS11=OFF -DWITH_CUPS=OFF `
         -DWITH_PULSE=OFF -DWITH_ALSA=OFF -DWITH_OSS=OFF -DWITH_X11=OFF -DWITH_WAYLAND=OFF `
         -DWITH_FUSE=OFF -DWITH_SWSCALE=OFF -DWITH_CAIRO=OFF -DWITH_FFMPEG=OFF -DWITH_OPENH264=OFF `
-        -DWITH_CLIENT_SDL=OFF -DWITH_CLIENT_SDL3=OFF -DWITH_SERVER=OFF -DWITH_SHADOW=OFF -DWITH_PROXY=OFF `
+        -DWITH_CLIENT_SDL=OFF -DWITH_CLIENT_SDL3=OFF -DWITH_SERVER=ON -DWITH_SHADOW=OFF -DWITH_PROXY=OFF `
         -DWITH_JSON_DISABLED=ON -DWITH_UNICODE_BUILTIN=ON -DCHANNEL_URBDRC=OFF -DCHANNEL_RDPEWA=OFF `
         "-DCMAKE_PREFIX_PATH=$p" | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "configure 失败 [$($arch.name)]" }
 
     # 只编库，避开示例可执行文件的 pthread_cancel 链接问题
-    & $cmake --build $bld --target freerdp winpr freerdp-client | Out-Null
+    & $cmake --build $bld --target freerdp winpr freerdp-client freerdp-server | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "build 失败 [$($arch.name)]" }
 
     $libDst = Join-Path $root "third_party/ohos/$($arch.name)/lib"

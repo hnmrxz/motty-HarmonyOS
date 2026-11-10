@@ -58,6 +58,26 @@
       ]
     },
     {
+      "name": "FreeRDP (server)",
+      "version": "3.9.0",
+      "license": "Apache-2.0",
+      "use": "RDP 服务端组件（用于构造可验证对端；尚未在应用内启用）",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libfreerdp-server3.a",
+          "sizeBytes": 870190,
+          "sha256": "4c448e99f0df85d094b2faf8717f7527509c981f9fe8ab5af766ec0c6999d5d1"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libfreerdp-server3.a",
+          "sizeBytes": 972622,
+          "sha256": "790be2befc342f3727f3a1c4ffcfe0ab65a3160d2de53293c49f56fdc2319f05"
+        }
+      ]
+    },
+    {
       "name": "LibVNC (client)",
       "version": "0.9.14",
       "license": "GPL-2.0-or-later",
