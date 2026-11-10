@@ -604,6 +604,17 @@ struct Index {
     }
   }
 
+  // 控制字符直发：Ctrl-C 走 sendRaw，不追加换行（追加换行会变成"^C + 回车"两件事）
+  private sendCtrlC(): void {
+    const tab = this.activeTab();
+    if (tab === null) {
+      this.ptyStatus = 'ctrl-c: no session';
+      return;
+    }
+    mottynapi.sendRaw(tab.shellId, '\u0003');
+    this.ptyStatus = 'sent ^C';
+  }
+
   private sendTermInput(): void {
     const tab = this.activeTab();
     if (tab === null) {
@@ -1701,6 +1712,8 @@ struct Index {
           .onClick(() => { this.selectAllVisible(); })
         Button('Copy').id('terminal/copy').backgroundColor('#1A6DD0').fontColor(Color.White)
           .onClick(() => { this.copySelection().catch((e: BusinessError) => { this.ptyStatus = 'copy error'; }); })
+        Button('^C').id('terminal/ctrl-c').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.sendCtrlC(); })
       }.width('100%')
       Text(this.ptyStatus.length > 0 ? this.ptyStatus : 'pty: (idle)')
         .id('terminal/pty-status').fontSize(11).fontColor('#0A6C00').width('100%')

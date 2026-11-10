@@ -2242,6 +2242,32 @@ napi_value VncStop(napi_env env, napi_callback_info info) {
     return out;
 }
 
+// sendRaw(id, text)：原样写入通道，不追加换行（用于 Ctrl-C 等控制字符）
+napi_value SendRaw(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int32_t id = 0;
+    napi_get_value_int32(env, args[0], &id);
+    std::string text;
+    size_t len = 0;
+    napi_get_value_string_utf8(env, args[1], static_cast<char *>(nullptr), 0, &len);
+    if (len > 0) {
+        text.resize(len);
+        napi_get_value_string_utf8(env, args[1], &text[0], len + 1, &len);
+    }
+    ShellSession *sess = findSession(id);
+    int ok = 0;
+    if (sess != nullptr && !sess->closed.load()) {
+        std::lock_guard<std::mutex> lock(sess->mtx);
+        sess->pending += text;   // 原样，不补换行
+        ok = 1;
+    }
+    napi_value out = nullptr;
+    napi_create_int32(env, ok, &out);
+    return out;
+}
+
 // closeShell(id)
 napi_value CloseShell(napi_env env, napi_callback_info info) {
     size_t argc = 1;
@@ -2265,6 +2291,7 @@ napi_value Init(napi_env env, napi_value exports) {
         {"openShell", nullptr, OpenShell, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"sendInput", nullptr, SendInput, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"closeShell", nullptr, CloseShell, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"sendRaw", nullptr, SendRaw, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"openChannel", nullptr, OpenChannel, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"resizeShell", nullptr, ResizeShell, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"sftp", nullptr, Sftp, nullptr, nullptr, nullptr, napi_default, nullptr},

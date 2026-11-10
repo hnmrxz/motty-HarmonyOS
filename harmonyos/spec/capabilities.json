@@ -644,6 +644,7 @@
         "spec/scenarios/ssh.connect-from-list.yaml",
         "spec/scenarios/terminal.copy.yaml",
         "spec/scenarios/terminal.interactive.yaml",
+        "spec/scenarios/terminal.key.yaml",
         "spec/scenarios/terminal.pty.yaml",
         "spec/scenarios/terminal.scrollback.yaml",
         "spec/scenarios/terminal.scrollview.yaml",
@@ -658,7 +659,7 @@
         "deps": "—",
         "acceptance": "`host_*`"
       },
-      "partialCoverage": "部分：PTY 会话、VT 解析、回滚缓冲、备用屏、上屏、指针与键盘输入、回滚区滚动、选区复制到系统剪贴板已双画像实测；拖拽局部选区、组合字符/emoji 宽度、鼠标上报未做。"
+      "partialCoverage": "部分：PTY 会话、VT 解析、回滚/备用屏、上屏、指针与键盘输入（含 Ctrl-C 直发）、回滚区滚动、选区复制已双画像实测；方向键/功能键转义映射、拖拽局部选区、组合字符/emoji 宽度、鼠标上报未做。"
     },
     {
       "id": "B10",

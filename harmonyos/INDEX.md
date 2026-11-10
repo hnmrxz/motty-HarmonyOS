@@ -1219,3 +1219,24 @@ lint 直接报 `is not of type 'string'`——已改成不带冒号的写法。
 ### 未做
 鼠标/触控**拖拽局部选区**（当前是"全选当前视图"）、跨屏选区、富文本多格式、剪贴板历史、
 粘贴到其他应用的实际验证。
+---
+
+## Round 42：终端按键直发（Ctrl-C）
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/ssh_napi.cpp` | 新增 `sendRaw(id, text)`：**原样**写入通道，不追加换行（`sendInput` 会给每行补换行，控制字符走那条路会变成"^C + 回车"两件事） |
+| `Index.ets` | 会话面板加 `^C`（`terminal/ctrl-c`）→ `sendRaw(id, "\u0003")` |
+| `spec/scenarios/terminal.key.yaml` | 真实 pty 会话里发 Ctrl-C，断言 UI 状态 `sent ^C` 与终端回显 `^C` |
+
+### 为什么"原样"是关键
+`sendInput` 的语义是"提交一行"（自动补换行）。把它用于控制字符会造成语义错位：
+`^C\n` 与 `^C` 在 shell 里是两件事（前者可能被当成"中断 + 空命令提交"）。
+因此专门加了 `sendRaw`，并在 spec 里同时断言 UI 与终端内容。
+
+### 双画像
+`terminal.key` 在 2in1 与 tablet 均 **passed**。
+
+### 未做
+方向键/功能键的转义序列映射、修饰键组合、Alt/Shift 语义、真实 Linux shell 的作业控制、
+鼠标上报、滚轮/触控滚动（原先计划在此轮，但触控需要先给 runner 加 `swipe` 动作，留到下轮）。
