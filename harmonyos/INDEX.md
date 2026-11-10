@@ -1111,3 +1111,23 @@ lint 直接报 `is not of type 'string'`——已改成不带冒号的写法。
 ### 未做
 一键启动后的隧道连通性（由 `forward.socks5` / `forward.local` 覆盖，这里不重复断言）、规则编辑、
 多主机规则、开机自启、规则与 known_hosts 的一致性校验。
+---
+
+## Round 37：主机编辑与删除
+
+| 产物 | 说明 |
+|---|---|
+| `Index.ets` | 行内 `Edit`（`host-edit/<i>`，表单预填、提交走 `update`，id 不变）与 `Del`（`host-del/<i>`，二次确认 `hostdel/dialog`）；删除时**同时清 known_hosts 与保险库口令** |
+| `spec/scenarios/host.manage.yaml` | 新建 → 改名 → 信任一次 → 删除先取消（不删）→ 再确认删除 → 列表空 |
+
+### 本轮最关键的一个 ArkUI 坑
+编辑后数据库确实更新了（hilog 可见 `host updated … rows=1`），但**界面仍显示旧标题**：
+`ForEach(this.hosts, …)` 的 key 只用了 `h.id`，id 未变 → ArkUI 复用旧渲染结果，文本不刷新。
+把 key 改为 `id|label|address|port`（纳入可变字段）后立即正常。
+这类"数据对了但界面不动"的问题，只靠逻辑日志会被骗过去。
+
+### 双画像
+`host.manage` 在 2in1 与 tablet 均 **passed**。
+
+### 未做
+删除后"重建同主机是否重新要求信任"的第二条用例、编辑时改端口/地址的迁移、批量删除、撤销、导入导出。

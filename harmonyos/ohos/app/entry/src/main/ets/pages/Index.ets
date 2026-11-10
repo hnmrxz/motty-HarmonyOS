@@ -179,6 +179,9 @@ struct Index {
   @State knownFps: string[] = [];
   @State fwdRules: string[] = [];   // 展示用："id|mode|listen->target"
   @State fwdRuleCount: number = 0;
+  @State editingId: string = '';      // 非空 = 编辑模式
+  @State deleteDialog: boolean = false;
+  @State deleteIndex: number = -1;
 
   private creds: Map<string, Cred> = new Map<string, Cred>();
   private store: relationalStore.RdbStore | null = null;
@@ -308,6 +311,50 @@ struct Index {
     this.formPassword = '';
   }
 
+  private openEditHost(index: number): void {
+    const h = this.hosts[index];
+    if (h === undefined) {
+      return;
+    }
+    this.editingId = h.id;
+    this.formLabel = h.label;
+    this.formAddress = h.address;
+    this.formUser = h.user;
+    this.formPort = h.port;
+    this.formPassword = '';
+    this.showDialog = true;
+  }
+
+  private askDeleteHost(index: number): void {
+    if (index >= this.hosts.length) {
+      return;
+    }
+    this.deleteIndex = index;
+    this.deleteDialog = true;
+  }
+
+  // 删除主机：同时清掉它的 known_hosts 与保险库口令（否则会留下孤儿信任）
+  private async confirmDeleteHost(): Promise<void> {
+    const idx = this.deleteIndex;
+    this.deleteDialog = false;
+    if (idx < 0 || idx >= this.hosts.length || this.store === null) {
+      return;
+    }
+    const h = this.hosts[idx];
+    const key = this.hostKey(h.address, h.port);
+    const hp = new relationalStore.RdbPredicates('hosts');
+    hp.equalTo('id', h.id);
+    await this.store.delete(hp);
+    const kp = new relationalStore.RdbPredicates('known_hosts');
+    kp.equalTo('host', key);
+    await this.store.delete(kp);
+    await Vault.remove(key);
+    this.creds.delete(key);
+    hilog.info(DOMAIN, TAG, 'host deleted: %{public}s (known_hosts + vault cleared)', key);
+    await this.reload();
+    await this.reloadRules();
+  }
+
   private async submit(): Promise<void> {
     const label = this.formLabel.trim();
     const address = this.formAddress.trim();
@@ -315,6 +362,29 @@ struct Index {
       return;
     }
     const port = this.formPort.trim().length > 0 ? this.formPort.trim() : '22';
+    if (this.editingId.length > 0) {
+      // 编辑：更新既有行（id 不变，避免规则/引用失联）
+      const pred = new relationalStore.RdbPredicates('hosts');
+      pred.equalTo('id', this.editingId);
+      const patch: relationalStore.ValuesBucket = {
+        'label': label, 'address': address, 'usr': this.formUser.trim(), 'port': port
+      };
+      await this.store.update(patch, pred);
+      const key = this.hostKey(address, port);
+      if (this.formPassword.length > 0) {
+        await Vault.save(key, this.formPassword);
+        this.creds.set(key, {
+          address: address, port: Number.parseInt(port, 10),
+          user: this.formUser.trim(), password: this.formPassword
+        });
+      }
+      this.editingId = '';
+      await this.reload();
+      this.showDialog = false;
+      this.resetForm();
+      hilog.info(DOMAIN, TAG, 'host updated');
+      return;
+    }
     const bucket: relationalStore.ValuesBucket = {
       'id': String(Date.now()),
       'label': label,
@@ -1071,7 +1141,7 @@ struct Index {
   @Builder
   hostForm() {
     Column({ space: 10 }) {
-      Text('New Host').fontSize(20).fontWeight(FontWeight.Bold).width('100%')
+      Text(this.editingId.length > 0 ? 'Edit Host' : 'New Host').fontSize(20).fontWeight(FontWeight.Bold).width('100%')
       Text('Label').fontSize(12).fontColor('#666666').width('100%')
       TextInput({ placeholder: 'my server' }).id('shell/dialog-label').width('100%')
         .onChange((v: string) => { this.formLabel = v; })
@@ -1095,8 +1165,8 @@ struct Index {
         .type(InputType.Password).onChange((v: string) => { this.formPassword = v; })
       Row({ space: 12 }) {
         Button('Cancel').id('shell/dialog-cancel').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-          .onClick(() => { this.showDialog = false; this.resetForm(); })
-        Button('Add Host').id('shell/dialog-submit').onClick(() => { this.submit(); })
+          .onClick(() => { this.showDialog = false; this.editingId = ''; this.resetForm(); })
+        Button(this.editingId.length > 0 ? 'Save' : 'Add Host').id('shell/dialog-submit').onClick(() => { this.submit(); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
     .id('host-form/dialog').width(560).padding(20).backgroundColor(Color.White).borderRadius(12)
@@ -1362,6 +1432,23 @@ struct Index {
   }
 
   @Builder
+  deleteHostConfirm() {
+    Column({ space: 10 }) {
+      Text('Delete host?').fontSize(16).fontWeight(FontWeight.Bold).width('100%')
+      Text('This also removes its trusted host key and stored password.')
+        .fontSize(12).fontColor('#666666').width('100%')
+      Row({ space: 12 }) {
+        Button('Cancel').id('hostdel/cancel').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.deleteDialog = false; this.deleteIndex = -1; })
+        Button('Delete').id('hostdel/confirm').backgroundColor('#C62828').fontColor(Color.White)
+          .onClick(() => { this.confirmDeleteHost(); })
+      }.width('100%').justifyContent(FlexAlign.End)
+    }
+    .id('hostdel/dialog').width(480).padding(20).backgroundColor(Color.White).borderRadius(12)
+    .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
+  }
+
+  @Builder
   changedKeyWarning() {
     Column({ space: 10 }) {
       Text('HOST KEY HAS CHANGED').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#C62828').width('100%')
@@ -1551,6 +1638,10 @@ struct Index {
                 }.layoutWeight(1).alignItems(HorizontalAlign.Start)
                 Button('Test').id('host-row/' + index).backgroundColor('#E6E6E6').fontColor('#1A1A1A')
                   .onClick(() => { this.connectRow(index); })
+                Button('Edit').id('host-edit/' + index).backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+                  .onClick(() => { this.openEditHost(index); })
+                Button('Del').id('host-del/' + index).backgroundColor('#C62828').fontColor(Color.White)
+                  .onClick(() => { this.askDeleteHost(index); })
                 Button('Files').id('host-files/' + index).backgroundColor('#E6E6E6').fontColor('#1A1A1A')
                   .onClick(() => { this.openFiles(index); })
                 Button('Open').id('host-open/' + index).backgroundColor('#1A6DD0').fontColor(Color.White)
@@ -1561,7 +1652,7 @@ struct Index {
               }
             }.width('100%').padding(12).backgroundColor(Color.White).borderRadius(8)
           }
-        }, (h: HostItem) => h.id)
+        }, (h: HostItem) => h.id + '|' + h.label + '|' + h.address + '|' + h.port)
       }
       .id('host-grid/list').layoutWeight(1).width('100%').padding({ left: 16, right: 16, bottom: 16 })
 
@@ -1608,6 +1699,10 @@ struct Index {
       if (this.vncOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
         this.vncPanel()
+      }
+      if (this.deleteDialog) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
+        this.deleteHostConfirm()
       }
       if (this.changedDialog) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})

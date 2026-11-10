@@ -1,0 +1,115 @@
+schema: 1
+id: host.manage
+title: 主机编辑与删除：改名生效、删除需确认，删除同时清掉信任与凭据
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B07
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: manage-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  # 编辑：改名并保存
+  - action: click
+    target: id:host-edit/0
+  - action: wait
+    ms: 500
+  - action: type
+    target: id:shell/dialog-label
+    text: manage-b
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "manage-b"
+      withinMs: 8000
+  # 先信任一次，制造 known_hosts
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "hello-from-list"
+      withinMs: 15000
+  # 删除：先取消（不应删）
+  - action: click
+    target: id:host-del/0
+  - action: wait
+    ms: 500
+    expect:
+      kind: screenRegex
+      regex: "Delete host\\?"
+      withinMs: 6000
+  - action: click
+    target: id:hostdel/cancel
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "manage-b"
+      withinMs: 6000
+  # 再删：确认
+  - action: click
+    target: id:host-del/0
+  - action: click
+    target: id:hostdel/confirm
+  - action: wait
+    ms: 1200
+asserts:
+  - kind: screenRegex
+    regex: "No hosts yet"
+    withinMs: 8000
+  - kind: absent
+    value: "manage-b"
+    withinMs: 3000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：编辑主机（改名后列表更新、id 不变）、
+    删除需二次确认、取消不删、确认后主机消失。
+    **不覆盖**：删除后 known_hosts 与保险库口令是否真的被清（需要"重建同主机再看是否重新要求信任"
+    的第二条用例）、编辑时改端口/地址的迁移、批量删除、撤销；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 断言 "manage-b" 缺席证明列表项真的移除，而不是只删了库里的行
+notes: >-
+  取消分支必须断言：只测"确认删除成功"无法证明存在二次确认。
+  "No hosts yet" 是空态文案，说明列表真的空了。

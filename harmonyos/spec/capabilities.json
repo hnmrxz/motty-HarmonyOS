@@ -585,6 +585,7 @@
       },
       "evidence": "E1",
       "proof": [
+        "spec/scenarios/host.manage.yaml",
         "spec/scenarios/ssh.connect-from-list.yaml",
         "spec/scenarios/ssh.exec.yaml"
       ],
@@ -595,7 +596,8 @@
         "planInMatrix": "原样逻辑，UI 重做",
         "deps": "—",
         "acceptance": "`credentials`"
-      }
+      },
+      "partialCoverage": "部分：新建/编辑/删除(含二次确认)已双画像实测；导入导出、分组、排序、搜索未做。"
     },
     {
       "id": "B08",
