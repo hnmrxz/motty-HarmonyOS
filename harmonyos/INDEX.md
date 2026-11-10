@@ -1582,3 +1582,38 @@ lint 通过（41 用例 + SBOM 校验）。E1 能力 16。
 ### 六、诚实边界
 服务端是"用来验证自己"的组件，不等于与真实 Windows RDP 互通；
 客户端仍只有连接路径（无画面/输入/通道）。
+---
+
+## Round 55：RDP 服务端（自定义 capture 子系统）——编译通过，init 仍失败（未达成）
+
+### 一、已落地（E2）
+| 项 | 说明 |
+|---|---|
+| `cpp/rdp_server.cpp` | 自定义 shadow 子系统：`vss_new/free/init/uninit/start/stop/enum_monitors` + 帧生产线程（640×480 BGRA 图案，10fps）+ 认证回调 |
+| NAPI | `rdpServerStart(port,user,password,configDir)` / `rdpServerStop()` / `rdpServerStatus()` |
+| UI | 诊断面板 `rdp/srv-start`、`rdp/srv-stop`、`rdp/srv-status`，状态行 `rdp/srv-state` |
+| 构建 | 需两处**构建期补丁**（已写进 `build-freerdp.ps1` 说明）：X11 子系统改可选、`freerdp-shadow-subsystem-impl` 目标缺少时不链接/不安装 |
+| 依赖 | 新增链接 `libfreerdp-shadow3.a`、`librdtk0.a`、`libwinpr-tools3.a`（makecert） |
+| SBOM | 已登记 shadow/rdtk/winpr-tools，16 组件 / 36 份产物，`--check` 通过 |
+
+### 二、未达成：`shadow_server_init` 失败
+`rdp/srv-state` 显示 `stopped err=shadow_server_init failed`。已排除/已修的：
+1. ~~`g_server->subsystem` 在 init 前为空~~ → 凭据改用文件级静态量（顺序错，曾导致 SIGSEGV，已修）
+2. ~~控制流错误导致 init 失败后仍解引用 `g_server`~~ → 重写分支（曾 SIGSEGV，已修）
+3. **ConfigPath 为空** → 传入 `cacheDir`（`freerdp_settings_get_config_path()` 在 OHOS 返回空）
+
+仍在排查（`shadow_server_init` 的失败点只有 6 处）：`shadow_server_init_certificate`（makecert 自签证书）
+或 `shadow_subsystem_init`。**下一步手段**：FreeRDP 的 WLog 默认写 stderr，而 OHOS 上 stderr 不进 hilog；
+本轮已加 `freopen(cacheDir/motty-rdp-server.log)`，但日志文件未出现在预期路径，需先解决日志落盘，
+否则只能靠读源码逐个排除（效率很低）。
+
+### 三、诚实边界
+- 服务端**没有跑起来**，因此 `rdp.server-peer` 用例当前是**失败**状态，不是通过
+- 客户端仍只有连接路径（无画面/输入/通道）
+- 上轮文档里"链接探针引用了 `shadow_server_new`"的说法**不准确**：那个探针实际只取了常量地址，
+  没有真正引用服务端符号；真正需要 `-DWITH_SHADOW=ON` 才能解析符号——本轮已更正
+
+### 四、下一步（Round 56）
+1. 解决日志落盘（先确认 `cacheDir` 是否真的传进 native；把 configDir 显示在 `rdp/srv-state` 里）
+2. 逐项排除 `shadow_server_init` 失败点（优先证书生成：makecert + OpenSSL 在 OHOS 上是否可用）
+3. 服务端起来后再跑 `rdp.server-peer`，届时才能谈"客户端连上真实对端"

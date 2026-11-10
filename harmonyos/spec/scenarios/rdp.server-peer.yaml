@@ -1,0 +1,55 @@
+schema: 1
+id: rdp.server-peer
+title: 服务端对端：App 内启动 RDP 服务端，客户端连本机端口必须成功
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - E04
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:diag/open
+  # 启动内嵌 RDP 服务端（FreeRDP shadow server + 自定义 capture 子系统）
+  - action: click
+    target: id:rdp/srv-start
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "rdp-server: running port=3389"
+      withinMs: 12000
+  # 用客户端连它：这是"真实协议、真实对端"的连接
+  - action: click
+    target: id:rdp/probe-local
+  - action: wait
+    ms: 4000
+asserts:
+  - kind: screenRegex
+    regex: "rdp: connected 127.0.0.1:3389"
+    withinMs: 20000
+  - kind: absent
+    value: "rdp: connect failed"
+    withinMs: 3000
+  - kind: absent
+    value: "error context"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：App 内 FreeRDP shadow server 启动成功
+    （TCP 监听 + 帧生产 + 认证回调），客户端与它完成 RDP 协议协商并到达 connected。
+    **不覆盖**：画面渲染与位图校验（客户端仍无位图解码）、输入回传、NLA/CredSSP、
+    与真实 Windows RDP 服务端互通、多客户端、动态分辨率；未在 arm64 真机执行。
+deviations:
+  - 服务端是我们为验证客户端而内嵌的组件（FreeRDP shadow server），不是产品功能
+  - 端口固定 3389，认证固定 tester/secret（仅诊断用途）
+notes: >-
+  这条用例解决的是"客户端有没有真实对端"这个前提问题。之前 rdp.connect 只能断言
+  "连不上"，现在能断言"连上了"。但**画面仍未验证**——客户端没有位图解码路径。

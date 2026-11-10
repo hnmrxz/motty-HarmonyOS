@@ -1,0 +1,19 @@
+﻿feat(harmonyos): RDP 服务端自定义 capture 子系统（编译通过；init 仍失败，如实记录）
+
+已落地(E2):
+- cpp/rdp_server.cpp: shadow 子系统六件套 + 帧生产线程(640x480 BGRA 10fps) + 认证回调
+- NAPI: rdpServerStart(port,user,password,configDir)/rdpServerStop/rdpServerStatus
+- UI: 诊断面板 rdp/srv-start|srv-stop|srv-status 与状态行 rdp/srv-state
+- 构建期两处补丁(写进 build-freerdp.ps1): X11 子系统改可选；freerdp-shadow-subsystem-impl
+  目标缺失时不链接/不安装
+- 链接 libfreerdp-shadow3.a / librdtk0.a / libwinpr-tools3.a(makecert)，双 ABI
+- SBOM 已登记 shadow/rdtk/winpr-tools：16 组件 / 36 份产物，--check 通过
+
+未达成:
+- shadow_server_init 失败(状态行可见)。已修: 凭据顺序(曾 SIGSEGV)、init 失败后解引用(曾 SIGSEGV)、
+  ConfigPath 为空(传 cacheDir)。剩余怀疑: makecert 自签证书 或 shadow_subsystem_init
+- 本轮加了 freopen(cacheDir/motty-rdp-server.log) 但日志未落盘，下一步先解决日志再排障
+
+诚实边界:
+- 服务端没跑起来 -> rdp.server-peer 用例当前失败，未通过
+- 更正上轮文档错误: 链接探针并未真正引用 shadow_server_new，只有开 -DWITH_SHADOW=ON 才能解析符号

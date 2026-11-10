@@ -160,6 +160,8 @@ struct Index {
   @State lang: string = 'en';
   @State aiAnswer: string = '';
   @State aiEndpoint: string = 'http://127.0.0.1:2297/v1/ai';
+  @State rdpSrvStatus: string = '';
+  @State rdpSrvPort: number = 3389;
   @State selText: string = '';
   @State clipText: string = '';
   private touchLastY: number = -1;
@@ -662,6 +664,24 @@ struct Index {
   // ---------------- AI 通路（最小切片） ----------------
   // 真实产品接外部模型；这里把"请求构造 / 超时 / 错误处理 / 结果呈现"验证到可断言，
   // 模型质量本身不在验证范围内（见 spec 的 evidence.limits）。
+  // ---------------- RDP 服务端（诊断用：给客户端一个真实协议的对端）----------------
+  private startRdpServer(): void {
+    // OHOS 没有 XDG 配置目录：shadow_server_init 需要一个可写目录来放自签证书
+    const ctx = getContext(this) as common.UIAbilityContext;
+    const dir: string = ctx !== undefined && ctx.cacheDir !== undefined ? ctx.cacheDir : '/data/storage/el2/base/cache';
+    const rc: number = mottynapi.rdpServerStart(this.rdpSrvPort, 'tester', 'secret', dir);
+    this.rdpSrvStatus = 'rdp-server: start rc=' + rc + ' ' + mottynapi.rdpServerStatus();
+  }
+
+  private stopRdpServer(): void {
+    mottynapi.rdpServerStop();
+    this.rdpSrvStatus = 'rdp-server: ' + mottynapi.rdpServerStatus();
+  }
+
+  private refreshRdpServer(): void {
+    this.rdpSrvStatus = 'rdp-server: ' + mottynapi.rdpServerStatus();
+  }
+
   private async askAI(): Promise<void> {
     const tab = this.activeTab();
     const tail = tab === null ? this.termText.slice(-200)
@@ -1861,13 +1881,23 @@ struct Index {
           .onClick(() => { this.diagOpen = false; this.startVnc('secret'); })
         Button('VNC bad pw').id('vnc/session-bad').backgroundColor('#C62828').fontColor(Color.White)
           .onClick(() => { this.diagOpen = false; this.startVnc('wrong-password'); })
-        Button('RDP :3389').id('rdp/probe-closed').backgroundColor('#37474F').fontColor(Color.White)
+        Button('RDP srv start').id('rdp/srv-start').backgroundColor('#0A6C00').fontColor(Color.White)
+          .onClick(() => { this.startRdpServer(); })
+        Button('RDP srv stop').id('rdp/srv-stop').backgroundColor('#C62828').fontColor(Color.White)
+          .onClick(() => { this.stopRdpServer(); })
+        Button('RDP srv status').id('rdp/srv-status').backgroundColor('#37474F').fontColor(Color.White)
+          .onClick(() => { this.refreshRdpServer(); })
+        Button('RDP local :3389').id('rdp/probe-local').backgroundColor('#1A6DD0').fontColor(Color.White)
           .onClick(() => { this.rdpProbe(3389); })
+        Button('RDP :3390').id('rdp/probe-closed').backgroundColor('#37474F').fontColor(Color.White)
+          .onClick(() => { this.rdpProbe(3390); })
         Button('RDP :2222').id('rdp/probe-ssh').backgroundColor('#37474F').fontColor(Color.White)
           .onClick(() => { this.rdpProbe(2222); })
       }.width('100%')
       Text(this.vncResult.length > 0 ? this.vncResult : 'vnc: (not probed)')
         .id('vnc/result').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')
+      Text(this.rdpSrvStatus.length > 0 ? this.rdpSrvStatus : 'rdp-server: (idle)')
+        .id('rdp/srv-state').fontSize(11).fontFamily('monospace').fontColor('#0A6C00').width('100%')
       Text(this.rdpResult.length > 0 ? this.rdpResult : 'rdp: (not probed)')
         .id('rdp/result').fontSize(11).fontFamily('monospace').fontColor('#37474F').width('100%')
       Scroll() {

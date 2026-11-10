@@ -78,6 +78,26 @@
       ]
     },
     {
+      "name": "FreeRDP (shadow)",
+      "version": "3.9.0",
+      "license": "Apache-2.0",
+      "use": "RDP shadow server（内嵌为测试对端；含自定义 capture 子系统）",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/libfreerdp-shadow3.a",
+          "sizeBytes": 178706,
+          "sha256": "e7b3d8f788a57ccf2ea961a500d0787875d9991fbe895c1ddccc7d31b56b6fa8"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libfreerdp-shadow3.a",
+          "sizeBytes": 192914,
+          "sha256": "d2f59f3234345c40349ce7b86f30111b363c100bab2416d0a8ccd132fb0a7a83"
+        }
+      ]
+    },
+    {
       "name": "LibVNC (client)",
       "version": "0.9.14",
       "license": "GPL-2.0-or-later",
@@ -188,6 +208,32 @@
           "file": "native/third_party/ohos/x86_64/lib/libwinpr-tools3.a",
           "sizeBytes": 34292,
           "sha256": "045ab9b8fade711f81c4d7e43dacb2e5c45b938645a69186556096034e0758ca"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/libwinpr-tools3.a",
+          "sizeBytes": 26840,
+          "sha256": "540f48daa9a69feafb349bbadbceaccd04d016d00fd73e17e7160a0ff2d33ae7"
+        }
+      ]
+    },
+    {
+      "name": "librdtk",
+      "version": "3.9.0",
+      "license": "Apache-2.0",
+      "use": "FreeRDP shadow 的 lobby 文字/UI 绘制（随 FreeRDP）",
+      "artifacts": [
+        {
+          "arch": "x86_64",
+          "file": "native/third_party/ohos/x86_64/lib/librdtk0.a",
+          "sizeBytes": 94156,
+          "sha256": "17ece21811eed64a9df7c252b5ef6b571c00978f581409e0fa1d5486d4e363fd"
+        },
+        {
+          "arch": "arm64",
+          "file": "native/third_party/ohos/arm64/lib/librdtk0.a",
+          "sizeBytes": 94780,
+          "sha256": "b4789642b27d5382a479e416adfe86f33d3d74e8a7b42921e8392f34826266d7"
         }
       ]
     },

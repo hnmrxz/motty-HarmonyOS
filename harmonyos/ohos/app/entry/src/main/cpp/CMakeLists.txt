@@ -22,7 +22,7 @@ endif()
 set(OHOS_SSH_PREFIX ${OHOS_SSH_ROOT}/${OHOS_SSH_ARCH})
 message(STATUS "OHOS_ARCH=${OHOS_ARCH} -> OHOS_SSH_PREFIX=${OHOS_SSH_PREFIX}")
 
-add_library(mottynapi SHARED ssh_napi.cpp vt_core.cpp rdp_napi.cpp)
+add_library(mottynapi SHARED ssh_napi.cpp vt_core.cpp rdp_napi.cpp rdp_server.cpp)
 
 target_include_directories(mottynapi PRIVATE
     ${NATIVERENDER_ROOT_PATH}
@@ -44,9 +44,15 @@ target_link_libraries(mottynapi PRIVATE
     ${OHOS_SSH_PREFIX}/lib/libp256m.a
     ${OHOS_SSH_PREFIX}/lib/libvterm.a
     # FreeRDP（Apache-2.0）静态库：RDP 客户端接入用；本轮只做连接路径
+    ${OHOS_SSH_PREFIX}/lib/libfreerdp-shadow3.a
+    # shadow 的 lobby/画字依赖 rdtk
+    ${OHOS_SSH_PREFIX}/lib/librdtk0.a
+    ${OHOS_SSH_PREFIX}/lib/libfreerdp-server3.a
     ${OHOS_SSH_PREFIX}/lib/libfreerdp-client3.a
     ${OHOS_SSH_PREFIX}/lib/libfreerdp3.a
     ${OHOS_SSH_PREFIX}/lib/libwinpr3.a
+    # shadow server 用 makecert 生成自签证书（藏在 winpr-tools 里）
+    ${OHOS_SSH_PREFIX}/lib/libwinpr-tools3.a
     ${OHOS_SSH_PREFIX}/lib/libssl.a
     ${OHOS_SSH_PREFIX}/lib/libcrypto.a)
     # musl 不提供 pthread_cancel（FreeRDP 的 TerminateThread 引用它）
