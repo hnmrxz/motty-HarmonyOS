@@ -561,3 +561,25 @@ libssh2 会话非线程安全，这条约束在 §17.1 已经踩过一次。
 `uitest uiInput inputText <x> <y> <text>` 的 text 若含空格，**必须加引号**：
 `hdc shell` 会把命令按空格拆参数，`uitest` 只吃到第一个单词（实测 `echo hello-pty-ok` 变成 `echo`）。
 `spec/run.py` 已统一用单引号引用并转义内部单引号。
+---
+
+## 21. SFTP（当前只做 list / read）
+
+### 21.1 客户端
+```
+sftp(host, port, user, password, expectedFingerprint, op, path, cb)   // op = "list" | "read"
+```
+- 主机密钥校验与 `probe` 完全同源：未知/不匹配**不认证**，因此一个字节都读不到
+- `list` 返回每行 `name|size`，目录名带尾斜杠
+- `read` 按 UTF-8 文本返回，**上限 256 KiB**，超出截断并追加 `[truncated]`
+- 回调走 TSFN，不阻塞 UI
+
+### 21.2 对端
+夹具用 `github.com/pkg/sftp` 起 SFTP 子系统，根为临时目录（含 `hello.txt`、`sub/nested.txt`）。
+启动日志会打印 `sftp root: ...`；若这行缺失说明 `prepareSftpRoot()` 没跑到，
+客户端会看到 `subsystem "sftp" refused`。
+
+### 21.3 一个必须记住的 UI 陷阱
+把路径输入框**绑定状态**再用注入文本去改它，是**不可靠**的：注入提交后值会被回滚
+（与设置页输入框同源的问题）。所以目录导航做成"点击条目进入"（`sftp/entry/<name>`）——
+既可测，也才是正常交互。凡是要靠"打字改变量"来驱动流程的地方，都应改成显式控件。

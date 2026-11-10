@@ -6,11 +6,12 @@
 //   2) 绝不阻塞 UI 线程：网络与握手在 std::thread，结果经 ThreadSafeFunction 回 ArkTS。
 //
 // 仍然没做的事（不假装做了）：
-//   - 没有 known_hosts 持久化（本轮只做"校验与拒绝"，持久化 = M1-b）
-//   - 没有会话复用、没有 pty、没有 SFTP/转发
+//   - known_hosts 持久化在 ArkTS 层（relationalStore），C 层只负责校验与拒绝
+//   - 没有会话复用、没有端口转发、没有 VNC/RDP；SFTP 只做了 list/read
 //   - 没有 hostkey 算法白名单（依赖 libssh2 协商结果）
 #include <napi/native_api.h>
 #include <libssh2.h>
+#include <libssh2_sftp.h>
 
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -792,6 +793,184 @@ napi_value ResizeShell(napi_env env, napi_callback_info info) {
     return out;
 }
 
+// ---------------- SFTP（M2 起点：列目录 / 读文件）----------------
+// 与 probe 一样严格的密钥语义：未知/不匹配不认证，因此不会碰到任何文件。
+struct SftpJob {
+    std::string host;
+    int port = 22;
+    std::string user;
+    std::string password;
+    std::string expectedFingerprint;
+    std::string op;    // "list" | "read"
+    std::string path;
+    napi_threadsafe_function cb = nullptr;
+};
+
+// 建立到 SFTP 子系统的会话；失败返回空字符串并写入 err
+bool sftpHandshake(const SftpJob &job, LIBSSH2_SESSION **outSession, LIBSSH2_SFTP **outSftp, std::string &err) {
+    int fd = tcpConnect(job.host, job.port, err);
+    if (fd < 0) {
+        return false;
+    }
+    LIBSSH2_SESSION *session = libssh2_session_init();
+    if (session == nullptr) {
+        close(fd);
+        err = "session init failed";
+        return false;
+    }
+    if (libssh2_session_handshake(session, fd) != 0) {
+        libssh2_session_free(session);
+        close(fd);
+        err = "handshake failed";
+        return false;
+    }
+    const char *hash = libssh2_hostkey_hash(session, LIBSSH2_HOSTKEY_HASH_SHA256);
+    std::string fp = hash ? "SHA256:" + base64(reinterpret_cast<const unsigned char *>(hash), 32) : "unavailable";
+    if (job.expectedFingerprint.empty() || job.expectedFingerprint != fp) {
+        libssh2_session_disconnect(session, "hostkey not trusted");
+        libssh2_session_free(session);
+        close(fd);
+        err = job.expectedFingerprint.empty() ? ("unknown_host " + fp)
+                                              : ("hostkey-mismatch actual=" + fp);
+        return false;
+    }
+    if (libssh2_userauth_password(session, job.user.c_str(), job.password.c_str()) != 0) {
+        libssh2_session_disconnect(session, "auth failed");
+        libssh2_session_free(session);
+        close(fd);
+        err = "auth failed";
+        return false;
+    }
+    LIBSSH2_SFTP *sftp = libssh2_sftp_init(session);
+    if (sftp == nullptr) {
+        libssh2_session_disconnect(session, "sftp init failed");
+        libssh2_session_free(session);
+        close(fd);
+        err = "sftp init failed";
+        return false;
+    }
+    *outSession = session;
+    *outSftp = sftp;
+    return true;
+}
+
+std::string sftpRun(const SftpJob &job) {
+    LIBSSH2_SESSION *session = nullptr;
+    LIBSSH2_SFTP *sftp = nullptr;
+    std::string err;
+    if (!sftpHandshake(job, &session, &sftp, err)) {
+        return err;   // 已是可断言的字符串：error… / unknown_host… / hostkey-mismatch…
+    }
+    std::string result;
+    if (job.op == "list") {
+        LIBSSH2_SFTP_HANDLE *dir = libssh2_sftp_opendir(sftp, job.path.c_str());
+        if (dir == nullptr) {
+            result = "error opendir failed";
+        } else {
+            char name[512];
+            char longentry[512];
+            LIBSSH2_SFTP_ATTRIBUTES attrs{};
+            for (;;) {
+                int n = libssh2_sftp_readdir_ex(dir, name, sizeof(name), longentry, sizeof(longentry), &attrs);
+                if (n <= 0) {
+                    break;
+                }
+                std::string entry(name, static_cast<size_t>(n));
+                if (entry == "." || entry == "..") {
+                    continue;
+                }
+                // 目录加尾斜杠，让 UI 与 spec 都能分辨
+                const bool isDir = (attrs.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) != 0 &&
+                                   LIBSSH2_SFTP_S_ISDIR(attrs.permissions);
+                if (!result.empty()) {
+                    result += "\n";
+                }
+                result += entry;
+                if (isDir) {
+                    result += "/";
+                }
+                result += "|" + std::to_string(static_cast<long long>(attrs.filesize));
+            }
+            libssh2_sftp_closedir(dir);
+        }
+    } else if (job.op == "read") {
+        LIBSSH2_SFTP_HANDLE *file = libssh2_sftp_open(sftp, job.path.c_str(), LIBSSH2_FXF_READ, 0);
+        if (file == nullptr) {
+            result = "error open failed";
+        } else {
+            char buf[4096];
+            std::string content;
+            const size_t kLimit = 256 * 1024;   // 单次读取上限，避免把大文件塞进字符串
+            for (;;) {
+                ssize_t n = libssh2_sftp_read(file, buf, sizeof(buf));
+                if (n <= 0) {
+                    break;
+                }
+                content.append(buf, static_cast<size_t>(n));
+                if (content.size() > kLimit) {
+                    content = content.substr(0, kLimit) + "\n[truncated]";
+                    break;
+                }
+            }
+            libssh2_sftp_close(file);
+            result = content;
+        }
+    } else {
+        result = "error unknown op";
+    }
+    libssh2_sftp_shutdown(sftp);
+    libssh2_session_disconnect(session, "bye");
+    libssh2_session_free(session);
+    return result;
+}
+
+void sftpWorker(SftpJob *job) {
+    auto *payload = new std::string(sftpRun(*job));
+    napi_call_threadsafe_function(job->cb, payload, napi_tsfn_blocking);
+    napi_release_threadsafe_function(job->cb, napi_tsfn_release);
+    delete job;
+}
+
+// sftp(host, port, user, password, expectedFingerprint, op, path, cb)
+napi_value Sftp(napi_env env, napi_callback_info info) {
+    size_t argc = 8;
+    napi_value args[8] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 8) {
+        napi_throw_type_error(env, nullptr,
+
+            "sftp(host, port, user, password, expectedFp, op, path, cb)");
+        return nullptr;
+    }
+    auto *job = new SftpJob();
+    auto readStr = [&](size_t i, std::string &dst) {
+        size_t len = 0;
+        napi_get_value_string_utf8(env, args[i], static_cast<char *>(nullptr), 0, &len);
+        if (len == 0) { dst.clear(); return; }
+        dst.resize(len);
+        napi_get_value_string_utf8(env, args[i], &dst[0], len + 1, &len);
+    };
+    readStr(0, job->host);
+    int32_t port = 22;
+    napi_get_value_int32(env, args[1], &port);
+    job->port = port;
+    readStr(2, job->user);
+    readStr(3, job->password);
+    readStr(4, job->expectedFingerprint);
+    readStr(5, job->op);
+    readStr(6, job->path);
+    napi_value n1 = nullptr;
+    napi_create_string_utf8(env, "motty.sftp.cb", NAPI_AUTO_LENGTH, &n1);
+    if (napi_create_threadsafe_function(env, args[7], nullptr, n1, 0, 1, nullptr, nullptr, nullptr,
+                                        callJs, &job->cb) != napi_ok) {
+        delete job;
+        napi_throw_error(env, nullptr, "tsfn failed");
+        return nullptr;
+    }
+    std::thread(sftpWorker, job).detach();
+    return nullptr;
+}
+
 // closeShell(id)
 napi_value CloseShell(napi_env env, napi_callback_info info) {
     size_t argc = 1;
@@ -817,6 +996,7 @@ napi_value Init(napi_env env, napi_value exports) {
         {"closeShell", nullptr, CloseShell, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"openChannel", nullptr, OpenChannel, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"resizeShell", nullptr, ResizeShell, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"sftp", nullptr, Sftp, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     RegisterVtFunctions(env, exports);

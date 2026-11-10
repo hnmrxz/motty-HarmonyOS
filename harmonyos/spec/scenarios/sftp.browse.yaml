@@ -1,0 +1,90 @@
+schema: 1
+id: sftp.browse
+title: SFTP 最小链路：列目录（含子目录）与读取文件内容
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - C01
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: sftp-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:host-files/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "hello\\.txt"
+      withinMs: 15000
+  - action: click
+    target: id:sftp/download
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "sftp-hello-marker"
+      withinMs: 12000
+  - action: click
+    target: id:sftp/entry/sub/
+  - action: wait
+    ms: 2000
+asserts:
+  - kind: screenRegex
+    regex: "nested\\.txt"
+    withinMs: 10000
+  - kind: screenRegex
+    regex: "sftp-hello-marker"
+    withinMs: 4000
+  - kind: absent
+    value: "error opendir"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：SFTP 子系统握手、列目录（含子目录切换）、
+    读取文本文件内容、目录项带尾斜杠与大小。
+    **不覆盖**：上传、重命名、删除、权限/时间戳展示、进度与断点、符号链接、
+    二进制文件（当前按 UTF-8 文本读，上限 256 KiB）、并发传输、SFTP 之外的 SCP。
+    未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 对端的 SFTP 根是夹具临时目录，内含 hello.txt 与 sub/nested.txt
+notes: >-
+  这条 spec 同时验证了两件不同的事：同名文件能读到内容（read 路径），
+  以及换到子目录后能列出另一份内容（path 参数真的被传到远端，而不是被忽略）。

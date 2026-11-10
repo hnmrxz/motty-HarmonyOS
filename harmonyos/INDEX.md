@@ -548,3 +548,34 @@ abc|中文|def
 - 标签拖动/重排、分屏、会话恢复（应用重启后丢失）
 - 会话数量增长时的内存与切换开销未测量
 - 终端仍缺组合字符/emoji 宽度、鼠标上报、DECSET 2026、选择复制
+---
+
+## Round 19：SFTP 最小链路（列目录 + 读文件）
+
+| 产物 | 说明 |
+|---|---|
+| `tools/design/sshfixture` | 新增 **SFTP 子系统**（`github.com/pkg/sftp`），根目录是临时目录，内含 `hello.txt` 与 `sub/nested.txt` |
+| `cpp/ssh_napi.cpp` | `sftp(host,port,user,pass,expectedFp,op,path,cb)`，`op = list \| read`；主机密钥语义与 probe 一致（未知/不匹配**不认证**，碰不到任何文件） |
+| `Index.ets` | 主机行新增 `Files`（`host-files/<i>`）→ 文件面板 `sftp/panel`：路径、条目按钮、下载、预览、状态 |
+| `spec/scenarios/sftp.browse.yaml` | 列根目录 → 读文件内容 → 点进子目录 → 列子目录 |
+
+### 一个设计决定
+目录不能只把名字打出来——**要让用户能点进去**。于是列表项是按钮（`sftp/entry/<name>`）：
+点目录就进入并重新列出，点文件就选中它。顺带绕开了一个真实缺陷：
+`sftp/path` 输入框绑定状态时，注入后值会被回滚（与设置页那些输入框同源的问题），
+靠"打字改路径"来驱动测试是不可靠的，改成点击才既可测也是正常交互。
+
+### 关键断言
+- `hello.txt` 出现在列表里（列目录通）
+- 点 Download 后 `sftp-hello-marker` 出现（读内容通，且内容真的来自远端）
+- 点进 `sub/` 后 `nested.txt` 出现（**path 参数真的传到了远端**，不是被忽略）
+- `error opendir` 缺席
+
+### 双画像验收（13 条 × 2 画像）
+`sftp.browse`、`session.tabs`、`terminal.pty`、`terminal.scrollback`、`terminal.vt`、`terminal.view`、
+`terminal.interactive`、`ssh.connect-from-list`、`infra.host-create-by-id`、`host.persist`、
+`net.reachability`、`ssh.exec`、`ssh.hostkey` —— 全部 **passed**。
+
+### 未做（SFTP 只到"能看"）
+上传、重命名、删除、权限/时间戳展示、进度与断点续传、符号链接、二进制文件（当前按 UTF-8 文本读，上限 256 KiB）、
+并发传输、SCP、本地↔远端双栏。

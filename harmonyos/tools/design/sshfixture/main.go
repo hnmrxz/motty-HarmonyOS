@@ -24,6 +24,7 @@ import (
 	"crypto/subtle"
 	"encoding/pem"
 	"flag"
+	"io"
 	"fmt"
 	"log"
 	"net"
@@ -32,8 +33,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
+
+var sftpRoot string
 
 func main() {
 	addr := flag.String("addr", "127.0.0.1:2222", "listen address (loopback only by default)")
@@ -88,6 +92,13 @@ func run(addr, hostkeyPath, hostkeyType, user, pass string, printKey bool) error
 	}
 	defer ln.Close()
 
+	var sftpErr error
+	sftpRoot, sftpErr = prepareSftpRoot()
+	if sftpErr != nil {
+		log.Fatalf("prepare sftp root: %v", sftpErr)
+	}
+	log.Printf("sftp root: %s", sftpRoot)
+
 	fmt.Printf("sshfixture listening on %s\n", ln.Addr().String())
 	fmt.Printf("host key fingerprint : %s\n", ssh.FingerprintSHA256(hostSigner.PublicKey()))
 	fmt.Printf("accepted user        : %s (password: %s)\n", user, pass)
@@ -128,6 +139,27 @@ func handle(conn net.Conn, cfg *ssh.ServerConfig) {
 		}
 		go serveSession(ch, chReqs, auth)
 	}
+}
+
+// sftpRoot 是 SFTP 子系统的根目录。启动时准备一个已知文件，供 spec 断言。
+func prepareSftpRoot() (string, error) {
+	dir, err := os.MkdirTemp("", "motty-sftp-")
+	if err != nil {
+		return "", err
+	}
+	if werr := os.WriteFile(filepath.Join(dir, "hello.txt"),
+		[]byte("sftp-hello-marker\n"), 0o644); werr != nil {
+		return "", werr
+	}
+	sub := filepath.Join(dir, "sub")
+	if merr := os.MkdirAll(sub, 0o755); merr != nil {
+		return "", merr
+	}
+	if werr := os.WriteFile(filepath.Join(sub, "nested.txt"),
+		[]byte("sftp-nested-marker\n"), 0o644); werr != nil {
+		return "", werr
+	}
+	return dir, nil
 }
 
 func serveSession(ch ssh.Channel, reqs <-chan *ssh.Request, auth string) {
@@ -255,6 +287,26 @@ func serveSession(ch ssh.Channel, reqs <-chan *ssh.Request, auth string) {
 			} else {
 				req.Reply(false, nil)
 			}
+		case "subsystem":
+			var sub struct{ Name string }
+			_ = ssh.Unmarshal(req.Payload, &sub)
+			if sub.Name != "sftp" || sftpRoot == "" {
+				req.Reply(false, nil)
+				log.Printf("subsystem %q refused", sub.Name)
+				continue
+			}
+			req.Reply(true, nil)
+			log.Printf("sftp subsystem started, root=%s", sftpRoot)
+			srv, serr := sftp.NewServer(ch, sftp.WithServerWorkingDirectory(sftpRoot))
+			if serr != nil {
+				log.Printf("sftp server init failed: %v", serr)
+				return
+			}
+			if serr := srv.Serve(); serr != nil && serr != io.EOF {
+				log.Printf("sftp server ended: %v", serr)
+			}
+			_ = srv.Close()
+			return
 		case "shell":
 			if session != nil {
 				req.Reply(false, nil)

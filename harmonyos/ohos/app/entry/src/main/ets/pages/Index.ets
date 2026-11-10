@@ -85,6 +85,13 @@ struct Index {
   @State vtStatus: string = '';
   @State vtHistory: string = '';
   @State ptyStatus: string = '';
+  @State filesOpen: boolean = false;
+  @State sftpPath: string = '.';
+  @State sftpFile: string = 'hello.txt';
+  @State sftpList: string = '';
+  @State sftpEntries: string[] = [];
+  @State sftpPreview: string = '';
+  @State sftpStatus: string = '';
 
   private creds: Map<string, Cred> = new Map<string, Cred>();
   private store: relationalStore.RdbStore | null = null;
@@ -451,6 +458,68 @@ struct Index {
       });
   }
 
+  // ---------------- SFTP（M2 起点：列目录 / 读文件）----------------
+  private openFiles(index: number): void {
+    this.pendingAction = 'files';
+    const h = this.hosts[index];
+    if (h === undefined) {
+      return;
+    }
+    this.pendingLabel = h.label;
+    const key = this.hostKey(h.address, h.port);
+    const cred = this.creds.get(key);
+    if (cred === undefined) {
+      this.setStatus(index, 'no credentials in memory (vault not implemented yet)');
+      return;
+    }
+    this.lookupFp(key).then((fp: string) => {
+      if (fp.length > 0) {
+        this.startFiles(cred, fp);
+        return;
+      }
+      mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo no-auth-yet', '',
+        (first: string) => {
+          const m = new RegExp('SHA256:[A-Za-z0-9+/]+').exec(first);
+          if (m === null || first.indexOf('unknown_host') !== 0) {
+            this.setStatus(index, first);
+            return;
+          }
+          this.pendingFp = m[0];
+          this.pendingKey = key;
+          this.keyDialog = true;
+        });
+    });
+  }
+
+  private startFiles(cred: Cred, fp: string): void {
+    this.filesOpen = true;
+    this.sftpList = '';
+    this.sftpPreview = '';
+    this.sftpStatus = '';
+    this.sftpPath = '.';
+    this.sftpFile = 'hello.txt';
+    this.refreshListing(cred, fp);
+  }
+
+  private refreshListing(cred: Cred, fp: string): void {
+    this.sftpStatus = 'listing ' + this.sftpPath;
+    mottynapi.sftp(cred.address, cred.port, cred.user, cred.password, fp, 'list', this.sftpPath,
+      (result: string) => {
+        this.sftpList = result;
+        this.sftpEntries = result.length > 0 ? result.split('\n') : [];
+        this.sftpStatus = 'listed ' + this.sftpPath + ' (' + this.sftpEntries.length + ' entries)';
+      });
+  }
+
+  private downloadFile(cred: Cred, fp: string): void {
+    this.sftpStatus = 'reading ' + this.sftpFile;
+    mottynapi.sftp(cred.address, cred.port, cred.user, cred.password, fp, 'read', this.sftpFile,
+      (result: string) => {
+        this.sftpPreview = result;
+        this.sftpStatus = 'read ' + this.sftpFile + ' (' + result.length + ' chars)';
+      });
+  }
+
   private probeNet(): void {
     this.probeText = 'connecting...';
     const tcp = socket.constructTCPSocketInstance();
@@ -534,6 +603,10 @@ struct Index {
       }
       if (this.pendingAction === 'open') {
         this.startSession(cred, fp, this.pendingLabel);
+        return;
+      }
+      if (this.pendingAction === 'files') {
+        this.startFiles(cred, fp);
         return;
       }
       this.runDemoWith(cred, fp, this.pendingAction);
@@ -630,6 +703,83 @@ struct Index {
       }.width('100%').justifyContent(FlexAlign.End)
     }
     .id('hostkey/dialog').width(520).padding(20).backgroundColor(Color.White).borderRadius(12)
+    .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
+  }
+
+  @Builder
+  filesPanel() {
+    Column({ space: 8 }) {
+      Row() {
+        Text('Files (SFTP)').fontSize(16).fontWeight(FontWeight.Bold)
+        Blank()
+        Button('Close').id('sftp/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.filesOpen = false; })
+      }.width('100%')
+      Text(this.sftpStatus.length > 0 ? this.sftpStatus : 'sftp: (idle)')
+        .id('sftp/status').fontSize(11).fontColor('#0A6C00').width('100%')
+      Row({ space: 8 }) {
+        TextInput({ text: this.sftpPath, placeholder: '.' }).id('sftp/path')
+          .layoutWeight(1).onChange((v: string) => { this.sftpPath = v; })
+        Button('List').id('sftp/list-btn').onClick(() => {
+          const cred = this.creds.get(this.fixtureKey);
+          if (cred !== undefined) {
+            this.lookupFp(this.fixtureKey).then((fp: string) => { this.refreshListing(cred, fp); });
+          }
+        })
+      }.width('100%')
+      Scroll() {
+        Column({ space: 2 }) {
+          Text(this.sftpList.length > 0 ? this.sftpList : '(empty)')
+            .id('sftp/list').fontSize(11).fontFamily('monospace').fontColor('#888888').width('100%')
+          ForEach(this.sftpEntries, (entry: string) => {
+            Row() {
+              Button(entry.indexOf('|') > 0 ? entry.substring(0, entry.indexOf('|')) : entry)
+                .id('sftp/entry/' + (entry.indexOf('|') > 0 ? entry.substring(0, entry.indexOf('|')) : entry))
+                .backgroundColor(Color.Transparent)
+                .fontColor(entry.endsWith('/') ? '#1A6DD0' : '#1A1A1A')
+                .fontSize(12)
+                .onClick(() => {
+                  const name = entry.indexOf('|') > 0 ? entry.substring(0, entry.indexOf('|')) : entry;
+                  const cred = this.creds.get(this.fixtureKey);
+                  if (cred === undefined) {
+                    return;
+                  }
+                  if (name.endsWith('/')) {
+                    const base = this.sftpPath === '.' ? '' : this.sftpPath;
+                    const clean = name.substring(0, name.length - 1);
+                    this.sftpPath = base.length > 0 ? base + '/' + clean : clean;
+                    this.lookupFp(this.fixtureKey).then((fp: string) => {
+                      this.refreshListing(cred, fp);
+                    });
+                  } else {
+                    this.sftpFile = name;
+                    this.sftpStatus = 'selected ' + name;
+                  }
+                })
+            }.width('100%')
+          }, (entry: string) => entry)
+        }.width('100%').alignItems(HorizontalAlign.Start)
+      }.height(140).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)
+        .align(Alignment.TopStart)
+      Row({ space: 8 }) {
+        TextInput({ text: this.sftpFile, placeholder: 'hello.txt' }).id('sftp/file')
+          .layoutWeight(1).onChange((v: string) => { this.sftpFile = v; })
+        Button('Download').id('sftp/download').onClick(() => {
+          const cred = this.creds.get(this.fixtureKey);
+          if (cred !== undefined) {
+            this.lookupFp(this.fixtureKey).then((fp: string) => { this.downloadFile(cred, fp); });
+          }
+        })
+      }.width('100%')
+      Scroll() {
+        Text(this.sftpPreview.length > 0 ? this.sftpPreview : '(not downloaded)')
+          .id('sftp/preview').fontSize(12).fontFamily('monospace').width('100%')
+      }.height(120).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)
+        .align(Alignment.TopStart)
+      Text('Limits: text only, 256 KiB cap, no upload/rename/delete yet.')
+        .fontSize(10).fontColor('#999999').width('100%')
+    }
+    .id('sftp/panel').width(680).padding(16).backgroundColor(Color.White).borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
 
@@ -750,6 +900,8 @@ struct Index {
                 }.layoutWeight(1).alignItems(HorizontalAlign.Start)
                 Button('Test').id('host-row/' + index).backgroundColor('#E6E6E6').fontColor('#1A1A1A')
                   .onClick(() => { this.connectRow(index); })
+                Button('Files').id('host-files/' + index).backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+                  .onClick(() => { this.openFiles(index); })
                 Button('Open').id('host-open/' + index).backgroundColor('#1A6DD0').fontColor(Color.White)
                   .onClick(() => { this.openSession(h.label, index); })
               }.width('100%')
@@ -798,6 +950,10 @@ struct Index {
       }
       .width('100%').height('100%').backgroundColor('#FAFAFA')
 
+      if (this.filesOpen) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
+        this.filesPanel()
+      }
       if (this.diagOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
         this.diagPanel()
