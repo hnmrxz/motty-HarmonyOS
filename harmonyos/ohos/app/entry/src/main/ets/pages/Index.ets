@@ -75,6 +75,7 @@ struct Index {
   private termIndex: number = -1;
   private shellId: number = 0;
   @State termInput: string = '';
+  @State vtStatus: string = '';
 
   // 密码只在内存：键为 address:port。进程退出即失，这是刻意的。
   private creds: Map<string, Cred> = new Map<string, Cred>();
@@ -250,8 +251,14 @@ struct Index {
     this.termVisible = true;
     this.termText = '';
     this.setStatus(index, 'terminal streaming...');
+    mottynapi.vtReset(80, 24);
+    this.vtStatus = mottynapi.vtStatus();
     const id: number = mottynapi.openShell(cred.address, cred.port, cred.user, cred.password, fp,
-      (chunk: string) => { this.termText = this.termText + chunk; },
+      (chunk: string) => {
+        mottynapi.vtFeed(chunk);
+        this.termText = mottynapi.vtScreen();
+        this.vtStatus = mottynapi.vtStatus();
+      },
       (status: string) => {
         this.termText = this.termText + '\n[status] ' + status;
         this.setStatus(index, 'terminal: ' + status);
@@ -266,8 +273,19 @@ struct Index {
   // 诊断用：一次性流式 exec（term-demo，多块到达）。与交互式 openShell 覆盖不同性质：
   //   - exec: 一条命令、多块输出、无输入
   //   - openShell: 长通道、可写入、远端回显
+  // 两个诊断入口，覆盖不同性质：
+  //   terminal/demo -> term-demo：原始流式多块（不依赖 VT 语义）
+  //   terminal/vt   -> vt-demo  ：最小 VT 子集（清屏/定位/擦行/颜色）
+  private openVtDemo(): void {
+    this.openDemoWith('vt');
+  }
+
   private openTerminalDemo(): void {
-    this.pendingAction = 'demo';
+    this.openDemoWith('demo');
+  }
+
+  private openDemoWith(action: string): void {
+    this.pendingAction = action;
     const cred = this.creds.get(this.fixtureKey);
     if (cred === undefined) {
       this.probeText = 'no fixture credentials';
@@ -288,16 +306,28 @@ struct Index {
           });
         return;
       }
-      this.runDemo(cred, fp);
+      const cmd: string = this.pendingAction === 'vt' ? 'vt-demo' : 'term-demo';
+      this.runDemo(cred, fp, cmd);
     });
   }
 
-  private runDemo(cred: Cred, fp: string): void {
+  private runDemo(cred: Cred, fp: string, command: string): void {
     this.termVisible = true;
     this.termText = '';
-    mottynapi.exec(cred.address, cred.port, cred.user, cred.password, 'term-demo', fp,
-      (chunk: string) => { this.termText = this.termText + chunk; },
-      (status: string) => { this.termText = this.termText + '\n[status] ' + status; });
+    mottynapi.vtReset(80, 24);
+    this.vtStatus = mottynapi.vtStatus();
+    mottynapi.exec(cred.address, cred.port, cred.user, cred.password, command, fp,
+      (chunk: string) => {
+        // 字节流先进 VT 引擎，再由网格文本渲染——这一步是"终端"与"日志"的区别
+        mottynapi.vtFeed(chunk);
+        this.termText = mottynapi.vtScreen();
+        this.vtStatus = mottynapi.vtStatus();
+      },
+      (status: string) => {
+        this.termText = mottynapi.vtScreen();
+        this.vtStatus = mottynapi.vtStatus();
+        this.setStatus(0, command + ': ' + status);
+      });
   }
 
   private sendTermInput(): void {
@@ -372,8 +402,10 @@ struct Index {
       for (let i = 0; i < this.hosts.length; i++) {
         if (this.hostKey(this.hosts[i].address, this.hosts[i].port) === key) {
           this.setStatus(i, 'trusted ' + fp + ', connecting...');
-          if (this.pendingAction === 'demo') {
-            this.runDemo(cred, fp);
+          if (this.pendingAction === 'vt') {
+            this.runDemo(cred, fp, 'vt-demo');
+          } else if (this.pendingAction === 'demo') {
+            this.runDemo(cred, fp, 'term-demo');
           } else if (this.pendingAction === 'terminal') {
             this.startTerminal(i, cred, fp);
           } else {
@@ -555,6 +587,12 @@ struct Index {
       .border({ width: 1, color: '#CCCCCC' })
       .padding(8)
 
+      Text(this.vtStatus.length > 0 ? this.vtStatus : 'vt: (idle)')
+        .id('terminal/vt-status')
+        .fontSize(11)
+        .fontColor('#8A8A8A')
+        .width('100%')
+
       Row({ space: 8 }) {
         TextInput({ text: this.termInput, placeholder: 'type a line and press Send' })
           .id('terminal/input')
@@ -612,6 +650,8 @@ struct Index {
           Blank()
           Button('Term Demo').id('terminal/demo').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
             .onClick(() => { this.openTerminalDemo(); })
+          Button('VT Demo').id('terminal/vt').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+            .onClick(() => { this.openVtDemo(); })
           Button('SSH Test').id('ssh/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
             .onClick(() => { this.probeSsh(); })
           Button('Hostkey Check').id('ssh/hostkey-check').backgroundColor('#E6E6E6').fontColor('#1A1A1A')

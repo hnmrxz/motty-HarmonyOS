@@ -22,7 +22,7 @@ endif()
 set(OHOS_SSH_PREFIX ${OHOS_SSH_ROOT}/${OHOS_SSH_ARCH})
 message(STATUS "OHOS_ARCH=${OHOS_ARCH} -> OHOS_SSH_PREFIX=${OHOS_SSH_PREFIX}")
 
-add_library(mottynapi SHARED ssh_napi.cpp)
+add_library(mottynapi SHARED ssh_napi.cpp vt_core.cpp)
 
 target_include_directories(mottynapi PRIVATE
     ${NATIVERENDER_ROOT_PATH}

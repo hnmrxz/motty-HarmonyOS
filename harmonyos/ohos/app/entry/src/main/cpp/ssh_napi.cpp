@@ -25,6 +25,9 @@
 #include <thread>
 #include <chrono>
 
+// 定义在 vt_core.cpp。必须声明在匿名命名空间之外，否则是内部链接，链接期找不到。
+void RegisterVtFunctions(napi_env env, napi_value exports);
+
 namespace {
 
 constexpr int kTimeoutMs = 8000;
@@ -656,6 +659,7 @@ napi_value Init(napi_env env, napi_value exports) {
         {"closeShell", nullptr, CloseShell, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
+    RegisterVtFunctions(env, exports);
     return exports;
 }
 
