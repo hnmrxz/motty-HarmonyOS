@@ -2268,6 +2268,44 @@ napi_value SendRaw(napi_env env, napi_callback_info info) {
     return out;
 }
 
+// sendKey(id, name)：发送 VT 方向键序列。
+// 说明（限定范围）：只实现**普通光标模式**（CSI A/B/C/D）；应用模式（DECCKM, SS3 Ox）未实现。
+// 想支持应用模式，需要能从 libvterm 读到当前 DECCKM 状态——本轮没做，写进文档而不是假装支持。
+napi_value SendKey(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int32_t id = 0;
+    napi_get_value_int32(env, args[0], &id);
+    std::string name;
+    size_t len = 0;
+    napi_get_value_string_utf8(env, args[1], static_cast<char *>(nullptr), 0, &len);
+    if (len > 0) {
+        name.resize(len);
+        napi_get_value_string_utf8(env, args[1], &name[0], len + 1, &len);
+    }
+    const char *seq = nullptr;
+    if (name == "up") seq = "\x1b[A";
+    else if (name == "down") seq = "\x1b[B";
+    else if (name == "right") seq = "\x1b[C";
+    else if (name == "left") seq = "\x1b[D";
+    else if (name == "home") seq = "\x1b[H";
+    else if (name == "end") seq = "\x1b[F";
+    else if (name == "tab") seq = "\t";
+    else if (name == "esc") seq = "\x1b";
+    else if (name == "backspace") seq = "\x7f";
+    ShellSession *sess = findSession(id);
+    int ok = 0;
+    if (sess != nullptr && !sess->closed.load() && seq != nullptr) {
+        std::lock_guard<std::mutex> lock(sess->mtx);
+        sess->pending += seq;
+        ok = 1;
+    }
+    napi_value out = nullptr;
+    napi_create_int32(env, ok, &out);
+    return out;
+}
+
 // closeShell(id)
 napi_value CloseShell(napi_env env, napi_callback_info info) {
     size_t argc = 1;
@@ -2292,6 +2330,7 @@ napi_value Init(napi_env env, napi_value exports) {
         {"sendInput", nullptr, SendInput, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"closeShell", nullptr, CloseShell, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"sendRaw", nullptr, SendRaw, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"sendKey", nullptr, SendKey, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"openChannel", nullptr, OpenChannel, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"resizeShell", nullptr, ResizeShell, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"sftp", nullptr, Sftp, nullptr, nullptr, nullptr, napi_default, nullptr},

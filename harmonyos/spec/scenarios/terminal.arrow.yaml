@@ -1,0 +1,96 @@
+schema: 1
+id: terminal.arrow
+title: 方向键转义序列：VT 序列原样到达对端（对端以十六进制回显）
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B09
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: arrow-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  # 用 term-echo 夹具：它会把"以 ESC 开头的数据"以十六进制回显
+  - action: click
+    target: id:diag/open
+  - action: click
+    target: id:diag/term-echo
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "term-echo ready"
+      withinMs: 15000
+  # 上方向键 = CSI A = 1b 5b 41
+  - action: click
+    target: id:terminal/up
+  - action: wait
+    ms: 1500
+  # 右方向键 = CSI C = 1b 5b 43
+  - action: click
+    target: id:terminal/right
+  - action: wait
+    ms: 1500
+asserts:
+  - kind: screenRegex
+    regex: "recv 1b5b41"
+    withinMs: 10000
+  - kind: screenRegex
+    regex: "recv 1b5b43"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "sent right"
+    withinMs: 4000
+  - kind: absent
+    value: "key: no session"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：↑/→ 被编码成 CSI A / CSI C 并**原样**到达对端
+    （对端以十六进制回显，故可判定），以及 UI 状态回报。
+    **不覆盖**：应用光标模式（DECCKM 的 SS3 Ox）、修饰键组合（Ctrl/Alt/Shift + 方向键）、
+    真实 shell 的行编辑器行为（cmd.exe/bash 的历史与光标语义）、Home/End/PageUp/PageDown；
+    未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 对端是自建 term-echo 夹具（非真实 shell），它只回显字节，不解释行编辑语义
+  - 状态行只保留最后一次按键（sent right），'sent up' 会被覆盖——所以断言最后一次
+notes: >-
+  为什么不用真实 shell 断言"↑ 调出上一条命令"：那依赖 shell 的行编辑器实现，
+  在 cmd.exe 上还依赖 VT 输入模式，容易变成环境相关的不稳定用例。
+  这里断言的是"我们发出的字节序列是否正确且到达"——这一层是确定的、可判定的。

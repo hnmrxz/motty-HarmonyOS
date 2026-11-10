@@ -271,9 +271,15 @@ func serveSession(ch ssh.Channel, reqs <-chan *ssh.Request, auth string) {
 				for {
 					n, rerr := ch.Read(buf)
 					if n > 0 {
-						line := strings.TrimRight(string(buf[:n]), "\r\n")
-						if line != "" {
-							fmt.Fprintf(ch, "echo: %s\r\n", line)
+						// 以 ESC(0x1b) 开头的是转义序列（方向键等）：
+						// 回一行十六进制，让"字节是否原样到达"可断言
+						if buf[0] == 0x1b {
+							fmt.Fprintf(ch, "recv %x\r\n", buf[:n])
+						} else {
+							line := strings.TrimRight(string(buf[:n]), "\r\n")
+							if line != "" {
+								fmt.Fprintf(ch, "echo: %s\r\n", line)
+							}
 						}
 					}
 					if rerr != nil {

@@ -642,6 +642,7 @@
         "spec/scenarios/infra.host-create-by-id.yaml",
         "spec/scenarios/session.tabs.yaml",
         "spec/scenarios/ssh.connect-from-list.yaml",
+        "spec/scenarios/terminal.arrow.yaml",
         "spec/scenarios/terminal.copy.yaml",
         "spec/scenarios/terminal.interactive.yaml",
         "spec/scenarios/terminal.key.yaml",
@@ -660,7 +661,7 @@
         "deps": "—",
         "acceptance": "`host_*`"
       },
-      "partialCoverage": "部分：PTY 会话、VT 解析、回滚/备用屏、上屏、指针与键盘输入（含 Ctrl-C）、回滚区按钮与触控滚动、选区复制已双画像实测；鼠标滚轮(AxisEvent)、惯性滑动、方向键转义映射、组合字符宽度未做。"
+      "partialCoverage": "部分：PTY、VT 解析、回滚/备用屏、上屏、指针与键盘（Ctrl-C、方向键 CSI 序列）、回滚滚动（按钮+触控）、选区复制已双画像实测；应用光标模式(DECCKM)、修饰键组合、鼠标滚轮、组合字符宽度未做。"
     },
     {
       "id": "B10",

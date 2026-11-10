@@ -638,6 +638,17 @@ struct Index {
   }
 
   // 控制字符直发：Ctrl-C 走 sendRaw，不追加换行（追加换行会变成"^C + 回车"两件事）
+  // 方向键：sendKey 把名字映射成 VT 序列（普通光标模式）
+  private sendSpecial(name: string): void {
+    const tab = this.activeTab();
+    if (tab === null) {
+      this.ptyStatus = 'key: no session';
+      return;
+    }
+    mottynapi.sendKey(tab.shellId, name);
+    this.ptyStatus = 'sent ' + name;
+  }
+
   private sendCtrlC(): void {
     const tab = this.activeTab();
     if (tab === null) {
@@ -1747,6 +1758,14 @@ struct Index {
           .onClick(() => { this.copySelection().catch((e: BusinessError) => { this.ptyStatus = 'copy error'; }); })
         Button('^C').id('terminal/ctrl-c').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.sendCtrlC(); })
+        Button('\u2191').id('terminal/up').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.sendSpecial('up'); })
+        Button('\u2193').id('terminal/down').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.sendSpecial('down'); })
+        Button('\u2190').id('terminal/left').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.sendSpecial('left'); })
+        Button('\u2192').id('terminal/right').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.sendSpecial('right'); })
       }.width('100%')
       Text(this.ptyStatus.length > 0 ? this.ptyStatus : 'pty: (idle)')
         .id('terminal/pty-status').fontSize(11).fontColor('#0A6C00').width('100%')

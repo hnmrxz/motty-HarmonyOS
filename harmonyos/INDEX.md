@@ -1263,3 +1263,27 @@ lint 直接报 `is not of type 'string'`——已改成不带冒号的写法。
 
 ### 未做
 鼠标滚轮（未接 `AxisEvent`）、惯性滑动、拖到边界回弹、双指手势、方向键转义映射。
+---
+
+## Round 44：方向键（VT 序列编码）
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/ssh_napi.cpp` | `sendKey(id, name)`：`up/down/left/right/home/end/tab/esc/backspace` → CSI `A/B/C/D`、`H/F`、`\t`、`\x1b`、`\x7f` |
+| `Index.ets` | 会话面板加 `↑ ↓ ← →`（`terminal/up|down|left|right`），状态显示 `sent <name>` |
+| `tools/design/sshfixture` | `term-echo` 收到**以 ESC 开头**的数据时改为以十六进制回显（`recv 1b5b41`），让"字节是否原样到达"可判定 |
+| `spec/scenarios/terminal.arrow.yaml` | 按 ↑ 断言 `recv 1b5b41`，按 → 断言 `recv 1b5b43` |
+
+### 为什么不用真实 shell 断言"↑ 调出上一条命令"
+那依赖 shell 行编辑器实现，在 cmd.exe 上还依赖 VT 输入模式，容易变成环境相关的不稳定用例。
+这里断言的是**"我们发出的字节序列正确且到达对端"**——这一层是确定的、可判定的。
+
+### 限定范围（写在代码注释里）
+只实现**普通光标模式**（CSI 序列）；应用光标模式（DECCKM 的 `SS3 Ox`）未实现，
+因为需要从 libvterm 读到当前 DECCKM 状态。没有假装支持。
+
+### 双画像
+`terminal.arrow` 在 2in1 与 tablet 均 **passed**。
+
+### 小坑
+状态行只保留最后一次按键，`sent up` 在按 → 之后被覆盖 → 断言改为 `sent right`。
