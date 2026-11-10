@@ -163,6 +163,7 @@ struct Index {
   @State vncOpen: boolean = false;
   @State vncStatus: string = '';
   @State vncFrameInfo: string = '';
+  @State vncDrawn: number = 0;
 
   private creds: Map<string, Cred> = new Map<string, Cred>();
   private store: relationalStore.RdbStore | null = null;
@@ -709,9 +710,10 @@ struct Index {
       try {
         this.vncId = mottynapi.vncStart('127.0.0.1', 5901,
           (frameStr: string) => {
-            // 帧格式："WxH:hexRGB..."（见 ssh_napi.cpp 里的说明）
+            // 帧格式："WxH:hexRGB..."。用 Canvas 的 fillRect 画网格，
+            // 不用 putImageData/ImageData——那条路会触发 SkiaImage::Serialize 崩溃。
             const sep = frameStr.indexOf(':');
-            if (sep <= 0) {
+            if (sep <= 0 || !this.vncReady) {
               return;
             }
             const dims = frameStr.substring(0, sep).split('x');
@@ -719,19 +721,27 @@ struct Index {
             const h = Number.parseInt(dims[1], 10);
             this.vncW = w;
             this.vncH = h;
-            if (!this.vncReady) {
-              return;
-            }
             try {
               const hex = frameStr.substring(sep + 1);
-              const rgba = new Uint8ClampedArray(w * h * 4);
-              for (let i = 0, p = 0; i + 5 < hex.length; i += 6, p += 4) {
-                rgba[p] = Number.parseInt(hex.substring(i, i + 2), 16);
-                rgba[p + 1] = Number.parseInt(hex.substring(i + 2, i + 4), 16);
-                rgba[p + 2] = Number.parseInt(hex.substring(i + 4, i + 6), 16);
-                rgba[p + 3] = 255;
+              const scale = 5;                    // 64x48 -> 320x240
+              const cw = 320 / w;
+              const ch = 240 / h;
+              let drawn = 0;
+              for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                  const i = (y * w + x) * 6;
+                  if (i + 5 >= hex.length) {
+                    continue;
+                  }
+                  const r = Number.parseInt(hex.substring(i, i + 2), 16);
+                  const g = Number.parseInt(hex.substring(i + 2, i + 4), 16);
+                  const b = Number.parseInt(hex.substring(i + 4, i + 6), 16);
+                  this.vncCtx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+                  this.vncCtx.fillRect(x * cw, y * ch, cw + 0.5, ch + 0.5);
+                  drawn++;
+                }
               }
-              this.vncCtx.putImageData(new ImageData(w, h, rgba), 0, 0);
+              this.vncDrawn = drawn;
             } catch (e) {
               hilog.error(DOMAIN, TAG, 'vnc draw failed: %{public}s', JSON.stringify(e));
             }
@@ -1112,14 +1122,25 @@ struct Index {
       }.width('100%')
       Text(this.vncStatus.length > 0 ? this.vncStatus : 'vnc: (idle)')
         .id('vnc/status').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')
-      Column({ space: 4 }) {
-        Text('framebuffer rendering is disabled: putImageData crashes in '
-          + 'lib2d_graphics (SkiaImage::Serialize).  Protocol + input still work.')
-          .fontSize(11).fontColor('#C62828').width('100%')
+      Canvas(this.vncCtx)
+        .id('vnc/canvas')
+        .width(320).height(240)
+        .backgroundColor('#000000')
+        .onReady(() => { this.vncReady = true; })
+        .onTouch((event: TouchEvent) => {
+          if (event.touches.length > 0) {
+            const t = event.touches[0];
+            const mask = event.type === TouchType.Down || event.type === TouchType.Move ? 1 : 0;
+            this.sendVncPointer(t.x / 5, t.y / 5, mask);
+          }
+        })
+      Row({ space: 8 }) {
+        Text('drawn=' + this.vncDrawn + ' (fillRect grid)')
+          .id('vnc/drawn').fontSize(11).fontColor('#0A6C00')
         Button('Send pointer (10,10)')
           .id('vnc/tap')
           .onClick(() => { this.sendVncPointer(10, 10, 1); this.sendVncPointer(10, 10, 0); })
-      }.width('100%').padding(8).backgroundColor('#FFF3E0').borderRadius(8)
+      }.width('100%')
 
       Text(this.vncFrameInfo.length > 0 ? this.vncFrameInfo : 'frame: (none)')
         .id('vnc/frame').fontSize(11).fontFamily('monospace').width('100%')

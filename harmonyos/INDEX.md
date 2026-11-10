@@ -746,3 +746,38 @@ abc|中文|def
 ### 未做
 - **VNC 画面渲染**（被 Skia 崩溃阻塞；下一步要评估 Surface/XComponent 纹理路径）
 - VNC Auth (DES)、Hextile/ZRLE/CopyRect、键盘事件的断言、剪贴板、缩放/滚动、RDP
+---
+
+## Round 25：VNC 上屏打通（换掉会崩的渲染通路）
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/ssh_napi.cpp` | 帧回调重新开启（hex 字符串通道），解码后交给 UI 自行绘制 |
+| `Index.ets` | **Canvas `fillRect` 逐像素网格**（64×48 = 3072 个矩形，缩放 5×）替代 `putImageData`；状态行加 `drawn=` |
+| `spec/scenarios/vnc.session.yaml` | 加 `drawn=3072` 断言，标题改为"会话与上屏" |
+
+### 为什么上一轮的 `putImageData` 必须放弃
+`Canvas.putImageData(new ImageData(...))` 会让进程 SIGSEGV 在
+`lib2d_graphics → Rosen::Drawing::SkiaImage::Serialize()`（cppcrash 已留证）。
+同样的数据改用 `fillRect` 逐格绘制则**完全正常**——问题在 `ImageData` 的序列化路径，不在数据本身。
+
+### 本轮的可视证据
+运行截图（`spec/runs/vnc-session-2in1/final.png`）中可以看到：
+- 画布左半红、右半蓝（与夹具图案一致）
+- 指针处有 8×8 绿色方块（说明指针事件到达对端、对端重绘、新帧回到客户端并上屏）
+- 状态行：`frame=91 64x48 red=1455 green=81 blue=1536`、`drawn=3072 (fillRect grid)`
+
+我不只看"用例通过"，而是把截图取回来肉眼确认了图案与绿块位置。
+
+### 双画像验收（18 条 × 2 画像）
+`vnc.session`、`vnc.handshake`、`forward.local`、`vault.persist`、`sftp.write`、`sftp.browse`、
+`session.tabs`、`terminal.pty`、`terminal.scrollback`、`terminal.vt`、`terminal.view`、
+`terminal.interactive`、`ssh.connect-from-list`、`infra.host-create-by-id`、`host.persist`、
+`net.reachability`、`ssh.exec`、`ssh.hostkey` —— 全部 **passed**。
+
+### 性能与正确性的边界（别当成可用远程桌面）
+- **每帧 3072 次 `fillRect`**：在模拟器上跑得动，但这不是渲染的正确终点，
+  真实实现应走 Surface/XComponent + `OH_NativeWindow` 直接写缓冲
+- 只支持 `Raw` 编码：真实 VNC 服务器的常见编码（Hextile/ZRLE/Tight）一个都没做
+- 无 VNC Auth(DES)：只给 VNC Auth 的服务器连不上（会明确报错）
+- 键盘事件未断言；剪贴板、缩放、滚动、断线重连未做

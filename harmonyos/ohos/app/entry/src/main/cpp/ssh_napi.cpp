@@ -1805,10 +1805,9 @@ void vncLoop(VncSession *sess, int id) {
                 frameStr.push_back(kHex[c & 0x0F]);
             }
         }
-        // 上屏暂时关闭：ArkTS 侧 putImageData 会触发 SkiaImage::Serialize 崩溃（见 RUNBOOK §26）。
-        // 帧仍然解码并统计，只是不渲染；等找到可用的渲染通路（Surface/XComponent）再打开。
-        // napi_call_threadsafe_function(sess->onFrame, new std::string(frameStr), napi_tsfn_blocking);
-        (void)frameStr;
+        // 帧以 hex 字符串交给 ArkTS 自行绘制（fillRect 网格）。
+        // 不用 putImageData/ImageData：那条路会触发 SkiaImage::Serialize 崩溃（RUNBOOK §26）。
+        napi_call_threadsafe_function(sess->onFrame, new std::string(frameStr), napi_tsfn_blocking);
         char status[192];
         snprintf(status, sizeof(status), "frame=%d %dx%d red=%ld green=%ld blue=%ld",
                  frameNo, w, h, reds, greens, blues);

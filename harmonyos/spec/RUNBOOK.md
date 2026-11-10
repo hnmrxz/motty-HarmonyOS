@@ -721,3 +721,34 @@ Process life time: 7s
 ### 26.4 断言口径
 不要用"画面显示了"这类主观判断。本工程用 `green=N` 计数：初始图案只有红/蓝，
 收到指针事件后对端画绿块，客户端统计到 `green>0` 才是"输入真的到了对端并且新帧回来了"。
+---
+
+## 26. VNC 渲染：`putImageData` 会崩，`fillRect` 可用
+
+### 26.1 崩溃的是什么
+```
+Canvas.putImageData(new ImageData(w, h, rgba), 0, 0)
+  -> SIGSEGV in lib2d_graphics.z.so
+     OHOS::Rosen::Drawing::SkiaImage::Serialize()
+```
+证据：`/data/log/faultlog/faultlogger/cppcrash-com.motty.harmony-*.log`（`hdc file recv` 取回）。
+
+排除过的假设：Canvas 就绪门、`ImageData(width, height, data)` 参数顺序、ArrayBuffer→hex 传帧方式
+——**都仍崩**，说明问题在 `ImageData` 的序列化路径。
+
+### 26.2 可用的是什么
+同一份像素数据，用 Canvas 的 `fillRect` 逐格绘制**完全正常**：
+每帧 64×48 = **3072 个矩形**，缩放 5× 铺到 320×240 画布。
+状态行 `drawn=3072` 是可断言的外部观测。
+
+实测截图（`spec/runs/vnc-session-2in1/final.png`）确认：左红右蓝 + 指针处绿块。
+
+### 26.3 这不是终点
+- 3072 次 `fillRect`/帧只是"能上屏"，不是可用的渲染管线；
+  正确路线是 **Surface/XComponent + `OH_NativeWindow`** 直接写 RGBA 缓冲
+- 只在 x86_64 模拟器验证，arm64 真机未测；帧率/带宽未测
+
+### 26.4 断言口径
+不要用"画面看起来对了"当判据。本工程用三个机器判据：
+`drawn=3072`（渲染路径真的执行了）、`green>0`（输入真的到对端且新帧回来了）、
+`red>0`（图案本身解码正确）。截图只作人工复核，不作为唯一证据。

@@ -1,6 +1,6 @@
 schema: 1
 id: vnc.session
-title: VNC 会话与输入：持续帧循环 + 指针事件到达远端并改变画面（不上屏）
+title: VNC 会话与上屏：持续帧循环 + 指针事件到达远端并改变画面
 sourceScript: null
 profile:
   - 2in1
@@ -30,8 +30,11 @@ steps:
     ms: 2500
 asserts:
   - kind: screenRegex
-    regex: "green=[1-9][0-9]*"
+    regex: "drawn=3072"
     withinMs: 15000
+  - kind: screenRegex
+    regex: "green=[1-9][0-9]*"
+    withinMs: 8000
   - kind: screenRegex
     regex: "red=[1-9][0-9]*"
     withinMs: 6000
@@ -47,10 +50,10 @@ evidence:
   limits: >-
     模拟器双画像（x86_64, API 26）。覆盖：会话级帧循环（持续请求增量更新并解码）、
     指针事件(PointerEvent)发送到远端、远端据指针位置改变画面后可被客户端统计到。
-    **明确未覆盖：画面没有上屏**。ArkTS 侧 putImageData 会触发 lib2d_graphics 的
-    SkiaImage::Serialize 崩溃（已有 cppcrash 证据），因此本轮关闭渲染，UI 明示该限制。
-    另未覆盖：键盘事件断言、真实 VNC 服务器、VNC Auth(DES)、Hextile/ZRLE 编码、
-    剪贴板、缩放/滚动、帧率表现、arm64 真机。
+    上屏方式：Canvas fillRect 逐像素网格（每帧 3072 个矩形），**不用 putImageData**——
+    后者会触发 lib2d_graphics 的 SkiaImage::Serialize 崩溃（cppcrash 证据见 RUNBOOK §26）。
+    未覆盖：键盘事件断言、真实 VNC 服务器、VNC Auth(DES)、Hextile/ZRLE 编码、
+    剪贴板、缩放/滚动、帧率与带宽表现、arm64 真机。
 deviations:
   - 纯新增规格，无 upstream 对应脚本
   - 断言"输入到达远端"依赖夹具收到 PointerEvent 后在指针处画 8x8 绿块
