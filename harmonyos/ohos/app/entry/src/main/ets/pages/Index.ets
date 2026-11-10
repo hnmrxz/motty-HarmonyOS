@@ -184,6 +184,8 @@ struct Index {
   @State vncStatus: string = '';
   @State vncFrameInfo: string = '';
   @State vncDrawn: number = 0;
+  @State vncClip: string = '';
+  @State vncClipOut: string = 'app-clip';
   @State vncPassword: string = 'secret';
   @State rdpResult: string = '';
   @State knownOpen: boolean = false;
@@ -1056,6 +1058,24 @@ struct Index {
     }
   }
 
+  // VNC 剪贴板：读出服务端内容 / 把本地内容推给服务端
+  private refreshVncClip(): void {
+    if (this.vncId === 0) {
+      this.vncClip = '';
+      return;
+    }
+    this.vncClip = mottynapi.vncClipboard(this.vncId);
+  }
+
+  private sendClipToVnc(): void {
+    if (this.vncId === 0) {
+      this.vncClip = '(no session)';
+      return;
+    }
+    const ok: number = mottynapi.vncCutText(this.vncId, this.vncClipOut);
+    this.vncClip = ok === 1 ? 'sent: ' + this.vncClipOut : 'send failed';
+  }
+
   private stopVnc(): void {
     if (this.vncId !== 0) {
       mottynapi.vncStop(this.vncId);
@@ -1618,6 +1638,14 @@ struct Index {
           .onClick(() => { this.stopVnc(); })
         Button('Close').id('vnc/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.stopVnc(); this.vncOpen = false; })
+      }.width('100%')
+      Row({ space: 8 }) {
+        Text(this.vncClip.length > 0 ? 'clip: ' + this.vncClip : 'clip: (empty)')
+          .id('vnc/clip').fontSize(11).fontFamily('monospace').fontColor('#0A6C00').layoutWeight(1)
+        Button('Read clip').id('vnc/clip-read').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .fontSize(11).onClick(() => { this.refreshVncClip(); })
+        Button('Send clip').id('vnc/clip-send').backgroundColor('#1A6DD0').fontColor(Color.White)
+          .fontSize(11).onClick(() => { this.sendClipToVnc(); })
       }.width('100%')
       Text(this.vncStatus.length > 0 ? this.vncStatus : 'vnc: (idle)')
         .id('vnc/status').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')

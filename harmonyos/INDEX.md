@@ -1331,3 +1331,28 @@ lint 直接报 `is not of type 'string'`——已改成不带冒号的写法。
 
 ### 未做
 多级深路径、路径手输跳转校验、面包屑、书签、符号链接目录。
+---
+
+## Round 47：VNC 剪贴板（ServerCutText / ClientCutText）
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/ssh_napi.cpp` | 帧循环从"读 4 字节且类型必须是 0"改为**按消息类型分发**；新增 `ServerCutText(3)` 处理、`vncCutText(id,text)`（ClientCutText 6）、`vncClipboard(id)`；`VncSession.clipboard` |
+| `Index.ets` | VNC 面板加 `Read clip`（`vnc/clip-read`）与 `Send clip`（`vnc/clip-send`，内容 `app-clip`），显示 `vnc/clip` |
+| 夹具 | 握手后主动发 `ServerCutText("fixture-clip")`；收到 `ClientCutText` 回 `ServerCutText("got:<text>")` |
+| `spec/scenarios/vnc.clipboard.yaml` | 连上后断言 `clip: fixture-clip`；发送后断言 `clip: got:app-clip` |
+
+### 这不是"加个按钮"，是修一个结构性问题
+旧帧循环断言"服务端第一条消息必须是 FramebufferUpdate(0)"，
+只要服务端发一条 `ServerCutText` 就会被判成 `unexpected message 3` 并**断开连接**。
+改成按类型分发后，非更新类消息不再中断会话。剪贴板只是第一个受益的消息类型（Bell、DesktopSize 同理）。
+
+### 两个小坑
+1. `OH_LOG_Print` 需要额外链接 libhilog，直接编译期链接失败 → 诊断日志改用 `fprintf(stderr)`（OHOS 上会进 hilog）
+2. 夹具注释里的中文在 PowerShell 写入时被破坏、吞掉了换行，导致 `func sendServerCutText` 粘到注释行上（语法错误）→ 按行重建该段
+
+### 双画像
+`vnc.clipboard` 在 2in1 与 tablet 均 **passed**。
+
+### 未做
+Latin-1 以外的编码转换细节、超长文本分片、自动双向同步（当前手动读/发）、DesktopSize 与 resize、其他编码。

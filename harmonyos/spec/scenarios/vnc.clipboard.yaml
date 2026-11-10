@@ -1,0 +1,92 @@
+schema: 1
+id: vnc.clipboard
+title: VNC 剪贴板：接收 ServerCutText、发送 ClientCutText（对端回执可断言）
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - E02
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: clip-vnc
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:diag/open
+  - action: click
+    target: id:vnc/session
+  # VNC 走的是"直连"路径（不需要 SSH 主机密钥确认），所以这里等连接状态
+  - action: wait
+    ms: 4000
+    expect:
+      kind: screenRegex
+      regex: "frame="
+      withinMs: 20000
+  # 收到服务端剪贴板（夹具握手后主动发 "fixture-clip"）
+  - action: click
+    target: id:vnc/clip-read
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "clip: fixture-clip"
+      withinMs: 10000
+  # 发一条本地剪贴板；夹具会回 "got:app-clip"
+  - action: click
+    target: id:vnc/clip-send
+  - action: wait
+    ms: 2000
+  - action: click
+    target: id:vnc/clip-read
+  - action: wait
+    ms: 1500
+asserts:
+  - kind: screenRegex
+    regex: "clip: got:app-clip"
+    withinMs: 12000
+  - kind: absent
+    value: "clip: (empty)"
+    withinMs: 2000
+  - kind: absent
+    value: "send failed"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：接收 ServerCutText（剪贴板内容显示）、
+    发送 ClientCutText（对端收到并回执 `got:app-clip`），以及帧循环对非 FramebufferUpdate
+    消息的分发。
+    **不覆盖**：UTF-8 以外编码（Latin-1 转换）、超长文本分片、实时双向同步（当前是手动读写）、
+    DesktopSize 伪编码与 resize、Bell(2) 与其他服务端消息；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 夹具在握手后主动发一条固定剪贴板，并对收到的 ClientCutText 回 `got:<text>`
+notes: >-
+  这条用例同时验证了一个**结构性问题**：旧帧循环"读 4 字节并断言类型必须是 0"，
+  服务端只要发一条 ServerCutText 就会被判成 "unexpected message 3" 并断开连接。
+  现在改为按消息类型分发，非更新消息不再中断会话。

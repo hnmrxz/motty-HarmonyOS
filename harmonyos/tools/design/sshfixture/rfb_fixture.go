@@ -157,6 +157,12 @@ func serveRFB(conn net.Conn) {
 	var mark pointerMark
 	useHextile := false
 
+	// 握手完成后先发一条固定的服务端剪贴板内容：让"客户端能收 ServerCutText"可断言
+	if err := sendServerCutText(conn, "fixture-clip"); err != nil {
+		log.Printf("rfb: initial cut text failed: %v", err)
+		return
+	}
+
 	// 消息循环
 	for {
 		_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
@@ -231,15 +237,53 @@ func serveRFB(conn net.Conn) {
 			if mask == 1 {
 				mark = pointerMark{valid: true, x: px, y: py}
 			}
+		case 6: // ClientCutText锛歱ad(3)+len(4)+text
+			padding := make([]byte, 3)
+			if _, err := io.ReadFull(conn, padding); err != nil {
+				return
+			}
+			lenBuf := make([]byte, 4)
+			if _, err := io.ReadFull(conn, lenBuf); err != nil {
+				return
+			}
+			n := binary.BigEndian.Uint32(lenBuf)
+			if n > 1<<20 {
+				log.Printf("rfb: cut text too long: %d", n)
+				return
+			}
+			text := make([]byte, n)
+			if n > 0 {
+				if _, err := io.ReadFull(conn, text); err != nil {
+					return
+				}
+			}
+			log.Printf("rfb: ClientCutText %q", string(text))
+			// 回一条 ServerCutText，内容是 "got:<收到的文本>"，便于客户端断言
+			if err := sendServerCutText(conn, "got:"+string(text)); err != nil {
+				log.Printf("rfb: send cut text failed: %v", err)
+				return
+			}
 		default:
 			log.Printf("rfb: unsupported message type %d", head[0])
 			return
 		}
 	}
 }
+// sendServerCutText 发送 ServerCutText（message type 3），
+// 用于让「客户端能接收对端剪贴板」这件事可断言。
+func sendServerCutText(conn net.Conn, text string) error {
+	buf := make([]byte, 0, 8+len(text))
+	buf = append(buf, 3, 0, 0, 0)
+	var lenBuf [4]byte
+	binary.BigEndian.PutUint32(lenBuf[:], uint32(len(text)))
+	buf = append(buf, lenBuf[:]...)
+	buf = append(buf, []byte(text)...)
+	_, err := conn.Write(buf)
+	return err
+}
 
-// sendRawUpdate 发一帧 Raw 编码的固定图案：左半红、右半蓝。
-// 若收到过按下事件，再在该位置画 8x8 绿色方块——这样"输入到达对端"就是可断言的。
+// sendRawUpdate 发送一帧 Raw 编码的固定图案：左半红、右半蓝。
+// 若收到过按下事件，再在该位置画 8x8 绿色方块——这样「输入到达对端」就是可断言的。
 func sendRawUpdate(conn net.Conn, mark pointerMark) error {
 	head := make([]byte, 0, 16)
 	head = append(head, 0, 0)                          // message type 0, padding

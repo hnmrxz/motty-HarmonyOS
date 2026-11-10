@@ -22,6 +22,8 @@
 #include <unistd.h>
 
 #include <atomic>
+#include <cstdarg>
+#include <cstdio>
 #include <cstring>
 #include <map>
 #include <mutex>
@@ -1842,6 +1844,7 @@ napi_value VncProbe(napi_env env, napi_callback_info info) {
 // 每帧把 RGBA 以 ArrayBuffer 交给 ArkTS 上屏，并把指针/键盘事件回送对端。
 // 仍只支持 Raw 编码与 None 安全类型（VNC Auth/DES 未实现）。
 struct VncSession {
+    std::string clipboard;  // 最近一次 ServerCutText
     int fd = -1;
     int width = 0;
     int height = 0;
@@ -1862,6 +1865,17 @@ struct VncSession {
 std::mutex g_vncMtx;
 std::map<int, VncSession *> g_vncSessions;
 std::atomic<int> g_nextVnc{1};
+
+// 诊断日志：只在排查剪贴板/消息分发时用，正式路径不依赖它
+static void vncLog(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    char buf[512];
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    fprintf(stderr, "[MOTTY_VNC] %s\n", buf);
+    fflush(stderr);
+}
 
 VncSession *findVnc(int id) {
     std::lock_guard<std::mutex> lock(g_vncMtx);
@@ -2026,6 +2040,17 @@ void vncLoop(VncSession *sess, int id) {
                     out.push_back(static_cast<unsigned char>((y >> 8) & 0xFF));
                     out.push_back(static_cast<unsigned char>(y & 0xFF));
                     out.push_back(static_cast<unsigned char>(mask & 0xFF));
+                } else if (line[0] == 'C') {
+                    // ClientCutText: type 6 + pad(3) + len(4) + text
+                    const std::string payload = line.substr(1);
+                    out.push_back(6);
+                    out.push_back(0); out.push_back(0); out.push_back(0);
+                    const uint32_t n = static_cast<uint32_t>(payload.size());
+                    out.push_back(static_cast<unsigned char>((n >> 24) & 0xFF));
+                    out.push_back(static_cast<unsigned char>((n >> 16) & 0xFF));
+                    out.push_back(static_cast<unsigned char>((n >> 8) & 0xFF));
+                    out.push_back(static_cast<unsigned char>(n & 0xFF));
+                    out.insert(out.end(), payload.begin(), payload.end());
                 } else if (line[0] == 'K') {
                     long keysym = 0;
                     int down = 1;
@@ -2048,10 +2073,40 @@ void vncLoop(VncSession *sess, int id) {
             static_cast<unsigned char>((w >> 8) & 0xFF), static_cast<unsigned char>(w & 0xFF),
             static_cast<unsigned char>((h >> 8) & 0xFF), static_cast<unsigned char>(h & 0xFF)};
         if (!writeAll(sess->fd, req.data(), req.size())) { vncStatus(sess, "error fb request"); break; }
-        unsigned char head[4];
-        if (!readExact(sess->fd, head, 4)) { vncStatus(sess, "error read update"); break; }
-        if (head[0] != 0) { vncStatus(sess, "error unexpected message " + std::to_string(head[0])); break; }
-        const int nRects = (head[2] << 8) | head[3];
+        // 消息分发：服务端除了 FramebufferUpdate(0) 还会发 ServerCutText(3)、Bell(2) 等。
+        // 旧代码"读 4 字节并断言类型必须是 0"，一遇到剪贴板就直接报错断开。
+        unsigned char msgType = 0;
+        if (!readExact(sess->fd, &msgType, 1)) { vncStatus(sess, "error read update"); break; }
+        if (msgType == 3) {
+            unsigned char pad3[3];
+            unsigned char lb[4];
+            if (!readExact(sess->fd, pad3, 3) || !readExact(sess->fd, lb, 4)) {
+                vncStatus(sess, "error read cut text header");
+                break;
+            }
+            const uint32_t n = (static_cast<uint32_t>(lb[0]) << 24) | (static_cast<uint32_t>(lb[1]) << 16) |
+                               (static_cast<uint32_t>(lb[2]) << 8) | static_cast<uint32_t>(lb[3]);
+            if (n > (1u << 20)) { vncStatus(sess, "error cut text too long"); break; }
+            std::vector<unsigned char> tb(n);
+            if (n > 0 && !readExact(sess->fd, tb.data(), n)) {
+                vncStatus(sess, "error read cut text");
+                break;
+            }
+            {
+                std::lock_guard<std::mutex> lock(sess->mtx);
+                sess->clipboard.assign(tb.begin(), tb.end());
+            }
+            vncLog("cut text received: %s", std::string(tb.begin(), tb.end()).c_str());
+            vncStatus(sess, "clip:" + std::string(tb.begin(), tb.end()));
+            continue;   // 重新发一次更新请求
+        }
+        if (msgType != 0) {
+            vncStatus(sess, "error unexpected message " + std::to_string(msgType));
+            break;
+        }
+        unsigned char pad3u[3];
+        if (!readExact(sess->fd, pad3u, 3)) { vncStatus(sess, "error read update pad"); break; }
+        const int nRects = (pad3u[1] << 8) | pad3u[2];
         for (int r = 0; r < nRects && !sess->closed.load(); r++) {
             unsigned char rh[12];
             if (!readExact(sess->fd, rh, 12)) break;
@@ -2317,6 +2372,57 @@ napi_value VncKey(napi_env env, napi_callback_info info) {
 }
 
 // vncStop(id)
+// vncCutText(id, text)：发送 ClientCutText（type 6），把本地剪贴板推给对端
+napi_value VncCutText(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int32_t id = 0;
+    napi_get_value_int32(env, args[0], &id);
+    std::string text;
+    size_t len = 0;
+    napi_get_value_string_utf8(env, args[1], static_cast<char *>(nullptr), 0, &len);
+    if (len > 0) {
+        text.resize(len);
+        napi_get_value_string_utf8(env, args[1], &text[0], len + 1, &len);
+    }
+    VncSession *sess = findVnc(id);
+    vncLog("vncCutText id=%d text=%s", id, text.c_str());
+    if (sess == nullptr) {
+        napi_value out = nullptr;
+        napi_create_int32(env, 0, &out);
+        return out;
+    }
+    // 走 pendingEvents：'C' 行表示 ClientCutText（与 P/K 事件同一队列，避免并发写 socket）
+    {
+        std::lock_guard<std::mutex> lock(sess->mtx);
+        sess->pendingEvents += "C" + text + "\n";
+    }
+    napi_value out = nullptr;
+    napi_create_int32(env, 1, &out);
+    return out;
+}
+
+// vncClipboard(id)：读取最近一次 ServerCutText
+napi_value VncClipboard(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int32_t id = 0;
+    if (argc >= 1) {
+        napi_get_value_int32(env, args[0], &id);
+    }
+    VncSession *sess = findVnc(id);
+    std::string text;
+    if (sess != nullptr) {
+        std::lock_guard<std::mutex> lock(sess->mtx);
+        text = sess->clipboard;
+    }
+    napi_value out = nullptr;
+    napi_create_string_utf8(env, text.c_str(), text.size(), &out);
+    return out;
+}
+
 napi_value VncStop(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1] = {nullptr};
@@ -2437,6 +2543,8 @@ napi_value Init(napi_env env, napi_value exports) {
         {"vncPointer", nullptr, VncPointer, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"vncKey", nullptr, VncKey, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"vncStop", nullptr, VncStop, nullptr, nullptr, nullptr, napi_default, nullptr},
+    {"vncCutText", nullptr, VncCutText, nullptr, nullptr, nullptr, napi_default, nullptr},
+    {"vncClipboard", nullptr, VncClipboard, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     RegisterVtFunctions(env, exports);
