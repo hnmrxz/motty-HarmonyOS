@@ -496,6 +496,7 @@
       },
       "evidence": "E1",
       "proof": [
+        "spec/scenarios/cred.cleared.yaml",
         "spec/scenarios/vault.persist.yaml"
       ],
       "fallback": null,
@@ -505,7 +506,8 @@
         "planInMatrix": "原样",
         "deps": "G1",
         "acceptance": "`host_cert`"
-      }
+      },
+      "partialCoverage": "部分：口令落 Asset、重启后可取回、删除主机时清除已双画像实测；口令轮换、多用户隔离、Asset 不可用降级未做。"
     },
     {
       "id": "B04",

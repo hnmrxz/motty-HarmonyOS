@@ -1,0 +1,100 @@
+schema: 1
+id: cred.cleared
+title: 删除主机必须同时清掉保险库口令：重建后不填口令应提示没有凭据
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: cred-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 800
+  # 删掉主机（应连带清掉保险库条目）
+  - action: click
+    target: id:host-del/0
+  - action: click
+    target: id:hostdel/confirm
+  - action: wait
+    ms: 1000
+  # 重启：让内存缓存清空，只可能从保险库预热
+  - action: restart
+  - action: wait
+    ms: 2000
+  # 重建同地址但**不填口令**
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: cred-b
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 900
+  # 再重启一次：若保险库还有旧口令，这里会被预热回来
+  - action: restart
+  - action: wait
+    ms: 2000
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2500
+asserts:
+  - kind: screenRegex
+    regex: "no credentials in memory"
+    withinMs: 12000
+  - kind: absent
+    value: "verified SHA256:"
+    withinMs: 3000
+  - kind: absent
+    value: "hello-from-list"
+    withinMs: 3000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：删除主机时保险库口令被清除（用"重建时不填口令 +
+    两次进程重启"来排除内存缓存干扰）、缺凭据时给出明确提示而不是发起连接。
+    **不覆盖**：Asset 侧是否真的不存在该条目（当前用行为推断，未直接查询 Asset）、
+    口令轮换、多用户隔离；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 连续两次 restart 是必要的：第一次清内存，第二次才有机会从保险库预热旧口令
+notes: >-
+  只"删掉主机"看不出保险库有没有清；只重启一次也会被内存缓存干扰。
+  两次重启 + 空口令重建，才能让"保险库是否残留"变成可判定的差异：
+  残留 -> 预热到旧口令 -> 会尝试认证（出现 verified）；清理干净 -> 直接提示没有凭据。

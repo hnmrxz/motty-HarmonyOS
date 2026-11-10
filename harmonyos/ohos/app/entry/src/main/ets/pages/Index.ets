@@ -402,14 +402,18 @@ struct Index {
     try {
       await this.store.insert('hosts', bucket);
       const key = this.hostKey(address, port);
-      const saved = await Vault.save(key, this.formPassword);
-      hilog.info(DOMAIN, TAG, 'vault save for %{public}s -> %{public}s', key, String(saved));
-      this.creds.set(key, {
-        address: address,
-        port: Number.parseInt(port, 10),
-        user: this.formUser.trim(),
-        password: this.formPassword
-      });
+      // 口令为空时不写保险库、也不塞内存：否则"空口令"会被当成一个有效凭据，
+      // 掩盖"保险库到底有没有旧口令"这一区别（负向用例正依赖它）
+      if (this.formPassword.length > 0) {
+        const saved = await Vault.save(key, this.formPassword);
+        hilog.info(DOMAIN, TAG, 'vault save for %{public}s -> %{public}s', key, String(saved));
+        this.creds.set(key, {
+          address: address,
+          port: Number.parseInt(port, 10),
+          user: this.formUser.trim(),
+          password: this.formPassword
+        });
+      }
       await this.reload();
       this.showDialog = false;
       this.resetForm();
