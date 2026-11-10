@@ -1,15 +1,15 @@
-# ---- 鏋勫缓浜х墿 ----
+# ---- 閺嬪嫬缂撴禍褏澧?----
 .bin/
 .shots/
 .home-*/
 *.log
 
-# ---- 绗笁鏂规簮鐮佷笌鏋勫缓浜х墿锛堢敱 native/build-thirdparty.ps1 閲嶆柊鐢熸垚锛屼笉杩涘簱锛?---
+# ---- 缁楊兛绗侀弬瑙勭爱閻椒绗岄弸鍕紦娴溠呭⒖閿涘牏鏁?native/build-thirdparty.ps1 闁插秵鏌婇悽鐔稿灇閿涘奔绗夋潻娑樼氨閿?---
 native/third_party/src/
 native/build/
 native/third_party/ohos/
 
-# ---- HarmonyOS 宸ョ▼浜х墿 ----
+# ---- HarmonyOS 瀹搞儳鈻兼禍褏澧?----
 ohos/app/.hvigor/
 ohos/app/.idea/
 ohos/app/oh_modules/
@@ -18,12 +18,12 @@ ohos/app/entry/build/
 ohos/app/build/
 ohos/app/oh-package-lock.json5
 
-# ---- 绛惧悕鏉愭枡锛氱湡瀹?build-profile 鍐呭祵鏄庢枃鍙ｄ护涓庣粷瀵硅矾寰勶紝缁濅笉鍏ュ簱 ----
+# ---- 缁涙儳鎮曢弶鎰灐閿涙氨婀＄€?build-profile 閸愬懎绁甸弰搴㈡瀮閸欙絼鎶ゆ稉搴ｇ卜鐎电鐭惧鍕剁礉缂佹繀绗夐崗銉ョ氨 ----
 ohos/app/build-profile.json5
 
-# ---- spec 杩愯璇佹嵁鐗╋紙鍙鐜帮紝缁撹鍐欒繘鏂囨。鑰屼笉鏄彁浜?PNG锛?---
+# ---- spec 鏉╂劘顢戠拠浣瑰祦閻椻晪绱欓崣顖氼槻閻滃府绱濈紒鎾诡啈閸愭瑨绻橀弬鍥ㄣ€傞懓灞肩瑝閺勵垱褰佹禍?PNG閿?---
 spec/runs/
-# ---- spike 探针工程：同样含签名口令与构建产物，只保留源码 ----
+# ---- spike 鎺㈤拡宸ョ▼锛氬悓鏍峰惈绛惧悕鍙ｄ护涓庢瀯寤轰骇鐗╋紝鍙繚鐣欐簮鐮?----
 spike/*/build-profile.json5
 spike/*/.hvigor/
 spike/*/.idea/
@@ -32,3 +32,10 @@ spike/*/oh-package-lock.json5
 spike/*/entry/.cxx/
 spike/*/entry/build/
 spike/*/build/
+# ---- 探针产物（可由源码重建，二进制不入库）----
+spike/hello/hello-ohos-*
+spike/core/*.so
+spike/core/*.h
+spike/core/loader*
+spike/bprime/entry/libs/
+spike/bprime/entry/src/main/resources/rawfile/
