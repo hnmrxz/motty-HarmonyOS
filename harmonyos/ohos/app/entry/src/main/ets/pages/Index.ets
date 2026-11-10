@@ -38,6 +38,10 @@ const SQL_CREATE_KNOWN_HOSTS =
   'CREATE TABLE IF NOT EXISTS known_hosts (host TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, updated_at INTEGER)';
 
 const HOST_COLUMNS: string[] = ['id', 'label', 'address', 'usr', 'port', 'proto'];
+
+const SQL_CREATE_FORWARDS =
+  'CREATE TABLE IF NOT EXISTS forwards (' +
+  'id TEXT PRIMARY KEY, host_key TEXT, mode TEXT, listen_port TEXT, target_host TEXT, target_port TEXT)';
 const VAULT_PREFIX: string = 'motty.host.';
 
 /**
@@ -173,6 +177,8 @@ struct Index {
   @State knownOpen: boolean = false;
   @State knownKeys: string[] = [];
   @State knownFps: string[] = [];
+  @State fwdRules: string[] = [];   // 展示用："id|mode|listen->target"
+  @State fwdRuleCount: number = 0;
 
   private creds: Map<string, Cred> = new Map<string, Cred>();
   private store: relationalStore.RdbStore | null = null;
@@ -203,7 +209,9 @@ struct Index {
       this.store = await relationalStore.getRdbStore(ctx, STORE_CONFIG);
       await this.store.executeSql(SQL_CREATE_HOSTS);
       await this.store.executeSql(SQL_CREATE_KNOWN_HOSTS);
+      await this.store.executeSql(SQL_CREATE_FORWARDS);
       await this.reload();
+      await this.reloadRules();
       hilog.info(DOMAIN, TAG, 'store ready, hosts=%{public}d', this.hosts.length);
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'store init failed: %{public}s', JSON.stringify(e));
@@ -852,6 +860,60 @@ struct Index {
     await this.refreshKnownHosts();
   }
 
+  // ---------------- 转发规则持久化 ----------------
+  private async reloadRules(): Promise<void> {
+    if (this.store === null) {
+      return;
+    }
+    const rs = await this.store.query(new relationalStore.RdbPredicates('forwards'),
+      ['id', 'mode', 'listen_port', 'target_host', 'target_port']);
+    const out: string[] = [];
+    while (rs.goToNextRow()) {
+      out.push(rs.getString(0) + '|' + rs.getString(1) + '|' + rs.getString(2) + '->' +
+        rs.getString(3) + ':' + rs.getString(4));
+    }
+    rs.close();
+    this.fwdRules = out;
+    this.fwdRuleCount = out.length;
+  }
+
+  private async saveRule(): Promise<void> {
+    if (this.store === null) {
+      return;
+    }
+    const bucket: relationalStore.ValuesBucket = {
+      'id': String(Date.now()),
+      'host_key': this.fixtureKey,
+      'mode': this.fwdMode,
+      'listen_port': this.fwdListen,
+      'target_host': this.fwdTargetHost,
+      'target_port': this.fwdTargetPort
+    };
+    await this.store.insert('forwards', bucket);
+    await this.reloadRules();
+    hilog.info(DOMAIN, TAG, 'forward rule saved, total=%{public}d', this.fwdRuleCount);
+  }
+
+  private async deleteRule(id: string): Promise<void> {
+    if (this.store === null) {
+      return;
+    }
+    const pred = new relationalStore.RdbPredicates('forwards');
+    pred.equalTo('id', id);
+    await this.store.delete(pred);
+    await this.reloadRules();
+  }
+
+  // 用已保存的规则启动转发
+  private startSavedRule(id: string, mode: string, listenPort: string,
+                         targetHost: string, targetPort: string): void {
+    this.fwdMode = mode;
+    this.fwdListen = listenPort;
+    this.fwdTargetHost = targetHost;
+    this.fwdTargetPort = targetPort;
+    this.startForward();
+  }
+
   private probeNet(): void {
     this.probeText = 'connecting...';
     const tcp = socket.constructTCPSocketInstance();
@@ -1202,6 +1264,37 @@ struct Index {
           .onClick(() => { this.stopForward(); })
         Button('Test tunnel').id('fwd/test').backgroundColor('#1A6DD0').fontColor(Color.White)
           .onClick(() => { this.testForward(); })
+        Button('Save rule').id('fwd/save').backgroundColor('#0A6C00').fontColor(Color.White)
+          .onClick(() => { this.saveRule(); })
+      }.width('100%')
+      Text('saved rules: ' + this.fwdRuleCount)
+        .id('fwd/rule-count').fontSize(11).fontColor('#0A6C00').width('100%')
+      Column({ space: 4 }) {
+        ForEach(this.fwdRules, (rule: string) => {
+          Row({ space: 8 }) {
+            Text(rule.substring(rule.indexOf('|') + 1)).fontSize(11).fontFamily('monospace')
+              .layoutWeight(1)
+            Button('Start').id('fwd/rule/' + rule.substring(0, rule.indexOf('|')))
+              .fontSize(11)
+              .onClick(() => {
+                // 展示串格式: id|mode|listen->targetHost:targetPort
+                const parts = rule.split('|');
+                const rest = parts.length > 2 ? parts[2] : '';
+                const arrow = rest.indexOf('->');
+                const listen = arrow > 0 ? rest.substring(0, arrow) : this.fwdListen;
+                const target = arrow > 0 ? rest.substring(arrow + 2) : '127.0.0.1:2223';
+                const colon = target.lastIndexOf(':');
+                this.startSavedRule(parts[0], parts[1], listen, target.substring(0, colon),
+                  target.substring(colon + 1));
+              })
+            Button('Del').id('fwd/rule-del/' + rule.substring(0, rule.indexOf('|')))
+              .backgroundColor('#C62828').fontColor(Color.White).fontSize(11)
+              .onClick(() => { this.deleteRule(rule.substring(0, rule.indexOf('|'))); })
+          }.width('100%')
+        }, (rule: string) => rule)
+        if (this.fwdRules.length === 0) {
+          Text('(no saved rules)').id('fwd/rule-empty').fontSize(11).fontColor('#999999').width('100%')
+        }
       }.width('100%')
       Scroll() {
         Text(this.fwdEvents.length > 0 ? this.fwdEvents : '(no events)')
@@ -1493,7 +1586,7 @@ struct Index {
           Button('Known').id('known/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
             .onClick(() => { this.openKnownHosts(); })
           Button('Forward').id('fwd/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-            .onClick(() => { this.fwdOpen = true; })
+            .onClick(() => { this.fwdOpen = true; this.reloadRules(); })
           Button('Diagnostics').id('diag/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
             .onClick(() => { this.diagOpen = true; })
           Button('New Host').id('shell/add-host')

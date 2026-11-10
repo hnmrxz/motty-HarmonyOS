@@ -1091,3 +1091,23 @@ lint 直接报 `is not of type 'string'`——已改成不带冒号的写法。
 
 ### 未做
 接受新钥匙后的自动重连路径（需另一条用例）、算法降级告警、告警跨会话复现。
+---
+
+## Round 36：转发规则持久化（落库 + 重启恢复）
+
+| 产物 | 说明 |
+|---|---|
+| `Index.ets` | 新表 `forwards`（id/host_key/mode/listen_port/target_host/target_port）；面板加 `fwd/save`（保存当前表单）、`fwd/rule-count`、规则列表（`fwd/rule/<id>` 一键启动、`fwd/rule-del/<id>` 删除、`fwd/rule-empty`） |
+| 启动 | `initStore` 建表；启动时与打开面板时都 `reloadRules()` |
+| `spec/scenarios/forward.persist.yaml` | 保存 1 条 → **进程级重启** → 规则仍在 → 计数 1 |
+
+### 修掉的一个解析错误
+规则展示串是 `id|mode|listen->host:port`，但"一键启动"最初把 `parts[1]` 当成 `listen->…`（实际是 mode），
+会导致启动参数错位。已改为按 `parts[2]` 解析并在两端做边界判断。
+
+### 双画像
+`forward.persist` 在 2in1 与 tablet 均 **passed**。
+
+### 未做
+一键启动后的隧道连通性（由 `forward.socks5` / `forward.local` 覆盖，这里不重复断言）、规则编辑、
+多主机规则、开机自启、规则与 known_hosts 的一致性校验。

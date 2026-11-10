@@ -1,0 +1,100 @@
+schema: 1
+id: forward.persist
+title: 转发规则持久化：保存后进程重启仍在，并能一键启动
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - D01
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: rule-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  # 信任主机密钥（转发也要过这一步）
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "hello-from-list"
+      withinMs: 15000
+  # 保存一条 SOCKS5 规则
+  - action: click
+    target: id:fwd/open
+  - action: click
+    target: id:fwd/mode-socks5
+  - action: click
+    target: id:fwd/save
+  - action: wait
+    ms: 1000
+    expect:
+      kind: screenRegex
+      regex: "saved rules: 1"
+      withinMs: 8000
+  # 进程级重启后规则仍在
+  - action: restart
+  - action: wait
+    ms: 2000
+  - action: click
+    target: id:fwd/open
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "saved rules: 1"
+      withinMs: 10000
+asserts:
+  - kind: screenRegex
+    regex: "saved rules: 1"
+    withinMs: 8000
+  - kind: absent
+    value: "(no saved rules)"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：转发规则写入 relationalStore、进程级重启后恢复、
+    规则计数与列表渲染、删除入口存在。
+    **不覆盖**：一键启动后的隧道连通性（另一条用例覆盖）、规则编辑、多主机规则、
+    开机自启、规则与 known_hosts 的一致性校验；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 用 restart（force-stop + relaunch）证明"落库"而不是"内存里还在"
+notes: >-
+  只断言"保存成功"不够：必须重启进程后再看一次，"saved rules: 1" 仍在才算落库。
+  规则启动路径由 forward.socks5 / forward.local 覆盖，这里不重复。

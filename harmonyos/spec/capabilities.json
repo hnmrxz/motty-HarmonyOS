@@ -913,6 +913,7 @@
       "proof": [
         "spec/scenarios/forward.http.yaml",
         "spec/scenarios/forward.local.yaml",
+        "spec/scenarios/forward.persist.yaml",
         "spec/scenarios/forward.socks5.yaml"
       ],
       "fallback": null,
@@ -923,7 +924,7 @@
         "deps": "`@ohos.net.socket` 已有 API",
         "acceptance": "`local_proxy`、`proxy_start_stop`"
       },
-      "partialCoverage": "部分：local 转发与 SOCKS5(无认证) 已双画像实测；远程转发、SOCKS5 用户名口令、HTTP CONNECT 断言未做。"
+      "partialCoverage": "部分：local 转发、SOCKS5(无认证)、HTTP CONNECT、转发规则持久化已双画像实测；远程转发、SOCKS5 用户名口令、UDP ASSOCIATE、并发连接未做。"
     },
     {
       "id": "D02",
