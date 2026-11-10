@@ -170,6 +170,8 @@ struct Index {
   @State sftpUploadName: string = 'uploaded.txt';
   @State sftpUploadText: string = 'uploaded-marker-ok\n';
   @State sftpResult: string = '';
+  @State sftpRenameTo: string = 'renamed.txt';
+  @State sftpNewDir: string = 'newdir';
   @State fwdOpen: boolean = false;
   @State fwdListen: string = '2201';
   @State fwdTargetHost: string = '127.0.0.1';
@@ -841,6 +843,27 @@ struct Index {
       });
   }
 
+  private renameFile(cred: Cred, fp: string): void {
+    const from = this.sftpFile;
+    const to = this.sftpRenameTo;
+    this.sftpStatus = 'renaming ' + from + ' -> ' + to;
+    mottynapi.sftpRename(cred.address, cred.port, cred.user, cred.password, fp, from, to,
+      (result: string) => {
+        this.sftpResult = 'rename: ' + result;
+        this.sftpFile = to;
+        this.refreshListing(cred, fp);
+      });
+  }
+
+  private mkdirRemote(cred: Cred, fp: string): void {
+    this.sftpStatus = 'creating dir ' + this.sftpNewDir;
+    mottynapi.sftpMkdir(cred.address, cred.port, cred.user, cred.password, fp, this.sftpNewDir,
+      (result: string) => {
+        this.sftpResult = 'mkdir: ' + result;
+        this.refreshListing(cred, fp);
+      });
+  }
+
   private deleteFile(cred: Cred, fp: string): void {
     this.sftpStatus = 'deleting ' + this.sftpFile;
     mottynapi.sftpDelete(cred.address, cred.port, cred.user, cred.password, fp, this.sftpFile,
@@ -1410,6 +1433,20 @@ struct Index {
             const cred = this.creds.get(this.fixtureKey);
             if (cred !== undefined) {
               this.lookupFp(this.fixtureKey).then((fp: string) => { this.deleteFile(cred, fp); });
+            }
+          })
+        Button('Rename').id('sftp/rename').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => {
+            const cred = this.creds.get(this.fixtureKey);
+            if (cred !== undefined) {
+              this.lookupFp(this.fixtureKey).then((fp: string) => { this.renameFile(cred, fp); });
+            }
+          })
+        Button('Mkdir').id('sftp/mkdir').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => {
+            const cred = this.creds.get(this.fixtureKey);
+            if (cred !== undefined) {
+              this.lookupFp(this.fixtureKey).then((fp: string) => { this.mkdirRemote(cred, fp); });
             }
           })
       }.width('100%')

@@ -1,0 +1,101 @@
+schema: 1
+id: sftp.manage
+title: SFTP 基础文件操作：重命名与新建目录后列表随之更新
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - C01
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: fsm-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  # 打开文件面板（会先要求信任主机密钥）
+  - action: click
+    target: id:host-files/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+    expect:
+      kind: screenRegex
+      regex: "hello.txt"
+      withinMs: 15000
+  # 选中 hello.txt 后重命名为 renamed.txt
+  - action: click
+    target: id:sftp/entry/hello.txt
+  - action: click
+    target: id:sftp/rename
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "rename: renamed "
+      withinMs: 12000
+  - action: wait
+    ms: 1200
+  # 新建目录
+  - action: click
+    target: id:sftp/mkdir
+  - action: wait
+    ms: 2500
+asserts:
+  - kind: screenRegex
+    regex: "mkdir: created dir "
+    withinMs: 12000
+  - kind: screenRegex
+    regex: "renamed.txt"
+    withinMs: 10000
+  - kind: screenRegex
+    regex: "newdir"
+    withinMs: 10000
+  - kind: absent
+    value: "error rename failed"
+    withinMs: 2000
+  - kind: absent
+    value: "error mkdir failed"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：远程重命名（含列表刷新与选中项跟随）、新建目录。
+    **不覆盖**：递归目录操作、覆盖已存在的目标、权限位与符号链接、批量重命名、
+    目录进入/返回上一级（`sftp/path` 只做单层列举）；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 重命名目标固定为 renamed.txt、目录名固定为 newdir（避免依赖输入框注入的脆弱性）
+notes: >-
+  "列表随之更新"是这条用例的重点：只断言返回字符串不够，
+  必须看到 renamed.txt 与 newdir 出现在条目列表里，才说明刷新真的发生。

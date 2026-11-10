@@ -1287,3 +1287,23 @@ lint 直接报 `is not of type 'string'`——已改成不带冒号的写法。
 
 ### 小坑
 状态行只保留最后一次按键，`sent up` 在按 → 之后被覆盖 → 断言改为 `sent right`。
+---
+
+## Round 45：SFTP 重命名与新建目录
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/ssh_napi.cpp` | `sftpRename(...,from,to,cb)`（`libssh2_sftp_rename_ex`）、`sftpMkdir(...,path,cb)`（`libssh2_sftp_mkdir`，0755） |
+| `Index.ets` | 文件面板加 `Rename`（`sftp/rename`，目标固定 `renamed.txt`）与 `Mkdir`（`sftp/mkdir`，目录固定 `newdir`），成功后刷新列表 |
+| `spec/scenarios/sftp.manage.yaml` | 选中 `hello.txt` → 重命名 → 断言 `rename: renamed` 且列表出现 `renamed.txt` → 新建目录 → 断言 `mkdir: created dir` 且列表出现 `newdir` |
+
+### 本轮的过程教训（值得记）
+前两次补丁都"打印成功但没落地"：锚点字符串与实际代码不一致（`private deleteSftp()` 实际叫 `deleteFile(cred, fp)`，
+按钮块的收尾缩进也不同）。**replace 之后必须逐项断言目标字符串真的存在**，否则会写出一堆
+"日志说改了、代码没变"的假象——这次是靠 `changed: True / sftp/rename -> False` 的对照才发现的。
+
+### 双画像
+`sftp.manage` 在 2in1 与 tablet 均 **passed**。
+
+### 未做
+递归目录操作、覆盖已存在目标、权限位与符号链接、批量重命名、目录层级进入/返回、书签。
