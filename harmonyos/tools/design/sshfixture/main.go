@@ -142,6 +142,21 @@ func serveSession(ch ssh.Channel, reqs <-chan *ssh.Request, auth string) {
 			}
 			req.Reply(true, nil)
 			log.Printf("exec: %q", payload.Command)
+			if strings.HasPrefix(payload.Command, "vt-demo2") {
+				// 回滚：30 行 > 24 行屏幕，前面几行必须进历史缓冲
+				for i := 1; i <= 30; i++ {
+					fmt.Fprintf(ch, "scroll-%02d\r\n", i)
+				}
+				// 备用屏：进入后写标记，退出后该标记必须消失
+				fmt.Fprint(ch, "\x1b[?1049h")
+				fmt.Fprint(ch, "\x1b[2J\x1b[H")
+				fmt.Fprint(ch, "alt-marker\r\n")
+				fmt.Fprint(ch, "\x1b[?1049l")
+				fmt.Fprint(ch, "main-after-alt\r\n")
+				status := struct{ Status uint32 }{0}
+				ch.SendRequest("exit-status", false, ssh.Marshal(&status))
+				return
+			}
 			if strings.HasPrefix(payload.Command, "vt-demo") {
 				// 最小 VT 子集的验收脚本：清屏、定位、颜色、擦行、跨行移动
 				fmt.Fprint(ch, "\x1b[2J")            // 清屏

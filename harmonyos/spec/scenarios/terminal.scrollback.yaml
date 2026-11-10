@@ -1,0 +1,85 @@
+schema: 1
+id: terminal.scrollback
+title: 回滚缓冲与备用屏：滚出屏幕的行进入历史、备用屏退出后不残留
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B01
+  - B09
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: sb-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:terminal/vt2
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3500
+    expect:
+      kind: screenRegex
+      regex: "main-after-alt"
+      withinMs: 15000
+asserts:
+  - kind: screenRegex
+    regex: "scroll-30"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "hist=[1-9][0-9]*"
+    withinMs: 4000
+  - kind: screenRegex
+    regex: "scroll-0[5-9]"
+    withinMs: 4000
+  - kind: absent
+    value: "alt-marker"
+    withinMs: 3000
+  - kind: screenRegex
+    regex: "alt=0"
+    withinMs: 3000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：超屏滚动入历史（30 行进 24 行屏）、
+    DECSET/DECRST 47/1047/1049 备用屏切换、退出后主屏内容恢复、退出后不残留备用屏内容。
+    **不覆盖**：回滚区的颜色/宽字符（历史只存文本行）、滚动条的鼠标/触控交互、
+    回滚内搜索、DECSTBM 滚动区域、resize 时的重排；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 历史尾巴通过 terminal/history 元素外显，否则"滚出屏幕的内容"无法被断言
+notes: >-
+  关键断言是 scroll-0[5-9]：这 30 行里 1..6 行已被顶出 24 行屏幕，只可能出现在
+  terminal/history（vtScrollBack 的尾巴）里。若没有回滚缓冲，这条必然失败。
+  alt-marker 缺席则证明备用屏退出后没有残留。

@@ -73,6 +73,17 @@ struct Screen {
     std::vector<Cell> cells;
     std::string utf8Pending;  // 跨 chunk 的半截 UTF-8 序列
 
+    // 回滚缓冲：行被滚动顶出时进入这里。只保留文本，不保留颜色/宽字符标记——
+    // 够用且省内存；若将来要"回滚区也能着色"，需要把 Cell 行一起存。
+    std::vector<std::string> history;
+    static constexpr size_t kMaxHistory = 2000;
+
+    // 备用屏：进替代屏时保存主屏与光标，退出时恢复（DECSET 47/1047/1049）
+    bool altActive = false;
+    std::vector<Cell> savedCells;
+    int savedRow = 0;
+    int savedCol = 0;
+
     void resize(int c, int r) {
         cols = c < 8 ? 8 : (c > kMaxCols ? kMaxCols : c);
         rows = r < 4 ? 4 : (r > kMaxRows ? kMaxRows : r);
@@ -81,6 +92,9 @@ struct Screen {
         curCol = 0;
         fg = 0;
         utf8Pending.clear();
+        history.clear();
+        altActive = false;
+        savedCells.clear();
     }
 
     Cell &at(int row, int col) {
@@ -93,7 +107,31 @@ struct Screen {
         }
     }
 
+    std::string rowText(int row) const {
+        std::string line;
+        for (int c = 0; c < cols; c++) {
+            const Cell &cell = cells[static_cast<size_t>(row) * static_cast<size_t>(cols) + static_cast<size_t>(c)];
+            line += cell.blank ? std::string(" ") : cell.glyph;
+        }
+        while (!line.empty() && line.back() == ' ') {
+            line.pop_back();
+        }
+        return line;
+    }
+
+    void pushHistory(int row) {
+        // 备用屏里的滚动不进主屏历史（真实终端也不进）
+        if (altActive) {
+            return;
+        }
+        history.push_back(rowText(row));
+        if (history.size() > kMaxHistory) {
+            history.erase(history.begin());
+        }
+    }
+
     void scroll() {
+        pushHistory(0);
         for (int r = 1; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 at(r - 1, c) = at(r, c);
@@ -108,6 +146,30 @@ struct Screen {
             curRow = rows - 1;
             scroll();
         }
+    }
+
+    void enterAlt(bool saveCursor) {
+        if (altActive) {
+            return;
+        }
+        savedCells = cells;
+        savedRow = curRow;
+        savedCol = curCol;
+        altActive = true;
+        // 1049 会先清屏；47/1047 保留内容。这里统一清屏，行为更可预测。
+        cells.assign(static_cast<size_t>(cols) * static_cast<size_t>(rows), Cell{});
+        (void)saveCursor;
+    }
+
+    void leaveAlt() {
+        if (!altActive) {
+            return;
+        }
+        cells = savedCells;
+        curRow = savedRow < rows ? savedRow : rows - 1;
+        curCol = savedCol < cols ? savedCol : cols - 1;
+        altActive = false;
+        savedCells.clear();
     }
 
     void putGlyph(const std::string &glyph, int width) {
@@ -166,6 +228,22 @@ void clampCursor() {
 }
 
 void dispatchCsi(const std::string &body, char final) {
+    // 私有模式：形如 "?1049h" / "?47l"。parseParams 会忽略 '?'，这里据首字符判定。
+    if (!body.empty() && body[0] == '?' && (final == 'h' || final == 'l')) {
+        const std::vector<int> mp = parseParams(body.substr(1));
+        const bool enable = (final == 'h');
+        for (int mode : mp) {
+            if (mode == 47 || mode == 1047 || mode == 1049) {
+                if (enable) {
+                    g_screen.enterAlt(mode == 1049);
+                } else {
+                    g_screen.leaveAlt();
+                }
+            }
+        }
+        return;
+    }
+
     const std::vector<int> p = parseParams(body);
     switch (final) {
         case 'H':
@@ -361,9 +439,28 @@ std::string screenStatus() {
         }
     }
     char buf[160];
-    snprintf(buf, sizeof(buf), "cur=%d,%d colors=%d wide=%d size=%dx%d",
-             g_screen.curRow + 1, g_screen.curCol + 1, colored, wide, g_screen.cols, g_screen.rows);
+    snprintf(buf, sizeof(buf), "cur=%d,%d colors=%d wide=%d hist=%d alt=%d size=%dx%d",
+             g_screen.curRow + 1, g_screen.curCol + 1, colored, wide,
+             static_cast<int>(g_screen.history.size()), g_screen.altActive ? 1 : 0,
+             g_screen.cols, g_screen.rows);
     return std::string(buf);
+}
+
+std::string historyTail(int n) {
+    if (n <= 0 || g_screen.history.empty()) {
+        return std::string();
+    }
+    const size_t total = g_screen.history.size();
+    const size_t take = static_cast<size_t>(n) < total ? static_cast<size_t>(n) : total;
+    std::string out;
+    for (size_t i = total - take; i < total; i++) {
+        out += g_screen.history[i];
+        out.push_back('\n');
+    }
+    while (!out.empty() && out.back() == '\n') {
+        out.pop_back();
+    }
+    return out;
 }
 
 std::string getString(napi_env env, napi_value v) {
@@ -410,6 +507,18 @@ napi_value vtScreen(napi_env env, napi_callback_info) {
     return out;
 }
 
+napi_value vtScrollBack(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int32_t n = 5;
+    if (argc > 0) napi_get_value_int32(env, args[0], &n);
+    const std::string text = historyTail(n);
+    napi_value out = nullptr;
+    napi_create_string_utf8(env, text.c_str(), text.size(), &out);
+    return out;
+}
+
 napi_value vtStatus(napi_env env, napi_callback_info) {
     const std::string text = screenStatus();
     napi_value out = nullptr;
@@ -425,6 +534,7 @@ void RegisterVtFunctions(napi_env env, napi_value exports) {
         {"vtFeed", nullptr, vtFeed, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"vtScreen", nullptr, vtScreen, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"vtStatus", nullptr, vtStatus, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"vtScrollBack", nullptr, vtScrollBack, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     g_screen.resize(80, 24);

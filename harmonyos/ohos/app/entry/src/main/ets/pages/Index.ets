@@ -76,6 +76,7 @@ struct Index {
   private shellId: number = 0;
   @State termInput: string = '';
   @State vtStatus: string = '';
+  @State vtHistory: string = '';
 
   // 密码只在内存：键为 address:port。进程退出即失，这是刻意的。
   private creds: Map<string, Cred> = new Map<string, Cred>();
@@ -258,6 +259,7 @@ struct Index {
         mottynapi.vtFeed(chunk);
         this.termText = mottynapi.vtScreen();
         this.vtStatus = mottynapi.vtStatus();
+        this.vtHistory = mottynapi.vtScrollBack(3);
       },
       (status: string) => {
         this.termText = this.termText + '\n[status] ' + status;
@@ -278,6 +280,11 @@ struct Index {
   //   terminal/vt   -> vt-demo  ：最小 VT 子集（清屏/定位/擦行/颜色）
   private openVtDemo(): void {
     this.openDemoWith('vt');
+  }
+
+  // 回滚 + 备用屏：与 vt-demo 分开，避免 30 行滚动把已断言的标记顶出屏幕
+  private openVt2Demo(): void {
+    this.openDemoWith('vt2');
   }
 
   private openTerminalDemo(): void {
@@ -306,7 +313,8 @@ struct Index {
           });
         return;
       }
-      const cmd: string = this.pendingAction === 'vt' ? 'vt-demo' : 'term-demo';
+      const cmd: string = this.pendingAction === 'vt2' ? 'vt-demo2'
+        : (this.pendingAction === 'vt' ? 'vt-demo' : 'term-demo');
       this.runDemo(cred, fp, cmd);
     });
   }
@@ -322,6 +330,7 @@ struct Index {
         mottynapi.vtFeed(chunk);
         this.termText = mottynapi.vtScreen();
         this.vtStatus = mottynapi.vtStatus();
+        this.vtHistory = mottynapi.vtScrollBack(3);
       },
       (status: string) => {
         this.termText = mottynapi.vtScreen();
@@ -402,7 +411,9 @@ struct Index {
       for (let i = 0; i < this.hosts.length; i++) {
         if (this.hostKey(this.hosts[i].address, this.hosts[i].port) === key) {
           this.setStatus(i, 'trusted ' + fp + ', connecting...');
-          if (this.pendingAction === 'vt') {
+          if (this.pendingAction === 'vt2') {
+            this.runDemo(cred, fp, 'vt-demo2');
+          } else if (this.pendingAction === 'vt') {
             this.runDemo(cred, fp, 'vt-demo');
           } else if (this.pendingAction === 'demo') {
             this.runDemo(cred, fp, 'term-demo');
@@ -587,6 +598,12 @@ struct Index {
       .border({ width: 1, color: '#CCCCCC' })
       .padding(8)
 
+      Text('history tail: ' + (this.vtHistory.length > 0 ? this.vtHistory.replace(/\n/g, ' | ') : '(empty)'))
+        .id('terminal/history')
+        .fontSize(11)
+        .fontColor('#B0B0B0')
+        .width('100%')
+
       Text(this.vtStatus.length > 0 ? this.vtStatus : 'vt: (idle)')
         .id('terminal/vt-status')
         .fontSize(11)
@@ -652,6 +669,8 @@ struct Index {
             .onClick(() => { this.openTerminalDemo(); })
           Button('VT Demo').id('terminal/vt').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
             .onClick(() => { this.openVtDemo(); })
+          Button('VT2').id('terminal/vt2').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+            .onClick(() => { this.openVt2Demo(); })
           Button('SSH Test').id('ssh/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
             .onClick(() => { this.probeSsh(); })
           Button('Hostkey Check').id('ssh/hostkey-check').backgroundColor('#E6E6E6').fontColor('#1A1A1A')

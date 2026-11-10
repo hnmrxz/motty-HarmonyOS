@@ -437,3 +437,28 @@ abc|中文|def
 交叉引用全部改指仍然存在的文件。
 
 清理后复核：`devecocli build` 成功、`spec/lint.py` 全绿、`terminal.vt` 在平板上仍 **passed**。
+---
+
+## Round 15：回滚缓冲 + 备用屏（终端可用性的关键一步）
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/vt_core.cpp` | 回滚缓冲（上限 2000 行，滚出即入历史，**只存文本不存属性**）；备用屏 `DECSET/DECRST 47/1047/1049`（进入时保存主屏与光标，退出恢复）；`vtStatus` 增加 `hist=` 与 `alt=`；新增 `vtScrollBack(n)` |
+| `Index.ets` | 终端面板增加 `terminal/history`（历史尾巴外显）与 `VT2` 诊断入口（`terminal/vt2`） |
+| `tools/design/sshfixture` | 新增 `vt-demo2`：30 行滚动 + 进备用屏写标记 + 退出 + 主屏写标记 |
+| `spec/scenarios/terminal.scrollback.yaml` | 5 条断言，含回滚与备用屏各自的关键证明 |
+
+### 关键断言设计
+- `scroll-0[5-9]`：30 行进 24 行屏后，第 1–6 行已被顶出屏幕，**只可能出现在历史缓冲**里（`vtScrollBack` 尾巴）。没有回滚缓冲这条必然失败。
+- `alt-marker` **缺席**：备用屏里写的内容在退出后不得残留。
+- `hist=[1-9][0-9]*` 与 `alt=0`：来自 `vtStatus`，把"内部状态"变成可断言的外部观测。
+
+### 双画像验收（10 条 × 2 画像，当前构建）
+`terminal.scrollback`、`terminal.vt`、`terminal.view`、`terminal.interactive`、`ssh.connect-from-list`、
+`infra.host-create-by-id`、`host.persist`、`net.reachability`、`ssh.exec`、`ssh.hostkey` —— 全部 **passed**。
+
+### 仍未做（终端离可用还有距离）
+- 回滚区只有文本，**没有颜色/宽字符属性**
+- 没有滚动条交互、回滚内搜索、DECSTBM 滚动区域、resize 重排
+- 没有组合字符/零宽连接/emoji 序列（宽度仍是区段近似）
+- 没有真 pty：对端是"行回显"而非 shell
