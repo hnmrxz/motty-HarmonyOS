@@ -129,8 +129,46 @@ func handle(conn net.Conn, cfg *ssh.ServerConfig) {
 
 	go ssh.DiscardRequests(reqs)
 	for newCh := range chans {
+		if newCh.ChannelType() == "direct-tcpip" {
+			// 端口转发的对端：Go 的 ssh 库不实现转发，这里自己接。
+			// 载荷是 {目标主机, 目标端口, 来源主机, 来源端口}，随后双向 io.Copy。
+			go func(nc ssh.NewChannel) {
+				var payload struct {
+					Host       string
+					Port       uint32
+					OriginHost string
+					OriginPort uint32
+				}
+				if err := ssh.Unmarshal(nc.ExtraData(), &payload); err != nil {
+					_ = nc.Reject(ssh.Prohibited, "bad direct-tcpip payload")
+					return
+				}
+				target := fmt.Sprintf("%s:%d", payload.Host, payload.Port)
+				tconn, derr := net.DialTimeout("tcp", target, 5*time.Second)
+				if derr != nil {
+					log.Printf("direct-tcpip dial %s failed: %v", target, derr)
+					_ = nc.Reject(ssh.ConnectionFailed, "dial failed")
+					return
+				}
+				fch, freq, aerr := nc.Accept()
+				if aerr != nil {
+					_ = tconn.Close()
+					return
+				}
+				go ssh.DiscardRequests(freq)
+				log.Printf("direct-tcpip open -> %s", target)
+				done := make(chan struct{}, 2)
+				go func() { _, _ = io.Copy(tconn, fch); done <- struct{}{} }()
+				go func() { _, _ = io.Copy(fch, tconn); done <- struct{}{} }()
+				<-done
+				_ = fch.Close()
+				_ = tconn.Close()
+				log.Printf("direct-tcpip closed -> %s", target)
+			}(newCh)
+			continue
+		}
 		if newCh.ChannelType() != "session" {
-			_ = newCh.Reject(ssh.UnknownChannelType, "only session channels are supported")
+			_ = newCh.Reject(ssh.UnknownChannelType, "only session/direct-tcpip channels are supported")
 			continue
 		}
 		ch, chReqs, err := newCh.Accept()

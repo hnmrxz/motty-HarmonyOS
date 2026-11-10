@@ -905,8 +905,10 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/forward.local.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {

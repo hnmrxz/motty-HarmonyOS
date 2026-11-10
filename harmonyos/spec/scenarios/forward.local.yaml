@@ -1,0 +1,93 @@
+schema: 1
+id: forward.local
+title: 本地端口转发：本机端口经 SSH 隧道连到远端服务并取回数据
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - D01
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: fwd-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "hello-from-list"
+      withinMs: 15000
+  - action: click
+    target: id:fwd/open
+  - action: click
+    target: id:fwd/start
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "listening on 127\\.0\\.0\\.1:2201"
+      withinMs: 15000
+  - action: click
+    target: id:fwd/test
+  - action: wait
+    ms: 2500
+asserts:
+  - kind: screenRegex
+    regex: "SSH-2\\.0-"
+    withinMs: 12000
+  - kind: screenRegex
+    regex: "forwarded [0-9]+ bytes"
+    withinMs: 10000
+  - kind: absent
+    value: "error direct-tcpip"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：本地监听 → accept → SSH direct-tcpip →
+    双向透传 → 远端 banner 回到本机 socket。
+    **不覆盖**：多连接并发（当前串行，一次一个）、远程(remote)转发、动态(SOCKS)转发、
+    ACL 与来源限制、断线重连、端口占用冲突处理、真实服务的长连接协议行为。
+    未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 目标服务用对端 SSH 自己的 2223 端口（能返回 SSH banner），便于断言"数据确实来自远端"
+notes: >-
+  断言 SSH-2.0- 的关键在于：这个 banner 只可能由远端服务产生。
+  本机 socket 连的是 127.0.0.1:2201（设备自己的转发端口），中间经过 SSH 隧道到远端
+  127.0.0.1:2223，所以看到 banner 就证明整条链路通了，而不是本地假回显。

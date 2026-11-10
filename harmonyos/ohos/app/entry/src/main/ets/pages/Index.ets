@@ -153,12 +153,19 @@ struct Index {
   @State sftpUploadName: string = 'uploaded.txt';
   @State sftpUploadText: string = 'uploaded-marker-ok\n';
   @State sftpResult: string = '';
+  @State fwdOpen: boolean = false;
+  @State fwdListen: string = '2201';
+  @State fwdTargetHost: string = '127.0.0.1';
+  @State fwdTargetPort: string = '2223';
+  @State fwdEvents: string = '';
+  @State fwdResult: string = '';
 
   private creds: Map<string, Cred> = new Map<string, Cred>();
   private store: relationalStore.RdbStore | null = null;
   private readonly fixtureKey: string = '127.0.0.1:2222';
   private shellId: number = 0;
   private tabSeq: number = 0;
+  private fwdId: number = 0;
   private pendingAction: string = 'connect';
   private pendingLabel: string = '';
 
@@ -621,6 +628,60 @@ struct Index {
       });
   }
 
+  // ---------------- 端口转发（本地 forward）----------------
+  private startForward(): void {
+    const cred = this.creds.get(this.fixtureKey);
+    if (cred === undefined) {
+      this.fwdEvents = 'no credentials (create a host for 127.0.0.1:2222 first)';
+      return;
+    }
+    this.lookupFp(this.fixtureKey).then((fp: string) => {
+      if (fp.length === 0) {
+        this.fwdEvents = 'host key not trusted yet (use Test on the host row first)';
+        return;
+      }
+      this.fwdEvents = 'starting...';
+      this.fwdResult = '';
+      this.fwdId = mottynapi.forwardStart(cred.address, cred.port, cred.user, cred.password, fp,
+        Number.parseInt(this.fwdListen, 10), this.fwdTargetHost, Number.parseInt(this.fwdTargetPort, 10),
+        (event: string) => {
+          this.fwdEvents = this.fwdEvents + '\n' + event;
+        });
+    });
+  }
+
+  private stopForward(): void {
+    if (this.fwdId !== 0) {
+      mottynapi.forwardStop(this.fwdId);
+      this.fwdId = 0;
+    }
+  }
+
+  // 用本机 socket 连自己的转发端口，读回远端 banner —— 这才算"隧道真的通了"
+  private testForward(): void {
+    this.fwdResult = 'connecting 127.0.0.1:' + this.fwdListen + ' ...';
+    const tcp = socket.constructTCPSocketInstance();
+    let acc = '';
+    tcp.on('message', (info: socket.SocketMessageInfo) => {
+      const u8 = new Uint8Array(info.message as ArrayBuffer);
+      for (let i = 0; i < u8.length; i++) {
+        acc += String.fromCharCode(u8[i]);
+      }
+      this.fwdResult = acc;
+    });
+    tcp.on('error', (e: BusinessError) => {
+      this.fwdResult = 'socket error: ' + e.message;
+    });
+    tcp.connect({
+      address: { address: '127.0.0.1', port: Number.parseInt(this.fwdListen, 10), family: 1 },
+      timeout: 5000
+    }).then(() => {
+      setTimeout(() => { tcp.close(); }, 1500);
+    }).catch((e: BusinessError) => {
+      this.fwdResult = 'connect failed: ' + e.code + ' ' + e.message;
+    });
+  }
+
   private probeNet(): void {
     this.probeText = 'connecting...';
     const tcp = socket.constructTCPSocketInstance();
@@ -908,6 +969,50 @@ struct Index {
   }
 
   @Builder
+  forwardPanel() {
+    Column({ space: 8 }) {
+      Row() {
+        Text('Port forwarding (local)').fontSize(16).fontWeight(FontWeight.Bold)
+        Blank()
+        Button('Close').id('fwd/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.fwdOpen = false; })
+      }.width('100%')
+      Row({ space: 8 }) {
+        Text('listen').fontSize(11).fontColor('#666666')
+        TextInput({ text: this.fwdListen }).id('fwd/listen').width(80)
+          .onChange((v: string) => { this.fwdListen = v; })
+        Text('->').fontSize(11).fontColor('#666666')
+        TextInput({ text: this.fwdTargetHost }).id('fwd/target-host').width(120)
+          .onChange((v: string) => { this.fwdTargetHost = v; })
+        Text(':').fontSize(11).fontColor('#666666')
+        TextInput({ text: this.fwdTargetPort }).id('fwd/target-port').width(80)
+          .onChange((v: string) => { this.fwdTargetPort = v; })
+      }.width('100%')
+      Row({ space: 8 }) {
+        Button('Start').id('fwd/start').onClick(() => { this.startForward(); })
+        Button('Stop').id('fwd/stop').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.stopForward(); })
+        Button('Test tunnel').id('fwd/test').backgroundColor('#1A6DD0').fontColor(Color.White)
+          .onClick(() => { this.testForward(); })
+      }.width('100%')
+      Scroll() {
+        Text(this.fwdEvents.length > 0 ? this.fwdEvents : '(no events)')
+          .id('fwd/events').fontSize(11).fontFamily('monospace').width('100%')
+      }.height(110).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)
+        .align(Alignment.TopStart)
+      Scroll() {
+        Text(this.fwdResult.length > 0 ? this.fwdResult : '(tunnel not tested)')
+          .id('fwd/result').fontSize(11).fontFamily('monospace').width('100%')
+      }.height(80).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)
+        .align(Alignment.TopStart)
+      Text('Limits: one active connection at a time, no ACL, local forward only.')
+        .fontSize(10).fontColor('#999999').width('100%')
+    }
+    .id('fwd/panel').width(680).padding(16).backgroundColor(Color.White).borderRadius(12)
+    .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
+  }
+
+  @Builder
   diagPanel() {
     Column({ space: 10 }) {
       Row() {
@@ -1056,6 +1161,8 @@ struct Index {
             Button('Hosts').id('nav/hosts').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
               .onClick(() => { this.showHosts = true; })
           }
+          Button('Forward').id('fwd/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+            .onClick(() => { this.fwdOpen = true; })
           Button('Diagnostics').id('diag/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
             .onClick(() => { this.diagOpen = true; })
           Button('New Host').id('shell/add-host')
@@ -1074,6 +1181,10 @@ struct Index {
       }
       .width('100%').height('100%').backgroundColor('#FAFAFA')
 
+      if (this.fwdOpen) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
+        this.forwardPanel()
+      }
       if (this.filesOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
         this.filesPanel()

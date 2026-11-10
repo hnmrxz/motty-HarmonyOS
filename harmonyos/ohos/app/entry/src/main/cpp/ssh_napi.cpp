@@ -14,6 +14,8 @@
 #include <libssh2_sftp.h>
 
 #include <arpa/inet.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -1088,6 +1090,272 @@ napi_value Sftp(napi_env env, napi_callback_info info) {
     return nullptr;
 }
 
+// ---------------- 端口转发（本地 forward，direct-tcpip）----------------
+// 设计取舍：一个转发任务独占一条 SSH 会话 + 一个监听 socket，串行处理连接。
+// libssh2 会话非线程安全，与其冒险并发多路复用，不如先做"一次连接"的可靠实现。
+// 明确限制（写进文档）：同时只有一个活动连接；没有 ACL；没有远程(remote)转发。
+struct ForwardJob {
+    std::string host;
+    int port = 22;
+    std::string user;
+    std::string password;
+    std::string expectedFingerprint;
+    int listenPort = 0;
+    std::string targetHost;
+    int targetPort = 0;
+    napi_threadsafe_function onEvent = nullptr;
+};
+
+std::mutex g_fwdMtx;
+std::map<int, std::atomic<bool> *> g_forwards;
+std::atomic<int> g_nextFwd{1};
+
+void emit(const napi_threadsafe_function fn, const std::string &text) {
+    auto *payload = new std::string(text);
+    napi_call_threadsafe_function(fn, payload, napi_tsfn_blocking);
+}
+
+void forwardWorker(ForwardJob *job, std::atomic<bool> *stopFlag) {
+    std::string err;
+    int fd = tcpConnect(job->host, job->port, err);
+    if (fd < 0) {
+        emit(job->onEvent, "error connect: " + err);
+        goto done;
+    }
+    {
+        LIBSSH2_SESSION *session = libssh2_session_init();
+        if (session == nullptr) {
+            close(fd);
+            emit(job->onEvent, "error session init");
+            goto done;
+        }
+        if (libssh2_session_handshake(session, fd) != 0) {
+            emit(job->onEvent, "error handshake");
+            libssh2_session_free(session);
+            close(fd);
+            goto done;
+        }
+        const char *hash = libssh2_hostkey_hash(session, LIBSSH2_HOSTKEY_HASH_SHA256);
+        std::string fp = hash ? "SHA256:" + base64(reinterpret_cast<const unsigned char *>(hash), 32) : "unavailable";
+        if (job->expectedFingerprint.empty() || job->expectedFingerprint != fp) {
+            emit(job->onEvent, job->expectedFingerprint.empty() ? ("error unknown_host " + fp)
+                                                                : "error hostkey-mismatch");
+            libssh2_session_disconnect(session, "hostkey not trusted");
+            libssh2_session_free(session);
+            close(fd);
+            goto done;
+        }
+        if (libssh2_userauth_password(session, job->user.c_str(), job->password.c_str()) != 0) {
+            emit(job->onEvent, "error auth failed");
+            libssh2_session_disconnect(session, "auth failed");
+            libssh2_session_free(session);
+            close(fd);
+            goto done;
+        }
+
+        // 转发必须两端都非阻塞：任何一端阻塞都会让另一个方向饿死
+        libssh2_session_set_blocking(session, 0);
+
+        // 本地监听
+        int lfd = socket(AF_INET, SOCK_STREAM, 0);
+        if (lfd < 0) {
+            emit(job->onEvent, "error listen socket");
+            libssh2_session_free(session);
+            close(fd);
+            goto done;
+        }
+        int reuse = 1;
+        setsockopt(lfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+        struct sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(static_cast<uint16_t>(job->listenPort));
+        addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        if (bind(lfd, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)) < 0 ||
+            listen(lfd, 4) < 0) {
+            emit(job->onEvent, "error bind/listen on " + std::to_string(job->listenPort));
+            close(lfd);
+            libssh2_session_free(session);
+            close(fd);
+            goto done;
+        }
+        struct timeval tv{0, 200000};   // 200ms：让 stopFlag 能被及时看到
+        setsockopt(lfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+        emit(job->onEvent, "listening on 127.0.0.1:" + std::to_string(job->listenPort) +
+                           " -> " + job->targetHost + ":" + std::to_string(job->targetPort));
+
+        // 串行处理连接
+        while (!stopFlag->load()) {
+            struct sockaddr_in peer{};
+            socklen_t plen = sizeof(peer);
+            int cfd = accept(lfd, reinterpret_cast<struct sockaddr *>(&peer), &plen);
+            if (cfd < 0) {
+                continue;   // 超时：回到循环检查 stopFlag
+            }
+            emit(job->onEvent, "accepted local connection");
+            int flags = fcntl(cfd, F_GETFL, 0);
+            fcntl(cfd, F_SETFL, flags | O_NONBLOCK);
+            LIBSSH2_CHANNEL *ch = nullptr;
+            for (int attempt = 0; attempt < 100 && ch == nullptr && !stopFlag->load(); attempt++) {
+                ch = libssh2_channel_direct_tcpip_ex(session, job->targetHost.c_str(),
+                    job->targetPort, "127.0.0.1", job->listenPort);
+                if (ch == nullptr) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                }
+            }
+            if (ch == nullptr) {
+                emit(job->onEvent, "error direct-tcpip failed");
+                close(cfd);
+                continue;
+            }
+            size_t total = 0;
+            char buf[4096];
+            for (;;) {
+                if (stopFlag->load()) {
+                    break;
+                }
+                bool progressed = false;
+
+                // 本地 -> 远端
+                ssize_t n = recv(cfd, buf, sizeof(buf), 0);
+                if (n > 0) {
+                    ssize_t off = 0;
+                    while (off < n) {
+                        ssize_t w = libssh2_channel_write(ch, buf + off, static_cast<size_t>(n - off));
+                        if (w > 0) {
+                            off += w;
+                            progressed = true;
+                        } else if (w == LIBSSH2_ERROR_EAGAIN) {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                        } else {
+                            break;
+                        }
+                    }
+                } else if (n == 0) {
+                    break;   // 本地关闭
+                } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                    break;
+                }
+
+                // 远端 -> 本地
+                ssize_t r = libssh2_channel_read(ch, buf, sizeof(buf));
+                if (r > 0) {
+                    ssize_t off = 0;
+                    while (off < r) {
+                        ssize_t w = send(cfd, buf + off, static_cast<size_t>(r - off), 0);
+                        if (w > 0) {
+                            off += w;
+                        } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                        } else {
+                            break;
+                        }
+                    }
+                    total += static_cast<size_t>(r);
+                    progressed = true;
+                } else if (r < 0 && r != LIBSSH2_ERROR_EAGAIN) {
+                    break;
+                }
+
+                if (libssh2_channel_eof(ch) == 1) {
+                    break;
+                }
+                if (!progressed) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(15));
+                }
+            }
+            libssh2_channel_close(ch);
+            libssh2_channel_free(ch);
+            close(cfd);
+            emit(job->onEvent, "forwarded " + std::to_string(static_cast<long long>(total)) + " bytes");
+            if (job->listenPort < 0) {
+                break;
+            }
+        }
+        close(lfd);
+        libssh2_session_disconnect(session, "bye");
+        libssh2_session_free(session);
+        close(fd);
+        emit(job->onEvent, "stopped");
+    }
+done:
+    napi_release_threadsafe_function(job->onEvent, napi_tsfn_release);
+    delete job;
+}
+
+// forwardStart(host, port, user, password, expectedFp, listenPort, targetHost, targetPort, onEvent) -> id
+napi_value ForwardStart(napi_env env, napi_callback_info info) {
+    size_t argc = 9;
+    napi_value args[9] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 9) {
+        napi_throw_type_error(env, nullptr,
+            "forwardStart(host,port,user,password,expectedFp,listenPort,targetHost,targetPort,onEvent)");
+        return nullptr;
+    }
+    auto *job = new ForwardJob();
+    auto readStr = [&](size_t i, std::string &dst) {
+        size_t len = 0;
+        napi_get_value_string_utf8(env, args[i], static_cast<char *>(nullptr), 0, &len);
+        if (len == 0) { dst.clear(); return; }
+        dst.resize(len);
+        napi_get_value_string_utf8(env, args[i], &dst[0], len + 1, &len);
+    };
+    readStr(0, job->host);
+    int32_t port = 22;
+    napi_get_value_int32(env, args[1], &port);
+    job->port = port;
+    readStr(2, job->user);
+    readStr(3, job->password);
+    readStr(4, job->expectedFingerprint);
+    int32_t listenPort = 0;
+    napi_get_value_int32(env, args[5], &listenPort);
+    job->listenPort = listenPort;
+    readStr(6, job->targetHost);
+    int32_t targetPort = 0;
+    napi_get_value_int32(env, args[7], &targetPort);
+    job->targetPort = targetPort;
+
+    napi_value n1 = nullptr;
+    napi_create_string_utf8(env, "motty.fwd.event", NAPI_AUTO_LENGTH, &n1);
+    if (napi_create_threadsafe_function(env, args[8], nullptr, n1, 0, 1, nullptr, nullptr, nullptr,
+                                        callJs, &job->onEvent) != napi_ok) {
+        delete job;
+        napi_throw_error(env, nullptr, "tsfn failed");
+        return nullptr;
+    }
+    auto *stopFlag = new std::atomic<bool>(false);
+    const int id = g_nextFwd.fetch_add(1);
+    {
+        std::lock_guard<std::mutex> lock(g_fwdMtx);
+        g_forwards[id] = stopFlag;
+    }
+    std::thread(forwardWorker, job, stopFlag).detach();
+    napi_value out = nullptr;
+    napi_create_int32(env, id, &out);
+    return out;
+}
+
+// forwardStop(id)
+napi_value ForwardStop(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int32_t id = 0;
+    napi_get_value_int32(env, args[0], &id);
+    int ok = 0;
+    {
+        std::lock_guard<std::mutex> lock(g_fwdMtx);
+        auto it = g_forwards.find(id);
+        if (it != g_forwards.end()) {
+            it->second->store(true);
+            ok = 1;
+        }
+    }
+    napi_value out = nullptr;
+    napi_create_int32(env, ok, &out);
+    return out;
+}
+
 // closeShell(id)
 napi_value CloseShell(napi_env env, napi_callback_info info) {
     size_t argc = 1;
@@ -1116,6 +1384,8 @@ napi_value Init(napi_env env, napi_value exports) {
         {"sftp", nullptr, Sftp, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"sftpWrite", nullptr, SftpWrite, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"sftpDelete", nullptr, SftpDelete, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"forwardStart", nullptr, ForwardStart, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"forwardStop", nullptr, ForwardStop, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     RegisterVtFunctions(env, exports);

@@ -628,3 +628,30 @@ The current mode is developer mode, and the screen cannot be unlocked automatica
 ### 23.3 连带影响（踩过的）
 删掉硬编码的 fixture 口令后，凡是用诊断入口的 spec 都必须**先建主机**，
 否则会走"没有凭据"分支。`ssh.exec`、`ssh.hostkey` 已补上建主机步骤。
+---
+
+## 24. 端口转发（本地 forward）
+
+### 24.1 客户端
+```
+forwardStart(host, port, user, password, expectedFp, listenPort, targetHost, targetPort, onEvent) -> id
+forwardStop(id)
+```
+- 一个转发任务**独占一条 SSH 会话** + 一个本地监听 socket，串行处理连接
+- 事件流：`listening on 127.0.0.1:<p> -> <target>`、`accepted local connection`、
+  `forwarded N bytes`、`stopped`、`error …`
+- 主机密钥语义与 probe 一致：未信任不会建立通道
+
+### 24.2 两个必须遵守的实现约束
+1. **两端都必须非阻塞**。若在本地 `recv` 上阻塞，远端数据永远读不到——实测表现是
+   "隧道起来了、连上了、但一个字节都收不到"。需要 `libssh2_session_set_blocking(session, 0)`
+   + 本地 socket `O_NONBLOCK`，然后双向轮询。
+2. **对端要真的支持 direct-tcpip**。Go 的 `x/crypto/ssh` 不实现转发，通道请求会被拒，
+   客户端只会看到 `error direct-tcpip failed`。夹具里自己解析载荷 + `net.Dial` + 双向 `io.Copy`。
+
+### 24.3 怎么验证"隧道真的通"
+不要只看"监听听起来了"。用本机 socket 连自己的转发端口，读回**只有远端才可能产生的数据**
+（本工程用远端 SSH 的 banner `SSH-2.0-`）。同时看对端日志是否出现 `direct-tcpip open`。
+
+### 24.4 当前限制
+同时只处理一个连接；没有 ACL/来源限制；只有本地转发；无断线重连与规则持久化。

@@ -640,3 +640,34 @@ abc|中文|def
 - 未做口令轮换、失效、迁移、多用户、Asset 不可用时的降级
 - 地址/端口/用户名仍在明文库（它们不是机密）；**known_hosts 与主机列表也没有加密**
 - 未做 arm64 真机验证；未做渗透测试
+---
+
+## Round 22：本地端口转发（direct-tcpip）
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/ssh_napi.cpp` | `forwardStart(...)` / `forwardStop(id)`：独占会话 + 本地监听 + `libssh2_channel_direct_tcpip_ex` + 双向透传 |
+| `tools/design/sshfixture` | **自己实现 direct-tcpip**（Go 的 ssh 库不提供转发）：解析载荷 → `net.Dial` 目标 → 双向 `io.Copy` |
+| `Index.ets` | 顶栏 `Forward`（`fwd/open`）→ 面板：监听端口/目标/Start/Stop/`Test tunnel`，事件流 `fwd/events`，隧道结果 `fwd/result` |
+| `spec/scenarios/forward.local.yaml` | 起隧道 → 用本机 socket 连自己的转发端口 → 读到远端 SSH banner |
+
+### 关键断言
+`SSH-2.0-`：这个 banner **只可能由远端服务产生**。本机 socket 连的是设备自己的
+`127.0.0.1:2201`，中间经 SSH 隧道到远端 `127.0.0.1:2223`——看到 banner 就说明整条链路通了，
+不是本地假回显。对端日志同时出现 `direct-tcpip open -> 127.0.0.1:2223`。
+
+### 修掉的两个真问题
+1. **转发循环曾单端阻塞**：原先在本地 `recv` 上阻塞，远端数据永远读不到（banner 一直不来）。
+   改为两端都非阻塞轮询（`libssh2_session_set_blocking(session, 0)` + `O_NONBLOCK`）。
+2. **对端不支持 direct-tcpip**：Go `x/crypto/ssh` 不实现转发，通道请求被拒 → 客户端报
+   `error direct-tcpip failed`。夹具补了通道处理才算真通。
+
+### 双画像验收（16 条 × 2 画像）
+`forward.local`、`vault.persist`、`sftp.write`、`sftp.browse`、`session.tabs`、`terminal.pty`、
+`terminal.scrollback`、`terminal.vt`、`terminal.view`、`terminal.interactive`、
+`ssh.connect-from-list`、`infra.host-create-by-id`、`host.persist`、`net.reachability`、
+`ssh.exec`、`ssh.hostkey` —— 全部 **passed**。
+
+### 未做
+远程(remote)转发、动态(SOCKS)转发、多连接并发（当前串行，一次一个连接）、ACL/来源限制、
+断线重连、端口冲突提示、转发规则持久化。
