@@ -159,6 +159,7 @@ struct Index {
   @State fwdTargetPort: string = '2223';
   @State fwdEvents: string = '';
   @State fwdResult: string = '';
+  @State vncResult: string = '';
 
   private creds: Map<string, Cred> = new Map<string, Cred>();
   private store: relationalStore.RdbStore | null = null;
@@ -682,6 +683,14 @@ struct Index {
     });
   }
 
+  private probeVnc(): void {
+    this.vncResult = 'vnc: connecting 127.0.0.1:5901 ...';
+    mottynapi.vncProbe('127.0.0.1', 5901, (result: string) => {
+      this.vncResult = 'vnc: ' + result;
+      this.probeText = 'vnc: ' + result;
+    });
+  }
+
   private probeNet(): void {
     this.probeText = 'connecting...';
     const tcp = socket.constructTCPSocketInstance();
@@ -1042,7 +1051,11 @@ struct Index {
           .onClick(() => { this.connectFixtureDemo('vt'); })
         Button('pty shell').id('terminal/shell').backgroundColor('#0A6C00').fontColor(Color.White)
           .onClick(() => { this.connectFixtureDemo('shell'); })
+        Button('VNC').id('vnc/probe').backgroundColor('#6A1B9A').fontColor(Color.White)
+          .onClick(() => { this.probeVnc(); })
       }.width('100%')
+      Text(this.vncResult.length > 0 ? this.vncResult : 'vnc: (not probed)')
+        .id('vnc/result').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')
       Scroll() {
         Text(this.probeText).id('net/probe-result').fontSize(11).fontFamily('monospace').width('100%')
       }.height(120).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)

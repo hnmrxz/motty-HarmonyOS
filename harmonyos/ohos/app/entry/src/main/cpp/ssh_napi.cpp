@@ -1356,6 +1356,242 @@ napi_value ForwardStop(napi_env env, napi_callback_info info) {
     return out;
 }
 
+// ---------------- VNC / RFB 3.8 客户端（Raw 编码）----------------
+// 路线决定（先定许可证再写代码）：**自研 RFB**，不引 LibVNC。
+// LibVNC 是 GPL-2.0，链进应用会传染整个产品、直接堵死上架；上游 Motty 也是自研 internal/rfb。
+// 本轮只做：3.8 握手 + 安全类型 None + Raw 编码 + 一帧取色，用来证明协议通路。
+// 明确不做：VNC Auth(DES)、Hextile/ZRLE/CopyRect、剪贴板、resize、鼠标键盘事件。
+struct VncJob {
+    std::string host;
+    int port = 5900;
+    napi_threadsafe_function cb = nullptr;
+};
+
+bool readExact(int fd, unsigned char *buf, size_t len) {
+    size_t got = 0;
+    while (got < len) {
+        ssize_t n = recv(fd, buf + got, len - got, 0);
+        if (n <= 0) {
+            return false;
+        }
+        got += static_cast<size_t>(n);
+    }
+    return true;
+}
+
+bool writeAll(int fd, const unsigned char *buf, size_t len) {
+    size_t sent = 0;
+    while (sent < len) {
+        ssize_t n = send(fd, buf + sent, len - sent, 0);
+        if (n <= 0) {
+            return false;
+        }
+        sent += static_cast<size_t>(n);
+    }
+    return true;
+}
+
+std::string vncProbe(const VncJob &job) {
+    std::string err;
+    int fd = tcpConnect(job.host, job.port, err);
+    if (fd < 0) {
+        return "error connect: " + err;
+    }
+    std::string result;
+    unsigned char buf[12];
+    // 1) 版本
+    if (!readExact(fd, buf, 12)) {
+        close(fd);
+        return "error handshake (no version)";
+    }
+    std::string serverVer(reinterpret_cast<char *>(buf), 12);
+    const unsigned char ourVer[12] = {'R', 'F', 'B', ' ', '0', '0', '3', '.', '0', '0', '8', '\n'};
+    if (!writeAll(fd, ourVer, 12)) {
+        close(fd);
+        return "error handshake (write version)";
+    }
+    // 2) 安全类型
+    unsigned char nTypes = 0;
+    if (!readExact(fd, &nTypes, 1) || nTypes == 0) {
+        close(fd);
+        return "error security (no types)";
+    }
+    std::vector<unsigned char> types(nTypes);
+    if (!readExact(fd, types.data(), types.size())) {
+        close(fd);
+        return "error security (read types)";
+    }
+    bool hasNone = false;
+    for (unsigned char t : types) {
+        if (t == 1) {
+            hasNone = true;
+        }
+    }
+    if (!hasNone) {
+        close(fd);
+        return "error security (None not offered; VNC Auth/DES not implemented yet)";
+    }
+    const unsigned char pick = 1;
+    if (!writeAll(fd, &pick, 1)) {
+        close(fd);
+        return "error security (write choice)";
+    }
+    unsigned char secRes[4] = {0, 0, 0, 0};
+    if (!readExact(fd, secRes, 4)) {
+        close(fd);
+        return "error security (result)";
+    }
+    // 3) ClientInit(shared=1) + ServerInit
+    const unsigned char shared = 1;
+    if (!writeAll(fd, &shared, 1)) {
+        close(fd);
+        return "error client init";
+    }
+    unsigned char si[24];
+    if (!readExact(fd, si, 24)) {
+        close(fd);
+        return "error server init";
+    }
+    // ServerInit 布局（合计 24 字节，nameLength 已包含在内）：
+    //   width(2) height(2) PIXEL_FORMAT(16) nameLength(4)
+    //   PIXEL_FORMAT: bpp(4) depth(5) bigendian(6) truecolor(7)
+    //                 rmax(8,9) gmax(10,11) bmax(12,13) rshift(14) gshift(15) bshift(16) pad(17..19)
+    // 曾经把 shifts 当成 16/17/18、还多读了 4 字节 nameLength，导致读名字时拿到垃圾长度而超时。
+    const int width = (si[0] << 8) | si[1];
+    const int height = (si[2] << 8) | si[3];
+    const int bpp = si[4];
+    const bool trueColor = si[7] != 0;
+    const int redShift = si[14];
+    const int greenShift = si[15];
+    const int blueShift = si[16];
+    const uint32_t nameLen = (static_cast<uint32_t>(si[20]) << 24) |
+                             (static_cast<uint32_t>(si[21]) << 16) |
+                             (static_cast<uint32_t>(si[22]) << 8) |
+                             static_cast<uint32_t>(si[23]);
+    std::string name(nameLen, '\0');
+    if (nameLen > 0 && !readExact(fd, reinterpret_cast<unsigned char *>(&name[0]), nameLen)) {
+        close(fd);
+        return "error server init (name)";
+    }
+    if (bpp != 32 || !trueColor) {
+        close(fd);
+        return "error unsupported pixel format bpp=" + std::to_string(bpp) +
+               " truecolor=" + std::to_string(trueColor);
+    }
+    // 4) SetEncodings: 只用 Raw(0)
+    std::vector<unsigned char> enc = {2, 0, 0, 1, 0, 0, 0, 0};
+    if (!writeAll(fd, enc.data(), enc.size())) {
+        close(fd);
+        return "error set encodings";
+    }
+    // 5) FramebufferUpdateRequest(非增量, 全屏)
+    std::vector<unsigned char> req = {3, 0, 0, 0, 0, 0,
+                                      static_cast<unsigned char>((width >> 8) & 0xFF),
+                                      static_cast<unsigned char>(width & 0xFF),
+                                      static_cast<unsigned char>((height >> 8) & 0xFF),
+                                      static_cast<unsigned char>(height & 0xFF)};
+    if (!writeAll(fd, req.data(), req.size())) {
+        close(fd);
+        return "error fb update request";
+    }
+    // 6) 读一帧 FramebufferUpdate
+    unsigned char head[4];
+    if (!readExact(fd, head, 4)) {
+        close(fd);
+        return "error fb update (head)";
+    }
+    if (head[0] != 0) {
+        close(fd);
+        return "error unexpected server message " + std::to_string(head[0]);
+    }
+    const int nRects = (head[2] << 8) | head[3];
+    int decodedBytes = 0;
+    unsigned int topLeft = 0;
+    unsigned int center = 0;
+    unsigned int right = 0;
+    for (int r = 0; r < nRects; r++) {
+        unsigned char rh[12];
+        if (!readExact(fd, rh, 12)) {
+            close(fd);
+            return "error rect header";
+        }
+        const int rx = (rh[0] << 8) | rh[1];
+        const int ry = (rh[2] << 8) | rh[3];
+        const int rw = (rh[4] << 8) | rh[5];
+        const int rhh = (rh[6] << 8) | rh[7];
+        const int32_t encoding = (static_cast<int32_t>(rh[8]) << 24) | (rh[9] << 16) | (rh[10] << 8) | rh[11];
+        if (encoding != 0) {
+            close(fd);
+            return "error unsupported encoding " + std::to_string(encoding) + " (only Raw)";
+        }
+        std::vector<unsigned char> pixels(static_cast<size_t>(rw) * rhh * 4);
+        if (!readExact(fd, pixels.data(), pixels.size())) {
+            close(fd);
+            return "error rect pixels";
+        }
+        decodedBytes += static_cast<int>(pixels.size());
+        auto pixelAt = [&](int px, int py) -> unsigned int {
+            const size_t off = (static_cast<size_t>(py) * rw + px) * 4;
+            const unsigned int raw = static_cast<unsigned int>(pixels[off]) |
+                                     (static_cast<unsigned int>(pixels[off + 1]) << 8) |
+                                     (static_cast<unsigned int>(pixels[off + 2]) << 16) |
+                                     (static_cast<unsigned int>(pixels[off + 3]) << 24);
+            const unsigned int rv = (raw >> redShift) & 0xFF;
+            const unsigned int gv = (raw >> greenShift) & 0xFF;
+            const unsigned int bv = (raw >> blueShift) & 0xFF;
+            return (rv << 16) | (gv << 8) | bv;
+        };
+        if (r == 0) {
+            topLeft = pixelAt(0, 0);
+            center = pixelAt(rw / 4, rhh / 2);      // 左半区
+            right = pixelAt(rw * 3 / 4, rhh / 2);   // 右半区
+        }
+    }
+    char status[256];
+    snprintf(status, sizeof(status),
+             "fb=%dx%d name=%s bytes=%d top-left=%06X center=%06X right=%06X",
+             width, height, name.c_str(), decodedBytes, topLeft, center, right);
+    result = std::string(status);
+    close(fd);
+    return result;
+}
+
+void vncWorker(VncJob *job) {
+    auto *payload = new std::string(vncProbe(*job));
+    napi_call_threadsafe_function(job->cb, payload, napi_tsfn_blocking);
+    napi_release_threadsafe_function(job->cb, napi_tsfn_release);
+    delete job;
+}
+
+// vncProbe(host, port, cb)
+napi_value VncProbe(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 3) {
+        napi_throw_type_error(env, nullptr, "vncProbe(host, port, cb)");
+        return nullptr;
+    }
+    auto *job = new VncJob();
+    size_t len = 0;
+    napi_get_value_string_utf8(env, args[0], static_cast<char *>(nullptr), 0, &len);
+    job->host.resize(len);
+    napi_get_value_string_utf8(env, args[0], &job->host[0], len + 1, &len);
+    int32_t port = 5900;
+    napi_get_value_int32(env, args[1], &port);
+    job->port = port;
+    napi_value n1 = nullptr;
+    napi_create_string_utf8(env, "motty.vnc.cb", NAPI_AUTO_LENGTH, &n1);
+    if (napi_create_threadsafe_function(env, args[2], nullptr, n1, 0, 1, nullptr, nullptr, nullptr,
+                                        callJs, &job->cb) != napi_ok) {
+        delete job;
+        napi_throw_error(env, nullptr, "tsfn failed");
+        return nullptr;
+    }
+    std::thread(vncWorker, job).detach();
+    return nullptr;
+}
+
 // closeShell(id)
 napi_value CloseShell(napi_env env, napi_callback_info info) {
     size_t argc = 1;
@@ -1386,6 +1622,7 @@ napi_value Init(napi_env env, napi_value exports) {
         {"sftpDelete", nullptr, SftpDelete, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"forwardStart", nullptr, ForwardStart, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"forwardStop", nullptr, ForwardStop, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"vncProbe", nullptr, VncProbe, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     RegisterVtFunctions(env, exports);

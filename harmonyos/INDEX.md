@@ -671,3 +671,41 @@ abc|中文|def
 ### 未做
 远程(remote)转发、动态(SOCKS)转发、多连接并发（当前串行，一次一个连接）、ACL/来源限制、
 断线重连、端口冲突提示、转发规则持久化。
+---
+
+## Round 23：VNC / RFB 3.8（自研实现，先定许可证再写代码）
+
+### 路线决策（写在代码之前）
+| 选项 | 结论 |
+|---|---|
+| 引 LibVNC(libvncclient) | **否决**。GPL-2.0 会传染整个应用，直接堵死上架 |
+| 自研 RFB 客户端 | **采用**。上游 Motty 也是自研 `internal/rfb`，行为对齐更容易 |
+
+这条不是"以后再看"——它是本轮动手前的第一个决定。
+
+| 产物 | 说明 |
+|---|---|
+| `tools/design/sshfixture/rfb_fixture.go` | 最小 RFB 3.8 服务端夹具：`None` 安全类型、`Raw` 编码、固定图案（左半红右半蓝，64×48） |
+| `cpp/ssh_napi.cpp` | `vncProbe(host, port, cb)`：版本协商 → 安全类型 → SecurityResult → ClientInit/ServerInit → SetEncodings(Raw) → FBUpdateRequest → Raw 矩形解码 |
+| `Index.ets` | 诊断面板加 `VNC`（`vnc/probe`）与结果行 `vnc/result` |
+
+### 关键断言
+`top-left=FF0000` 与 `right=0000FF` **取自同一帧的左半区与右半区**：解码/移位/通道顺序任一处错，
+两者必然错位或相等。这比"连上了"强得多。
+
+### 修掉的 bug
+`ServerInit` 布局读错：把 shifts 当成偏移 16/17/18（实际 14/15/16），并且多读了 4 字节 nameLength
+（它已包含在 24 字节里）→ 读到垃圾长度后按 8s 超时失败。对端日志表现为"客户端只发了版本就断"。
+
+### 双画像验收（17 条 × 2 画像）
+`vnc.handshake`、`forward.local`、`vault.persist`、`sftp.write`、`sftp.browse`、`session.tabs`、
+`terminal.pty`、`terminal.scrollback`、`terminal.vt`、`terminal.view`、`terminal.interactive`、
+`ssh.connect-from-list`、`infra.host-create-by-id`、`host.persist`、`net.reachability`、
+`ssh.exec`、`ssh.hostkey` —— 全部 **passed**。
+
+### 未做（VNC 远未完成）
+- **VNC Auth (DES)** 未实现：只支持 `None`；遇到只给 VNC Auth 的服务器会返回明确错误，不假装成功
+- 编码只支持 `Raw`：Hextile / ZRLE / CopyRect / RRE 都没有
+- **不上屏**：本轮只做取色验证，没有把帧渲染到画布（XComponent 纹理待做）
+- 鼠标/键盘事件、剪贴板、resize、增量脏区、多帧、断线重连
+- RDP 完全未动（上游 38k 行，单独立项）

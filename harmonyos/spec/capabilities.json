@@ -929,8 +929,10 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/vnc.handshake.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {

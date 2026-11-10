@@ -655,3 +655,34 @@ forwardStop(id)
 
 ### 24.4 当前限制
 同时只处理一个连接；没有 ACL/来源限制；只有本地转发；无断线重连与规则持久化。
+---
+
+## 25. VNC / RFB（自研）
+
+### 25.1 为什么不引 LibVNC
+LibVNC 是 **GPL-2.0**：链进应用会把整个产品拖进 GPL，直接堵死上架。上游 Motty 的 VNC 是
+自研 `internal/rfb`，所以我们自研并让行为对齐。
+
+### 25.2 当前覆盖
+`vncProbe(host, port, cb)` 返回一行状态：
+`fb=WxH name=… bytes=N top-left=RRGGBB center=RRGGBB right=RRGGBB`
+- 版本：3.8
+- 安全类型：只接受 `None(1)`；只提供 VNC Auth 的服务器会返回明确错误
+- 编码：只请求 `Raw(0)`
+- 只取一帧、只取三个采样点，**不上屏**
+
+### 25.3 `ServerInit` 的真实布局（踩过）
+24 字节，**nameLength 已包含在内**：
+```
+width(0,1) height(2,3)
+PIXEL_FORMAT(4..19): bpp(4) depth(5) bigendian(6) truecolor(7)
+                     rmax(8,9) gmax(10,11) bmax(12,13)
+                     rshift(14) gshift(15) bshift(16) pad(17..19)
+nameLength(20..23)   ← 不要再额外读 4 字节
+```
+把 shifts 当成 16/17/18、或多读一次 nameLength，会导致按垃圾长度读名字然后超时，
+对端日志表现为"客户端只发版本就断开"。
+
+### 25.4 夹具
+`-vnc 127.0.0.1:5901` 起最小 RFB 服务，图案固定：左半红、右半蓝、64×48。
+设备侧需要 `hdc rport tcp:5901 tcp:5901`。

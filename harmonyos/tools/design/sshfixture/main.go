@@ -45,15 +45,16 @@ func main() {
 	hostkeyType := flag.String("hostkeytype", "rsa", "host key type: rsa (widest interop) or ed25519")
 	user := flag.String("user", "tester", "only this user is accepted")
 	pass := flag.String("password", "secret", "password for password auth")
+	vncAddr := flag.String("vnc", "127.0.0.1:5901", "VNC(RFB) fixture listen address")
 	printKey := flag.Bool("print-client-key", true, "print the generated client key path/passphrase")
 	flag.Parse()
 
-	if err := run(*addr, *hostkeyPath, *hostkeyType, *user, *pass, *printKey); err != nil {
+	if err := run(*addr, *hostkeyPath, *hostkeyType, *user, *pass, *vncAddr, *printKey); err != nil {
 		log.Fatalf("sshfixture: %v", err)
 	}
 }
 
-func run(addr, hostkeyPath, hostkeyType, user, pass string, printKey bool) error {
+func run(addr, hostkeyPath, hostkeyType, user, pass, vncAddr string, printKey bool) error {
 	hostSigner, _, err := loadOrCreateHostKey(hostkeyPath, hostkeyType)
 	if err != nil {
 		return fmt.Errorf("host key: %w", err)
@@ -91,6 +92,10 @@ func run(addr, hostkeyPath, hostkeyType, user, pass string, printKey bool) error
 		return fmt.Errorf("listen %s: %w", addr, err)
 	}
 	defer ln.Close()
+
+	if _, verr := startRFBFixture(vncAddr); verr != nil {
+		log.Printf("rfb fixture disabled: %v", verr)
+	}
 
 	var sftpErr error
 	sftpRoot, sftpErr = prepareSftpRoot()
