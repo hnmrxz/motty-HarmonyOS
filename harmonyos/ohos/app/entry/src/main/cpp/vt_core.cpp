@@ -201,6 +201,44 @@ Screen *screenOf(int id) {
     return it->second;
 }
 
+// 组合视图：把历史与当前屏拼起来，再按 scroll（回退行数，0=实时）截取一屏。
+// 为什么需要：Scrollback 里只有"滚出去的历史"，用户往上滚时看到的是"历史尾部 + 当前屏"，
+// 不是单纯的历史尾部。
+std::string viewText(Screen *s, int scroll) {
+    if (s == nullptr) {
+        return std::string();
+    }
+    vterm_screen_flush_damage(s->vts);
+    std::vector<std::string> all;
+    all.reserve(s->history.size() + static_cast<size_t>(s->rows));
+    for (const auto &line : s->history) {
+        all.push_back(line);
+    }
+    for (int r = 0; r < s->rows; r++) {
+        all.push_back(rowText(*s, r));
+    }
+    const int total = static_cast<int>(all.size());
+    int start = total - s->rows - scroll;
+    if (start < 0) {
+        start = 0;
+    }
+    if (start > total - s->rows) {
+        start = total - s->rows;
+    }
+    std::string out;
+    for (int i = 0; i < s->rows; i++) {
+        const int idx = start + i;
+        if (idx >= 0 && idx < total) {
+            out += all[static_cast<size_t>(idx)];
+        }
+        out.push_back('\n');
+    }
+    while (!out.empty() && out.back() == '\n') {
+        out.pop_back();
+    }
+    return out;
+}
+
 std::string screenText(Screen *s) {
     if (s == nullptr) {
         return std::string();
@@ -428,6 +466,29 @@ napi_value vtStatus(napi_env env, napi_callback_info info) {
     return out;
 }
 
+napi_value vtView(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    Screen *s = &defaultScreen();
+    int32_t scroll = 0;
+    if (argc >= 1) {
+        int32_t id = 0;
+        napi_get_value_int32(env, args[0], &id);
+        s = screenOf(id);
+        if (s == nullptr) {
+            s = &defaultScreen();
+        }
+    }
+    if (argc >= 2) {
+        napi_get_value_int32(env, args[1], &scroll);
+    }
+    const std::string text = viewText(s, scroll);
+    napi_value out = nullptr;
+    napi_create_string_utf8(env, text.c_str(), text.size(), &out);
+    return out;
+}
+
 napi_value vtScrollBack(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2] = {nullptr};
@@ -460,6 +521,7 @@ void RegisterVtFunctions(napi_env env, napi_value exports) {
         {"vtScreen", nullptr, vtScreen, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"vtStatus", nullptr, vtStatus, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"vtScrollBack", nullptr, vtScrollBack, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"vtView", nullptr, vtView, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     (void)defaultScreen();

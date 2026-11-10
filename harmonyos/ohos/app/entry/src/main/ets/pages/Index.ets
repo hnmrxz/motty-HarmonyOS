@@ -155,6 +155,7 @@ struct Index {
   @State vtStatus: string = '';
   @State vtHistory: string = '';
   @State ptyStatus: string = '';
+  @State vtScroll: number = 0;
   @State filesOpen: boolean = false;
   @State sftpPath: string = '.';
   @State sftpFile: string = 'hello.txt';
@@ -475,7 +476,11 @@ struct Index {
       (chunk: string) => {
         mottynapi.vtFeed(vtId, chunk);
         if (this.activeId === tabId) {
-          this.refreshTab(vtId);
+          if (this.vtScroll > 0) {
+            this.termText = mottynapi.vtView(vtId, this.vtScroll);
+          } else {
+            this.refreshTab(vtId);
+          }
         }
       },
       (status: string) => {
@@ -494,6 +499,7 @@ struct Index {
     this.tabs = next;
     this.activeId = tabId;
     this.shellId = id;
+    this.vtScroll = 0;
     this.showHosts = false;
     this.termVisible = true;
     this.ptyStatus = '';
@@ -544,6 +550,19 @@ struct Index {
       }
     }
     return null;
+  }
+
+  // ---------------- 回滚区交互 ----------------
+  private scrollView(delta: number): void {
+    const tab = this.activeTab();
+    if (tab === null) {
+      this.ptyStatus = 'scroll: no session';
+      return;
+    }
+    const next = this.vtScroll + delta;
+    this.vtScroll = next < 0 ? 0 : next;
+    this.termText = mottynapi.vtView(tab.vtId, this.vtScroll);
+    this.ptyStatus = 'scroll=' + this.vtScroll;
   }
 
   private sendTermInput(): void {
@@ -640,7 +659,11 @@ struct Index {
       (chunk: string) => {
         mottynapi.vtFeed(vtId, chunk);
         if (this.activeId === tabId) {
-          this.refreshTab(vtId);
+          if (this.vtScroll > 0) {
+            this.termText = mottynapi.vtView(vtId, this.vtScroll);
+          } else {
+            this.refreshTab(vtId);
+          }
         }
       },
       (status: string) => {
@@ -1631,6 +1654,10 @@ struct Index {
         Button('Send').id('terminal/send').onClick(() => { this.sendTermInput(); })
         Button('Resize').id('terminal/resize').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.resizeSession(); })
+        Button('\u25b2').id('terminal/scroll-up').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.scrollView(5); })
+        Button('\u25bc').id('terminal/scroll-down').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.scrollView(-5); })
       }.width('100%')
       Text(this.ptyStatus.length > 0 ? this.ptyStatus : 'pty: (idle)')
         .id('terminal/pty-status').fontSize(11).fontColor('#0A6C00').width('100%')

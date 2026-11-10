@@ -1,0 +1,96 @@
+schema: 1
+id: terminal.scrollview
+title: 回滚区交互：向上滚动查看已滚出的历史行，向下回到实时
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B09
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: sv-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  # 用 vt-demo2 造出 30 行（24 行屏 -> 至少 6 行进历史）
+  - action: click
+    target: id:diag/open
+  - action: click
+    target: id:terminal/vt2
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3500
+    expect:
+      kind: screenRegex
+      regex: "main-after-alt"
+      withinMs: 15000
+  # 向上一屏：应看到被滚出的早期行
+  - action: click
+    target: id:terminal/scroll-up
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "scroll=5"
+      withinMs: 6000
+  - action: wait
+    ms: 600
+  # 回到实时
+  - action: click
+    target: id:terminal/scroll-down
+  - action: wait
+    ms: 800
+asserts:
+  - kind: screenRegex
+    regex: "scroll=0"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "scroll-2[5-9]"
+    withinMs: 6000
+  - kind: absent
+    value: "scroll: no session"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：向上滚动把历史行带入可视区、滚动位置有可读状态
+    （scroll=N）、向下回到实时后仍是尾部内容。
+    **不覆盖**：滚动条拖拽、滚到顶/底边界提示、回滚区搜索、选区复制、鼠标滚轮与触控惯性；
+    未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 每次点 ▲ 回退 5 行，所以第一屏断言 scroll=5
+notes: >-
+  这条用例的价值在于"历史行真的进入了可视区"，而不只是计数变化：
+  滚动后再断言 scroll-2x 可见。若实现只是把 vtScroll 改了却没重算视图，这条会失败。
