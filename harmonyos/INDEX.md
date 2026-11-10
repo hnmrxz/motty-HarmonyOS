@@ -949,3 +949,32 @@ None 模式 18 条 + auth 模式 2 条（`vnc.auth-hextile`、`vnc.negative`）�
 1. **OpenSSL 里程碑**（便携 Perl + gmake + 双 ABI 静态库）——独立一轮，先验证 `libcrypto.a` 产物
 2. 再开 **FreeRDP 最小配置**（`-DWITH_OPENSSL=ON`，关 SDL/X11/声音/打印）
 3. 最后才是 RDP 客户端接入（帧/输入/通道）
+---
+
+## Round 31：OpenSSL 交叉编译完成（RDP 的前置里程碑）
+
+### 产物（E2：编译/链接证据，非运行验证）
+| 架构 | libcrypto.a | libssl.a | 架构核验 |
+|---|---|---|---|
+| x86_64 | 7.13 MB | 1.16 MB | `EM_X86_64` ✅ |
+| arm64 | 7.41 MB | 1.11 MB | `EM_AARCH64` ✅ |
+
+**链接验证**：用一个只调用 `OpenSSL_version_num()` 的探针源，分别对两个架构链接成 `.so`
+（x86_64 3671 KB / arm64 成功），说明头文件与静态库可用。探针产物已删除，不入库。
+
+### 这一路必须解决的六个坑（全部固化进 `native/build-openssl.ps1`）
+1. **本机没有 Perl** → 便携版 Strawberry Perl（解压即用，同时提供 `perl` 与 `gmake`）
+2. **`Configurations/unix-checker.pm` 直接 die**：Windows Perl 产出反斜杠路径 →
+   打补丁跳过该检查（这是构建脚本的一步，不是改上游行为）
+3. **汇编生成(perlasm)在 Windows 下跑不通** → `no-asm`（功能不受影响，仅性能）
+4. **`rm -f` 在 sh 下把反斜杠路径吃掉**（`crypto\aes\aes_cbc.c` 变成 `cryptoaesaes_cbc.c`）→
+   强制 `SHELL=cmd.exe`，并提供 `rm.bat` 兜底
+5. **直接编 `libcrypto.a` 会缺生成的头文件**（`opensslv.h`）→ 先 `build_generated`
+6. **`install_sw` 在 sh 下失败** → 手工拷贝 `libcrypto.a`/`libssl.a` 与 `include/openssl`
+
+### 这是 RDP 的前置，不是 RDP
+能力表里 RDP 仍是 **E3**。下一步才是 FreeRDP 配置（`-DWITH_OPENSSL=ON -DOPENSSL_ROOT_DIR=<prefix>`），
+再之后才是客户端接入。顺序写死在 [RDP-FEASIBILITY.md](./RDP-FEASIBILITY.md)，避免又"一轮内既编译又接入"。
+
+### 许可
+OpenSSL 是 **Apache-2.0**，与 FreeRDP 一致，不引入新的 GPL 义务（整包已是 GPLv3 组合分发）。

@@ -29,6 +29,7 @@
 | libssh2 | 1.11.1 | BSD-3-Clause | SSH/SFTP/转发 | 是 |
 | mbedTLS | 3.6.2 | Apache-2.0 | TLS/加密原语（含 DES） | 是 |
 | libvterm | neovim fork | MIT | 终端网格解析 | 是 |
+| OpenSSL | 3.0.15 | Apache-2.0 | RDP 前置（TLS/证书/哈希） | 是（`no-shared no-asm`） |
 | LibVNC (client) | 见构建脚本 | GPL-2.0-or-later（按 v3 使用） | VNC/RFB 客户端 | 是 |
 | zlib | 系统 `libz` | zlib | SFTP/LibVNC 压缩 | 否（系统库） |
 | `github.com/pkg/sftp` | 1.13.x | BSD-2-Clause | **仅测试夹具**（不进应用包） | 否 |
