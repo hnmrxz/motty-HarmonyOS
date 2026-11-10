@@ -37,7 +37,9 @@ steps:
   - action: wait
     ms: 700
   - action: click
-    target: id:host-term/0
+    target: id:diag/open
+  - action: click
+    target: id:diag/term-echo
   - action: wait
     ms: 2500
     expect:

@@ -37,6 +37,8 @@ steps:
   - action: wait
     ms: 700
   - action: click
+    target: id:diag/open
+  - action: click
     target: id:terminal/vt2
   - action: wait
     ms: 2500

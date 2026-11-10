@@ -37,7 +37,7 @@ steps:
   - action: wait
     ms: 700
   - action: click
-    target: id:terminal/shell
+    target: id:host-open/0
   - action: wait
     ms: 2500
     expect:
@@ -90,6 +90,7 @@ evidence:
     shell 布局的影响（只验证 window-change 请求被发出并回显）、arm64 真机。
 deviations:
   - 纯新增规格，无 upstream 对应脚本
+  - 走产品路径（主机行 Open 打开 pty 会话），不是诊断入口
   - 提示符断言用 [A-Z]:\\ （cmd.exe 的盘符提示），因为对端是 Windows shell
 notes: >-
   这条 spec 与 terminal.interactive 的区别：后者打的是 fixture 的 term-echo（行回显），

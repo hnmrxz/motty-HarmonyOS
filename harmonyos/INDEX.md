@@ -492,3 +492,31 @@ abc|中文|def
 - 未覆盖 Linux bash/zsh 的 terminfo 行为、vim/less 等全屏程序
 - window-change 只验证请求被发出且对端执行，未验证 shell 实际重排
 - 终端仍无组合字符/emoji 宽度、无鼠标上报、无 DECSET 2026
+---
+
+## Round 17：产品形态收敛（诊断收进面板、主机行直接开会话）
+
+前 16 轮顶栏堆了 9 个诊断按钮，那是"能验证"的产物，不是"能卖"的产品。本轮开始收敛。
+
+| 变化 | 说明 |
+|---|---|
+| 顶栏 | 只剩 `Motty` / `Diagnostics`(`diag/open`) / `New Host`（+ 会话中显示 `nav/hosts`） |
+| 主机行 | `Test`（`host-row/<i>`，一次探测连接）+ `Open`（`host-open/<i>`，打开 pty 会话） |
+| 会话视图 | 终端内联显示（不再是浮层），带 `terminal/output`、输入、`Send`、`Resize`、`Hosts` 返回 |
+| 诊断 | 全部收进 `diag/panel`：TCP probe / SSH probe / Hostkey check / term-echo / vt-demo / vt-demo2 / vt / pty shell，`net/probe-result` 显示结果 |
+
+### spec 的变化（都是必要的，不是为了凑数）
+- 诊断类 spec 多一步 `diag/open`：`net.reachability`、`ssh.exec`、`ssh.hostkey`、`terminal.view`、`terminal.vt`、`terminal.scrollback`
+- `terminal.interactive` 改走 `diag/term-echo`（产品行按钮已变成 pty 会话）
+- `terminal.pty` **改走产品路径** `host-open/0`，不再是诊断入口
+- `terminal.view` 的完成态断言改为网格文本（`term-line-3`）：诊断面板动作后会自动关闭，状态文本不再停留在屏幕上
+
+### 双画像验收（11 条 × 2 画像）
+`terminal.pty`、`terminal.scrollback`、`terminal.vt`、`terminal.view`、`terminal.interactive`、
+`ssh.connect-from-list`、`infra.host-create-by-id`、`host.persist`、`net.reachability`、`ssh.exec`、`ssh.hostkey` —— 全部 **passed**。
+
+### 明确的未做
+- **多标签**：同一时刻只有一个活动会话。要并行多会话，必须把 `vt_core` 从全局单例改成实例化
+  （每标签一个网格 + 各自的历史缓冲），这是下一轮的工作，本轮不假装支持。
+- 分屏、会话恢复、标签重排、设置页。
+- 凭据仍只在内存（保险库未做）。

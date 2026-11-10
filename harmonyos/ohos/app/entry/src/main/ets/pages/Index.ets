@@ -1,18 +1,17 @@
 /**
- * Motty HarmonyOS —— M1 切片 3：主机列表可直接连接。
+ * Motty HarmonyOS —— 产品形态收敛（第 17 轮）
  *
- * 相对上一版的实质变化：
- *   1) 主机条目带协议/用户/端口，列表行可点击发起连接（不再只有"连接固定 fixture"按钮）
- *   2) 连接走完整的 TOFU：未知主机 -> 弹确认 -> 用户信任 -> 落盘 known_hosts -> 才认证
- *   3) 每行有自己的状态回显（host-status/<i>），不再是全局一行文本
+ * 本轮的形状目标：让界面像一个产品，而不是一排诊断按钮。
+ *   - 顶栏只留：Motty / Diagnostics（折叠所有诊断入口）/ New Host
+ *   - 主机行：「Open」直接开会话（pty shell，真 shell），「Test」做一次探测连接
+ *   - 有会话时页面切到终端视图（内联，不再用浮层），带「Hosts」返回
+ *   - 诊断入口收进 Diagnostics 面板，spec 先点 `diag/open` 再点具体按钮
  *
- * 安全相关的刻意选择（不要"优化"掉）：
- *   * 密码**只存在内存**（this.creds），不写数据库、不写文件。
- *     保险库（AES-256-GCM + HUKS/Asset）是 M1-b 的工作，这里不假装已经做了。
- *   * 主机密钥变更不提供任何"仍要信任"入口（PLAN §7.4 P1）。
- *   * 指纹落盘表 known_hosts 的键是 address:port。
- *
- * 仍未做：终端渲染、SFTP、转发、会话复用、凭据保险库、分组/标签。
+ * 仍未做（写清楚，别当成已完成）：
+ *   - **多标签**：目前同一时刻只有一个活动会话。要支持多会话并行，必须把 vt_core
+ *     从全局单例改成实例化（每标签一个网格），这属于下一轮工作。
+ *   - 分屏、会话恢复、标签重排。
+ *   - 凭据只在内存，保险库未做。
  */
 import { common } from '@kit.AbilityKit';
 import { relationalStore } from '@kit.ArkData';
@@ -69,23 +68,22 @@ struct Index {
   @State keyDialog: boolean = false;
   @State pendingFp: string = '';
   @State pendingKey: string = '';
+  @State diagOpen: boolean = false;
   @State termVisible: boolean = false;
+  @State sessionLabel: string = '';
   @State termText: string = '';
-  private pendingAction: string = 'connect';   // connect | terminal
-  private termIndex: number = -1;
-  private shellId: number = 0;
   @State termInput: string = '';
   @State vtStatus: string = '';
   @State vtHistory: string = '';
   @State ptyStatus: string = '';
 
-  // 密码只在内存：键为 address:port。进程退出即失，这是刻意的。
   private creds: Map<string, Cred> = new Map<string, Cred>();
   private store: relationalStore.RdbStore | null = null;
   private readonly fixtureKey: string = '127.0.0.1:2222';
+  private shellId: number = 0;
+  private pendingAction: string = 'connect';
 
   aboutToAppear(): void {
-    // 固定 fixture 的凭据也放内存，便于诊断按钮使用
     this.creds.set(this.fixtureKey, { address: '127.0.0.1', port: 2222, user: 'tester', password: 'secret' });
     this.initStore();
   }
@@ -94,6 +92,7 @@ struct Index {
     return address + ':' + port;
   }
 
+  // ---------------- 存储 ----------------
   private async initStore(): Promise<void> {
     try {
       const ctx = getContext(this) as common.UIAbilityContext;
@@ -198,7 +197,6 @@ struct Index {
     };
     try {
       await this.store.insert('hosts', bucket);
-      // 密码只留内存，不落库
       this.creds.set(this.hostKey(address, port), {
         address: address,
         port: Number.parseInt(port, 10),
@@ -214,164 +212,47 @@ struct Index {
     }
   }
 
-  // ---- 终端视图（最小闭环：字节流 -> 文本网格区域）----
-  // 注意：这一版**没有 VT 解析**，只把远端字节流追加成文本，用于证明终端数据通路成立。
-  private async openTerminal(index: number): Promise<void> {
-    if (index >= this.hosts.length) {
+  // ---------------- 会话 ----------------
+  private openSession(label: string, index: number): void {
+    this.pendingAction = 'open';
+    const h = this.hosts[index];
+    if (h === undefined) {
       return;
     }
-    this.pendingAction = 'terminal';
-    this.termIndex = index;
-    const h = this.hosts[index];
     const key = this.hostKey(h.address, h.port);
     const cred = this.creds.get(key);
     if (cred === undefined) {
       this.setStatus(index, 'no credentials in memory (vault not implemented yet)');
       return;
     }
-    const stored = await this.lookupFp(key);
-    if (stored.length > 0) {
-      this.startTerminal(index, cred, stored);
-      return;
-    }
-    this.setStatus(index, 'unknown host, fetching key...');
-    mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo no-auth-yet', '',
-      (first: string) => {
-        const m = new RegExp('SHA256:[A-Za-z0-9+/]+').exec(first);
-        if (m === null || first.indexOf('unknown_host') !== 0) {
-          this.setStatus(index, first);
-          return;
-        }
-        this.pendingFp = m[0];
-        this.pendingKey = key;
-        this.keyDialog = true;
-        this.setStatus(index, 'waiting for user to trust ' + this.pendingFp);
-      });
-  }
-
-  private startTerminal(index: number, cred: Cred, fp: string): void {
-    this.termVisible = true;
-    this.termText = '';
-    this.setStatus(index, 'terminal streaming...');
-    mottynapi.vtReset(80, 24);
-    this.vtStatus = mottynapi.vtStatus();
-    const id: number = mottynapi.openShell(cred.address, cred.port, cred.user, cred.password, fp,
-      (chunk: string) => {
-        mottynapi.vtFeed(chunk);
-        this.termText = mottynapi.vtScreen();
-        this.vtStatus = mottynapi.vtStatus();
-        this.vtHistory = mottynapi.vtScrollBack(3);
-      },
-      (status: string) => {
-        this.termText = this.termText + '\n[status] ' + status;
-        this.setStatus(index, 'terminal: ' + status);
-        this.shellId = 0;
-      });
-    this.shellId = id;
-    if (id === 0) {
-      this.termText = 'failed to open interactive shell';
-    }
-  }
-
-  // 诊断用：一次性流式 exec（term-demo，多块到达）。与交互式 openShell 覆盖不同性质：
-  //   - exec: 一条命令、多块输出、无输入
-  //   - openShell: 长通道、可写入、远端回显
-  // 两个诊断入口，覆盖不同性质：
-  //   terminal/demo -> term-demo：原始流式多块（不依赖 VT 语义）
-  //   terminal/vt   -> vt-demo  ：最小 VT 子集（清屏/定位/擦行/颜色）
-  private openVtDemo(): void {
-    this.openDemoWith('vt');
-  }
-
-  // 回滚 + 备用屏：与 vt-demo 分开，避免 30 行滚动把已断言的标记顶出屏幕
-  private openVt2Demo(): void {
-    this.openDemoWith('vt2');
-  }
-
-  private openTerminalDemo(): void {
-    this.openDemoWith('demo');
-  }
-
-  private openDemoWith(action: string): void {
-    this.pendingAction = action;
-    const cred = this.creds.get(this.fixtureKey);
-    if (cred === undefined) {
-      this.probeText = 'no fixture credentials';
-      return;
-    }
-    this.lookupFp(this.fixtureKey).then((fp: string) => {
-      if (fp.length === 0) {
-        mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo no-auth-yet', '',
-          (first: string) => {
-            const m = new RegExp('SHA256:[A-Za-z0-9+/]+').exec(first);
-            if (m === null || first.indexOf('unknown_host') !== 0) {
-              this.probeText = first;
-              return;
-            }
-            this.pendingFp = m[0];
-            this.pendingKey = this.fixtureKey;
-            this.keyDialog = true;
-          });
+    this.sessionLabel = label;
+    this.lookupFp(key).then((fp: string) => {
+      if (fp.length > 0) {
+        this.startSession(cred, fp);
         return;
       }
-      const cmd: string = this.pendingAction === 'vt2' ? 'vt-demo2'
-        : (this.pendingAction === 'vt' ? 'vt-demo' : 'term-demo');
-      this.runDemo(cred, fp, cmd);
+      this.setStatus(index, 'unknown host, fetching key...');
+      mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo no-auth-yet', '',
+        (first: string) => {
+          const m = new RegExp('SHA256:[A-Za-z0-9+/]+').exec(first);
+          if (m === null || first.indexOf('unknown_host') !== 0) {
+            this.setStatus(index, first);
+            return;
+          }
+          this.pendingFp = m[0];
+          this.pendingKey = key;
+          this.keyDialog = true;
+          this.setStatus(index, 'waiting for user to trust ' + this.pendingFp);
+        });
     });
   }
 
-  private runDemo(cred: Cred, fp: string, command: string): void {
+  private startSession(cred: Cred, fp: string): void {
     this.termVisible = true;
-    this.termText = '';
-    mottynapi.vtReset(80, 24);
-    this.vtStatus = mottynapi.vtStatus();
-    mottynapi.exec(cred.address, cred.port, cred.user, cred.password, command, fp,
-      (chunk: string) => {
-        // 字节流先进 VT 引擎，再由网格文本渲染——这一步是"终端"与"日志"的区别
-        mottynapi.vtFeed(chunk);
-        this.termText = mottynapi.vtScreen();
-        this.vtStatus = mottynapi.vtStatus();
-        this.vtHistory = mottynapi.vtScrollBack(3);
-      },
-      (status: string) => {
-        this.termText = mottynapi.vtScreen();
-        this.vtStatus = mottynapi.vtStatus();
-        this.setStatus(0, command + ': ' + status);
-      });
-  }
-
-  // 真 shell：pty-req + shell（对端是 Windows ConPTY 上的 cmd.exe）。
-  // 与 term-echo 的区别是"远端跑的是真 shell"，而不是行回显夹具。
-  private openRealShell(): void {
-    this.pendingAction = 'shell';
-    const cred = this.creds.get(this.fixtureKey);
-    if (cred === undefined) {
-      this.probeText = 'no fixture credentials';
-      return;
-    }
-    this.lookupFp(this.fixtureKey).then((fp: string) => {
-      if (fp.length === 0) {
-        mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo no-auth-yet', '',
-          (first: string) => {
-            const m = new RegExp('SHA256:[A-Za-z0-9+/]+').exec(first);
-            if (m === null || first.indexOf('unknown_host') !== 0) {
-              this.probeText = first;
-              return;
-            }
-            this.pendingFp = m[0];
-            this.pendingKey = this.fixtureKey;
-            this.keyDialog = true;
-          });
-        return;
-      }
-      this.startRealShell(cred, fp);
-    });
-  }
-
-  private startRealShell(cred: Cred, fp: string): void {
-    this.termVisible = true;
+    this.diagOpen = false;
     this.termText = '';
     this.vtHistory = '';
+    this.ptyStatus = '';
     mottynapi.vtReset(80, 24);
     this.vtStatus = mottynapi.vtStatus();
     const id: number = mottynapi.openChannel(cred.address, cred.port, cred.user, cred.password,
@@ -385,107 +266,111 @@ struct Index {
       (status: string) => {
         this.termText = mottynapi.vtScreen();
         this.vtStatus = mottynapi.vtStatus();
-        this.setStatus(0, 'shell: ' + status);
+        this.probeText = 'session ' + status;
         this.shellId = 0;
       });
     this.shellId = id;
     if (id === 0) {
-      this.termText = 'failed to open pty shell';
+      this.termText = 'failed to open session';
     }
   }
 
   private sendTermInput(): void {
     if (this.shellId === 0) {
-      this.termText = this.termText + '\n[no session]';
+      this.ptyStatus = 'no session';
       return;
     }
     const text = this.termInput;
     if (text.length === 0) {
       return;
     }
-    this.termText = this.termText + text + '\n';
     mottynapi.sendInput(this.shellId, text);
     this.termInput = '';
   }
 
+  private closeSession(): void {
+    if (this.shellId !== 0) {
+      mottynapi.closeShell(this.shellId);
+      this.shellId = 0;
+    }
+    this.termVisible = false;
+    this.sessionLabel = '';
+  }
 
-  // ---- 连接：未知主机先取指纹并要用户确认，已知则直接连 ----
-  private async connectRow(index: number): Promise<void> {
-    this.pendingAction = 'connect';
-    if (index >= this.hosts.length) {
+  private resizeSession(): void {
+    if (this.shellId === 0) {
+      this.ptyStatus = 'resize: no session';
       return;
     }
-    const h = this.hosts[index];
-    const key = this.hostKey(h.address, h.port);
-    const cred = this.creds.get(key);
+    mottynapi.resizeShell(this.shellId, 100, 30);
+    this.ptyStatus = 'resize->100x30';
+  }
+
+  // ---------------- 诊断（收进面板，但保留全部能力与 id） ----------------
+  private connectFixtureDemo(kind: string): void {
+    this.pendingAction = kind;
+    const cred = this.creds.get(this.fixtureKey);
     if (cred === undefined) {
-      this.setStatus(index, 'no credentials in memory (vault not implemented yet)');
+      this.probeText = 'no fixture credentials';
       return;
     }
-    const stored = await this.lookupFp(key);
-    if (stored.length > 0) {
-      this.setStatus(index, 'using stored key ' + stored);
-      this.runProbe(index, cred, stored);
-      return;
-    }
-    this.setStatus(index, 'unknown host, fetching key...');
-    mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo no-auth-yet', '',
-      (first: string) => {
-        const m = new RegExp('SHA256:[A-Za-z0-9+/]+').exec(first);
-        if (m === null || first.indexOf('unknown_host') !== 0) {
-          this.setStatus(index, first);
-          return;
-        }
-        this.pendingFp = m[0];
-        this.pendingKey = key;
-        this.termIndex = index;
-        this.keyDialog = true;
-        this.setStatus(index, 'waiting for user to trust ' + this.pendingFp);
-      });
-  }
-
-  private runProbe(index: number, cred: Cred, fp: string): void {
-    mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo hello-from-list', fp,
-      (result: string) => {
-        this.setStatus(index, result);
-      });
-  }
-
-  private trustAndConnect(): void {
-    const fp = this.pendingFp;
-    const key = this.pendingKey;
-    this.keyDialog = false;
-    this.pendingFp = '';
-    this.pendingKey = '';
-    this.saveFp(key, fp).then(() => {
-      const cred = this.creds.get(key);
-      if (cred === undefined) {
-        this.probeText = 'no credentials in memory';
+    this.lookupFp(this.fixtureKey).then((fp: string) => {
+      if (fp.length === 0) {
+        mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo no-auth-yet', '',
+          (first: string) => {
+            const m = new RegExp('SHA256:[A-Za-z0-9+/]+').exec(first);
+            if (m === null || first.indexOf('unknown_host') !== 0) {
+              this.probeText = first;
+              return;
+            }
+            this.pendingFp = m[0];
+            this.pendingKey = this.fixtureKey;
+            this.keyDialog = true;
+          });
         return;
       }
-      for (let i = 0; i < this.hosts.length; i++) {
-        if (this.hostKey(this.hosts[i].address, this.hosts[i].port) === key) {
-          this.setStatus(i, 'trusted ' + fp + ', connecting...');
-          if (this.pendingAction === 'shell') {
-            this.startRealShell(cred, fp);
-          } else if (this.pendingAction === 'vt2') {
-            this.runDemo(cred, fp, 'vt-demo2');
-          } else if (this.pendingAction === 'vt') {
-            this.runDemo(cred, fp, 'vt-demo');
-          } else if (this.pendingAction === 'demo') {
-            this.runDemo(cred, fp, 'term-demo');
-          } else if (this.pendingAction === 'terminal') {
-            this.startTerminal(i, cred, fp);
-          } else {
-            this.runProbe(i, cred, fp);
-          }
-          return;
-        }
-      }
+      this.runDemoWith(cred, fp, kind);
     });
   }
 
-  // ---- 诊断按钮：网络 / SSH / 主机密钥三步自检（保留，供既有 spec 使用）----
+  private runDemoWith(cred: Cred, fp: string, kind: string): void {
+    if (kind === 'shell') {
+      this.sessionLabel = 'fixture shell';
+      this.startSession(cred, fp);
+      return;
+    }
+    this.termVisible = true;
+    this.diagOpen = false;
+    this.sessionLabel = kind;
+    this.termText = '';
+    mottynapi.vtReset(80, 24);
+    this.vtStatus = mottynapi.vtStatus();
+    if (kind === 'term-echo') {
+      const id: number = mottynapi.openShell(cred.address, cred.port, cred.user, cred.password, fp,
+        (chunk: string) => {
+          mottynapi.vtFeed(chunk);
+          this.termText = mottynapi.vtScreen();
+          this.vtStatus = mottynapi.vtStatus();
+        },
+        (status: string) => { this.probeText = 'term-echo ' + status; this.shellId = 0; });
+      this.shellId = id;
+      return;
+    }
+    const cmd = kind === 'vt' ? 'vt-demo' : (kind === 'vt2' ? 'vt-demo2' : 'term-demo');
+    mottynapi.exec(cred.address, cred.port, cred.user, cred.password, cmd, fp,
+      (chunk: string) => {
+        mottynapi.vtFeed(chunk);
+        this.termText = mottynapi.vtScreen();
+        this.vtStatus = mottynapi.vtStatus();
+        this.vtHistory = mottynapi.vtScrollBack(3);
+      },
+      (status: string) => {
+        this.termText = mottynapi.vtScreen();
+        this.vtStatus = mottynapi.vtStatus();
+        this.probeText = cmd + ': ' + status;
+      });
+  }
+
   private probeNet(): void {
     this.probeText = 'connecting...';
     const tcp = socket.constructTCPSocketInstance();
@@ -546,192 +431,232 @@ struct Index {
       });
   }
 
-  private connectFixture(): void {
-    this.probeText = 'ssh: connecting fixture...';
-    mottynapi.probe('127.0.0.1', 2222, 'tester', 'secret', 'echo hello-from-ssh', '',
+  private trustAndConnect(): void {
+    const fp = this.pendingFp;
+    const key = this.pendingKey;
+    this.keyDialog = false;
+    this.pendingFp = '';
+    this.pendingKey = '';
+    this.saveFp(key, fp).then(() => {
+      const cred = this.creds.get(key);
+      if (cred === undefined) {
+        this.probeText = 'no credentials in memory';
+        return;
+      }
+      if (this.pendingAction === 'connect') {
+        for (let i = 0; i < this.hosts.length; i++) {
+          if (this.hostKey(this.hosts[i].address, this.hosts[i].port) === key) {
+            this.runProbe(i, cred, fp);
+            return;
+          }
+        }
+        return;
+      }
+      if (this.pendingAction === 'open') {
+        this.startSession(cred, fp);
+        return;
+      }
+      this.runDemoWith(cred, fp, this.pendingAction);
+    });
+  }
+
+  private runProbe(index: number, cred: Cred, fp: string): void {
+    mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo hello-from-list', fp,
+      (result: string) => { this.setStatus(index, result); });
+  }
+
+  private async connectRow(index: number): Promise<void> {
+    this.pendingAction = 'connect';
+    if (index >= this.hosts.length) {
+      return;
+    }
+    const h = this.hosts[index];
+    const key = this.hostKey(h.address, h.port);
+    const cred = this.creds.get(key);
+    if (cred === undefined) {
+      this.setStatus(index, 'no credentials in memory (vault not implemented yet)');
+      return;
+    }
+    const stored = await this.lookupFp(key);
+    if (stored.length > 0) {
+      this.setStatus(index, 'using stored key ' + stored);
+      this.runProbe(index, cred, stored);
+      return;
+    }
+    this.setStatus(index, 'unknown host, fetching key...');
+    mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo no-auth-yet', '',
       (first: string) => {
         const m = new RegExp('SHA256:[A-Za-z0-9+/]+').exec(first);
-        if (m === null) {
-          this.probeText = 'ssh: no fingerprint, got ' + first;
+        if (m === null || first.indexOf('unknown_host') !== 0) {
+          this.setStatus(index, first);
           return;
         }
-        const fp: string = m[0];
-        mottynapi.probe('127.0.0.1', 2222, 'tester', 'secret', 'echo hello-from-ssh', fp,
-          (result: string) => { this.probeText = 'ssh: ' + result; });
+        this.pendingFp = m[0];
+        this.pendingKey = key;
+        this.keyDialog = true;
+        this.setStatus(index, 'waiting for user to trust ' + this.pendingFp);
       });
   }
 
+  // ---------------- UI ----------------
   @Builder
   hostForm() {
     Column({ space: 10 }) {
       Text('New Host').fontSize(20).fontWeight(FontWeight.Bold).width('100%')
-
       Text('Label').fontSize(12).fontColor('#666666').width('100%')
-      TextInput({ placeholder: 'my server' })
-        .id('shell/dialog-label')
-        .width('100%')
+      TextInput({ placeholder: 'my server' }).id('shell/dialog-label').width('100%')
         .onChange((v: string) => { this.formLabel = v; })
-
       Text('Address').fontSize(12).fontColor('#666666').width('100%')
-      TextInput({ placeholder: '10.0.0.1' })
-        .id('shell/dialog-address')
-        .width('100%')
+      TextInput({ placeholder: '10.0.0.1' }).id('shell/dialog-address').width('100%')
         .onChange((v: string) => { this.formAddress = v; })
-
       Row({ space: 10 }) {
         Column({ space: 6 }) {
           Text('User').fontSize(12).fontColor('#666666').width('100%')
-          TextInput({ placeholder: 'root' })
-            .id('shell/dialog-user')
-            .width('100%')
+          TextInput({ placeholder: 'root' }).id('shell/dialog-user').width('100%')
             .onChange((v: string) => { this.formUser = v; })
         }.layoutWeight(1)
-
         Column({ space: 6 }) {
           Text('Port').fontSize(12).fontColor('#666666').width('100%')
-          TextInput({ placeholder: '22' })
-            .id('shell/dialog-port')
-            .width('100%')
-            .type(InputType.Number)
+          TextInput({ placeholder: '22' }).id('shell/dialog-port').width('100%').type(InputType.Number)
             .onChange((v: string) => { this.formPort = v; })
         }.layoutWeight(1)
       }.width('100%')
-
       Text('Password (memory only, not stored)').fontSize(12).fontColor('#666666').width('100%')
-      TextInput({ placeholder: 'password' })
-        .id('shell/dialog-password')
-        .width('100%')
-        .type(InputType.Password)
-        .onChange((v: string) => { this.formPassword = v; })
-
+      TextInput({ placeholder: 'password' }).id('shell/dialog-password').width('100%')
+        .type(InputType.Password).onChange((v: string) => { this.formPassword = v; })
       Row({ space: 12 }) {
-        Button('Cancel')
-          .id('shell/dialog-cancel')
-          .backgroundColor('#E6E6E6')
-          .fontColor('#1A1A1A')
+        Button('Cancel').id('shell/dialog-cancel').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.showDialog = false; this.resetForm(); })
-        Button('Add Host')
-          .id('shell/dialog-submit')
-          .onClick(() => { this.submit(); })
+        Button('Add Host').id('shell/dialog-submit').onClick(() => { this.submit(); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
-    .id('host-form/dialog')
-    .width(560)
-    .padding(20)
-    .backgroundColor(Color.White)
-    .borderRadius(12)
+    .id('host-form/dialog').width(560).padding(20).backgroundColor(Color.White).borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
-  }
-
-  @Builder
-  terminalPanel() {
-    Column({ space: 8 }) {
-      Row() {
-        Text('Terminal (fixture)').fontSize(16).fontWeight(FontWeight.Bold).fontColor(Color.White)
-        Blank()
-        Button('Close')
-          .id('terminal/close')
-          .backgroundColor('#E6E6E6')
-          .fontColor('#1A1A1A')
-          .onClick(() => {
-            if (this.shellId !== 0) {
-              mottynapi.closeShell(this.shellId);
-              this.shellId = 0;
-            }
-            this.termVisible = false;
-          })
-      }.width('100%')
-      Scroll() {
-        Text(this.termText.length > 0 ? this.termText : '(no output yet)')
-          .id('terminal/output')
-          .fontSize(13)
-          .fontColor('#D4D4D4')
-          .fontFamily('monospace')
-          .width('100%')
-      }
-      .layoutWeight(1)
-      .width('100%')
-      .align(Alignment.TopStart)
-      .border({ width: 1, color: '#CCCCCC' })
-      .padding(8)
-
-      Text(this.ptyStatus.length > 0 ? this.ptyStatus : 'pty: (idle)')
-        .id('terminal/pty-status')
-        .fontSize(11)
-        .fontColor('#8AC98A')
-        .width('100%')
-
-      Text('history tail: ' + (this.vtHistory.length > 0 ? this.vtHistory.replace(/\n/g, ' | ') : '(empty)'))
-        .id('terminal/history')
-        .fontSize(11)
-        .fontColor('#B0B0B0')
-        .width('100%')
-
-      Text(this.vtStatus.length > 0 ? this.vtStatus : 'vt: (idle)')
-        .id('terminal/vt-status')
-        .fontSize(11)
-        .fontColor('#8A8A8A')
-        .width('100%')
-
-      Row({ space: 8 }) {
-        TextInput({ text: this.termInput, placeholder: 'type a line and press Send' })
-          .id('terminal/input')
-          .layoutWeight(1)
-          .onChange((v: string) => { this.termInput = v; })
-        Button('Send')
-          .id('terminal/send')
-          .onClick(() => { this.sendTermInput(); })
-        Button('Resize')
-          .id('terminal/resize')
-          .backgroundColor('#E6E6E6')
-          .fontColor('#1A1A1A')
-          .onClick(() => {
-            if (this.shellId !== 0) {
-              mottynapi.resizeShell(this.shellId, 100, 30);
-              this.ptyStatus = 'resize->100x30';
-            } else {
-              this.ptyStatus = 'resize: no session';
-            }
-          })
-      }.width('100%')
-    }
-    .id('terminal/panel')
-    .width(680)
-    .height(420)
-    .padding(16)
-    .backgroundColor('#1E1E1E')
-    .borderRadius(12)
   }
 
   @Builder
   keyConfirm() {
     Column({ space: 12 }) {
       Text('Unknown host key').fontSize(18).fontWeight(FontWeight.Bold).width('100%')
-      Text('The authenticity of this host cannot be established. Verify the fingerprint out-of-band before trusting it.')
-        .fontSize(12).fontColor('#666666').width('100%')
+      Text('Verify the fingerprint out-of-band before trusting it.').fontSize(12).fontColor('#666666').width('100%')
       Text(this.pendingFp).id('hostkey/fingerprint').fontSize(13).fontFamily('monospace').width('100%')
       Row({ space: 12 }) {
-        Button('Cancel')
-          .id('hostkey/cancel')
-          .backgroundColor('#E6E6E6')
-          .fontColor('#1A1A1A')
+        Button('Cancel').id('hostkey/cancel').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => {
-            this.keyDialog = false;
-            this.pendingFp = '';
-            this.pendingKey = '';
+            this.keyDialog = false; this.pendingFp = ''; this.pendingKey = '';
             this.probeText = 'cancelled, nothing trusted';
           })
-        Button('Trust')
-          .id('hostkey/trust')
-          .onClick(() => this.trustAndConnect())
+        Button('Trust').id('hostkey/trust').onClick(() => this.trustAndConnect())
       }.width('100%').justifyContent(FlexAlign.End)
     }
-    .id('hostkey/dialog')
-    .width(520)
-    .padding(20)
-    .backgroundColor(Color.White)
-    .borderRadius(12)
+    .id('hostkey/dialog').width(520).padding(20).backgroundColor(Color.White).borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
+  }
+
+  @Builder
+  diagPanel() {
+    Column({ space: 10 }) {
+      Row() {
+        Text('Diagnostics').fontSize(16).fontWeight(FontWeight.Bold)
+        Blank()
+        Button('Close').id('diag/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.diagOpen = false; })
+      }.width('100%')
+      Text('These entries exist to exercise protocol paths that the product UI does not expose yet.')
+        .fontSize(11).fontColor('#666666').width('100%')
+      Row({ space: 8 }) {
+        Button('TCP probe').id('net/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.probeNet(); })
+        Button('SSH probe').id('ssh/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.probeSsh(); })
+        Button('Hostkey check').id('ssh/hostkey-check').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.hostkeyCheck(); })
+      }.width('100%')
+      Row({ space: 8 }) {
+        Button('term-echo').id('diag/term-echo').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.connectFixtureDemo('term-echo'); })
+        Button('vt-demo').id('terminal/demo').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.connectFixtureDemo('demo'); })
+        Button('vt-demo2').id('terminal/vt2').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.connectFixtureDemo('vt2'); })
+        Button('vt').id('terminal/vt').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.connectFixtureDemo('vt'); })
+        Button('pty shell').id('terminal/shell').backgroundColor('#0A6C00').fontColor(Color.White)
+          .onClick(() => { this.connectFixtureDemo('shell'); })
+      }.width('100%')
+      Scroll() {
+        Text(this.probeText).id('net/probe-result').fontSize(11).fontFamily('monospace').width('100%')
+      }.height(120).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)
+    }
+    .id('diag/panel').width(680).padding(16).backgroundColor(Color.White).borderRadius(12)
+    .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
+  }
+
+  @Builder
+  terminalView() {
+    Column({ space: 8 }) {
+      Text(this.sessionLabel).fontSize(14).fontWeight(FontWeight.Medium).width('100%')
+      Row({ space: 8 }) {
+        TextInput({ text: this.termInput, placeholder: 'type a line and press Send' })
+          .id('terminal/input').layoutWeight(1).onChange((v: string) => { this.termInput = v; })
+        Button('Send').id('terminal/send').onClick(() => { this.sendTermInput(); })
+        Button('Resize').id('terminal/resize').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.resizeSession(); })
+      }.width('100%')
+      Text(this.ptyStatus.length > 0 ? this.ptyStatus : 'pty: (idle)')
+        .id('terminal/pty-status').fontSize(11).fontColor('#0A6C00').width('100%')
+      Text('history tail: ' + (this.vtHistory.length > 0 ? this.vtHistory.replace(/\n/g, ' | ') : '(empty)'))
+        .id('terminal/history').fontSize(11).fontColor('#999999').width('100%')
+      Text(this.vtStatus.length > 0 ? this.vtStatus : 'vt: (idle)')
+        .id('terminal/vt-status').fontSize(11).fontColor('#999999').width('100%')
+      Scroll() {
+        Text(this.termText.length > 0 ? this.termText : '(no output yet)')
+          .id('terminal/output').fontSize(13).fontFamily('monospace').fontColor('#D4D4D4')
+          .width('100%')
+      }
+      .layoutWeight(1).width('100%').align(Alignment.TopStart)
+      .border({ width: 1, color: '#333333' }).padding(8).backgroundColor('#1E1E1E')
+    }
+    .id('terminal/panel').layoutWeight(1).width('100%').padding(16)
+  }
+
+  @Builder
+  hostListView() {
+    Column() {
+      Text('Hosts').fontSize(13).fontColor('#666666').width('100%')
+        .padding({ left: 16, top: 10, bottom: 4 })
+      List({ space: 8 }) {
+        ForEach(this.hosts, (h: HostItem, index: number) => {
+          ListItem() {
+            Column({ space: 4 }) {
+              Row({ space: 12 }) {
+                Column({ space: 4 }) {
+                  Text(h.label).fontSize(16).fontWeight(FontWeight.Medium).width('100%')
+                  Row({ space: 2 }) {
+                    Text(h.address).fontSize(12).fontColor('#666666')
+                    Text(':' + h.port).fontSize(12).fontColor('#999999')
+                  }.width('100%')
+                }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+                Button('Test').id('host-row/' + index).backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+                  .onClick(() => { this.connectRow(index); })
+                Button('Open').id('host-open/' + index).backgroundColor('#1A6DD0').fontColor(Color.White)
+                  .onClick(() => { this.openSession(h.label, index); })
+              }.width('100%')
+              if (this.statuses.length > index && this.statuses[index].length > 0) {
+                Text(this.statuses[index]).id('host-status/' + index).fontSize(11).fontColor('#0A6C00').width('100%')
+              }
+            }.width('100%').padding(12).backgroundColor(Color.White).borderRadius(8)
+          }
+        }, (h: HostItem) => h.id)
+      }
+      .id('host-grid/list').layoutWeight(1).width('100%').padding({ left: 16, right: 16, bottom: 16 })
+
+      if (this.hosts.length === 0) {
+        Text('No hosts yet').id('host-grid/empty').fontSize(13).fontColor('#999999')
+          .width('100%').textAlign(TextAlign.Center).padding({ bottom: 24 })
+      }
+    }
+    .layoutWeight(1).width('100%')
   }
 
   build() {
@@ -740,91 +665,33 @@ struct Index {
         Row({ space: 8 }) {
           Text('Motty').fontSize(20).fontWeight(FontWeight.Bold)
           Blank()
-          Button('Term Demo').id('terminal/demo').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-            .onClick(() => { this.openTerminalDemo(); })
-          Button('VT Demo').id('terminal/vt').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-            .onClick(() => { this.openVtDemo(); })
-          Button('VT2').id('terminal/vt2').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-            .onClick(() => { this.openVt2Demo(); })
-          Button('Shell').id('terminal/shell').backgroundColor('#0A6C00').fontColor(Color.White)
-            .onClick(() => { this.openRealShell(); })
-          Button('SSH Test').id('ssh/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-            .onClick(() => { this.probeSsh(); })
-          Button('Hostkey Check').id('ssh/hostkey-check').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-            .onClick(() => { this.hostkeyCheck(); })
-          Button('Probe Net').id('net/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-            .onClick(() => { this.probeNet(); })
+          if (this.termVisible) {
+            Button('Hosts').id('nav/hosts').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+              .onClick(() => { this.closeSession(); })
+          }
+          Button('Diagnostics').id('diag/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+            .onClick(() => { this.diagOpen = true; })
           Button('New Host').id('shell/add-host')
             .onClick(() => { this.resetForm(); this.showDialog = true; })
         }
         .width('100%').padding({ left: 16, right: 16, top: 12, bottom: 12 }).backgroundColor('#F5F5F5')
 
-        Text(this.probeText)
-          .id('net/probe-result')
-          .fontSize(12)
-          .fontColor('#0A6C00')
-          .width('100%')
-          .padding({ left: 16, right: 16, top: 6, bottom: 0 })
-
-        Text('Hosts').fontSize(13).fontColor('#666666')
-          .width('100%').padding({ left: 16, top: 10, bottom: 4 })
-
-        List({ space: 8 }) {
-          ForEach(this.hosts, (h: HostItem, index: number) => {
-            ListItem() {
-              Column({ space: 4 }) {
-                Row({ space: 12 }) {
-                  Column({ space: 4 }) {
-                    Text(h.label).fontSize(16).fontWeight(FontWeight.Medium).width('100%')
-                    Row({ space: 2 }) {
-                      Text(h.address).fontSize(12).fontColor('#666666')
-                      Text(':' + h.port).fontSize(12).fontColor('#999999')
-                    }.width('100%')
-                  }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-                  Button('Term')
-                    .id('host-term/' + index)
-                    .backgroundColor('#0A6C00')
-                    .fontColor(Color.White)
-                    .onClick(() => { this.openTerminal(index); })
-                  Button('Connect')
-                    .id('host-row/' + index)
-                    .backgroundColor('#1A6DD0')
-                    .fontColor(Color.White)
-                    .onClick(() => { this.connectRow(index); })
-                }.width('100%')
-
-                if (this.statuses.length > index && this.statuses[index].length > 0) {
-                  Text(this.statuses[index])
-                    .id('host-status/' + index)
-                    .fontSize(11)
-                    .fontColor('#0A6C00')
-                    .width('100%')
-                }
-              }
-              .width('100%').padding(12).backgroundColor(Color.White).borderRadius(8)
-            }
-          }, (h: HostItem) => h.id)
-        }
-        .id('host-grid/list')
-        .layoutWeight(1).width('100%').padding({ left: 16, right: 16, bottom: 16 })
-
-        if (this.hosts.length === 0) {
-          Text('No hosts yet').id('host-grid/empty').fontSize(13).fontColor('#999999')
-            .width('100%').textAlign(TextAlign.Center).padding({ bottom: 24 })
+        if (this.termVisible) {
+          this.terminalView()
+        } else {
+          this.hostListView()
         }
       }
       .width('100%').height('100%').backgroundColor('#FAFAFA')
 
-      if (this.termVisible) {
-        Column().width('100%').height('100%').backgroundColor('#99000000').onClick(() => {})
-        this.terminalPanel()
+      if (this.diagOpen) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
+        this.diagPanel()
       }
-
       if (this.keyDialog) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
         this.keyConfirm()
       }
-
       if (this.showDialog) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
         this.hostForm()

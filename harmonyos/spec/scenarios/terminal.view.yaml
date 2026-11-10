@@ -37,6 +37,8 @@ steps:
   - action: wait
     ms: 700
   - action: click
+    target: id:diag/open
+  - action: click
     target: id:terminal/demo
   - action: wait
     ms: 2500
@@ -60,15 +62,15 @@ asserts:
     regex: "term-line-6 green"
     withinMs: 8000
   - kind: screenRegex
-    regex: "term-demo: ok"
+    regex: "term-line-3"
     withinMs: 8000
 evidence:
   png: true
   tree: true
   limits: >-
     模拟器双画像（x86_64, API 26）。验证的是"SSH 流式输出渲染进终端区域"这一条通路。
-    **本版没有 VT 解析**：不渲染颜色/光标/备用屏/回滚，只把字节追加成文本（所以
-    term-line-6 里的 ESC 序列是原样出现的）。不覆盖真实 shell 会话、窗口尺寸变更、
+    终端已接入 VT 引擎（ESC 序列被解析而不是原样显示），但本 spec 只验证
+    "多块流式数据都落进网格"这一件事；颜色/光标语义由 terminal.vt 覆盖。不覆盖真实 shell 会话、窗口尺寸变更、
     键盘输入；未在 arm64 真机执行。
 deviations:
   - 纯新增规格，无 upstream 对应脚本
