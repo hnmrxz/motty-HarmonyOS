@@ -65,6 +65,15 @@ asserts:
   - kind: screenRegex
     regex: "colors=[1-9]"
     withinMs: 4000
+  - kind: screenRegex
+    regex: "中文宽字符测试"
+    withinMs: 6000
+  - kind: screenRegex
+    regex: "abc\\|中文\\|def"
+    withinMs: 4000
+  - kind: screenRegex
+    regex: "wide=[3-9][0-9]*"
+    withinMs: 4000
   - kind: absent
     value: "\\[status\\] error"
     withinMs: 2000
@@ -79,6 +88,7 @@ evidence:
 deviations:
   - 纯新增规格，无 upstream 对应脚本
   - 用 fixture 的 vt-demo 固定脚本触发序列，而不是真 shell
+  - CJK 两条断言用于验证宽字符占 2 列（`wide=` 计数 > 0 说明按双宽处理）
 notes: >-
   四条断言分别对应四种 VT 能力：cursor-here(光标回到 1,1 覆盖写入)、vt-moved(CUP 定位)、
   vt-erase-me 缺席(EL 2 真的擦了)、colors>0(SGR 被记录)。

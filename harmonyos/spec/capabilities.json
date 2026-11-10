@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "_comment": "A′ 能力注册表 v0.1（引导生成，勿手改 id）。level 为 null 或 needsReview=true 的条目必须由人裁决后填实；aPrime.where 留空表示尚未落到 A′ 实现，禁止用矩阵 B 组的\"原样保留 Go 内核\"填充。",
+  "_comment": "A′ 能力注册表 v0.1（引导生成，勿手改 id）。level 为 null 或 needsReview=true 的条目必须由人裁决后填实；aPrime.where 留空表示尚未落到 A′ 实现，禁止用矩阵 B 组的\"原样保留 Go 内核\"填充。 本版已回填 proof 与 evidence：有 spec 覆盖的能力为 E1（x86_64 模拟器双画像实测）。",
   "_generatedBy": "harmonyos/tools/design/caps-bootstrap.py",
   "_sourceMatrix": "harmonyos/CAPABILITY-MATRIX.md",
   "entries": [
@@ -433,8 +433,16 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/net.reachability.yaml",
+        "spec/scenarios/ssh.connect-from-list.yaml",
+        "spec/scenarios/ssh.exec.yaml",
+        "spec/scenarios/ssh.hostkey.yaml",
+        "spec/scenarios/terminal.interactive.yaml",
+        "spec/scenarios/terminal.view.yaml",
+        "spec/scenarios/terminal.vt.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {
@@ -455,8 +463,10 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/ssh.hostkey.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {
@@ -565,8 +575,11 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/ssh.connect-from-list.yaml",
+        "spec/scenarios/ssh.exec.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {
@@ -609,8 +622,15 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/host.persist.yaml",
+        "spec/scenarios/infra.host-create-by-id.yaml",
+        "spec/scenarios/ssh.connect-from-list.yaml",
+        "spec/scenarios/terminal.interactive.yaml",
+        "spec/scenarios/terminal.view.yaml",
+        "spec/scenarios/terminal.vt.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {

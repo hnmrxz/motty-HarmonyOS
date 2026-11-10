@@ -152,6 +152,9 @@ func serveSession(ch ssh.Channel, reqs <-chan *ssh.Request, auth string) {
 				fmt.Fprint(ch, "\x1b[4;1H\x1b[2K")   // 擦掉第 4 行
 				fmt.Fprint(ch, "\x1b[10;1Hvt-line-10") // 跨到第 10 行
 				fmt.Fprint(ch, "\x1b[1;1Hcursor-here") // 光标回到 1,1 覆盖写入
+				// CJK 宽字符：终端是固定网格，汉字占 2 列；按 1 列存会与真实终端错位
+				fmt.Fprint(ch, "\x1b[20;1H中文宽字符测试")
+				fmt.Fprint(ch, "\x1b[21;1Habc|中文|def")
 				status := struct{ Status uint32 }{0}
 				ch.SendRequest("exit-status", false, ssh.Marshal(&status))
 				return

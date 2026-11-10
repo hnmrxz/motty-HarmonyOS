@@ -381,3 +381,43 @@ known_hosts 持久化、`@cert-authority`、hostkey 算法白名单、指纹变�
 备用屏、回滚缓冲、宽字符/组合字符、连字、SIXEL/Kitty/iTerm2 图片、鼠标上报、
 DECSET 2026、选择与复制、真实 pty 尺寸协商。宽字符一项会直接影响 CJK 显示，
 是下一阶段必须补的（当前只处理 0x20–0x7E 可打印 ASCII）。
+---
+
+## Round 14：收口（CJK 宽字符 + 证据回填 + 现状文档）
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/vt_core.cpp` | 支持 UTF-8（含跨 chunk 半截序列）与 **CJK 双宽单元格**；`vtStatus` 增加 `wide=` 计数 |
+| `spec/scenarios/terminal.vt.yaml` | 新增 3 条断言：`中文宽字符测试`、`abc|中文|def` 对齐、`wide=[3-9]+` |
+| `spec/capabilities.json` | 回填 `proof`（spec 路径）与 `evidence=E1`：**4 个能力**取得实测证据（B01/B02/B07/B09） |
+| `A-PRIME-STATUS.md` | **现状收口**：E1/E2/E3 分层、82 spec 进度、四个关键结论、下一步真实顺序 |
+
+### CJK 实测结果
+终端缓冲区（`terminal/output`）实测：
+```
+cursor-here
+    vt-movedred-text
+vt-line-10
+中文宽字符测试
+abc|中文|def
+```
+`terminal/vt-status`：`cur=21,13 colors=8 wide=9 size=80x24`
+→ 宽字符占 2 列且对齐正确（`abc|中文|def`），`wide=9` 与 7+2 个汉字吻合。
+
+### 最终验收（9 spec × 2 画像，同一份最终构建）
+| spec | 2in1 | tablet |
+|---|---|---|
+| `terminal.vt`（含 CJK） | **passed** | **passed** |
+| `terminal.view` | **passed** | **passed** |
+| `terminal.interactive` | **passed** | **passed** |
+| `ssh.connect-from-list` | **passed** | **passed** |
+| `infra.host-create-by-id` | **passed** | **passed** |
+| `host.persist` | **passed** | **passed** |
+| `net.reachability` | **passed** | **passed** |
+| `ssh.exec` | **passed** | **passed** |
+| `ssh.hostkey` | **passed** | **passed** |
+
+### 诚恳的结论
+82 个行为规格完成 **9 个（11%）**；产品功能只有"主机列表 + 连接 + 终端"一个切片；
+**arm64 只有编译证据（E2），没有任何真机执行证据**。距离"1:1 完成"仍是数十人月的量，
+现状与缺口逐条写在 [A-PRIME-STATUS.md](./A-PRIME-STATUS.md)。

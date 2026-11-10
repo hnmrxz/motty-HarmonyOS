@@ -1,15 +1,15 @@
 // vt_core.cpp —— 最小 VT 解析器（M1 的终端网格核心）
 //
-// 明确的取舍：这不是完整终端模拟器。只实现能被 fixture 逐项断言的部分：
-//   CUP(H/f) 光标定位 · CUU/CUD/CUF/CUB(A/B/C/D) · CHA(G) · VPA(d)
-//   ED(J) 0/1/2 擦除显示 · EL(K) 0/1/2 擦除行 · SGR(m) 前景色与重置
-//   可打印字符 + CR/LF + 行尾换行/滚动
+// 范围（只承诺能被 fixture 逐项断言的部分）：
+//   CUP(H/f) · CUU/CUD/CUF/CUB(A/B/C/D) · CHA(G) · VPA(d)
+//   ED(J) 0/1/2 · EL(K) 0/1/2 · SGR(m) 前景色与 0/39 重置
+//   CR/LF/换行滚动 · 退格 · UTF-8 解码（含跨 chunk 的半截序列）· CJK 宽字符双宽单元格
 //
-// 刻意不做（写进文档，不假装）：备用屏、回滚缓冲、宽字符/组合字符、连字、
-// 图片协议（SIXEL/Kitty/iTerm2）、鼠标上报、DECSET 2026、选择/复制。
+// 刻意不做（写进 RUNBOOK，不假装）：备用屏、回滚缓冲、组合字符与零宽连接符、
+// 连字、SIXEL/Kitty/iTerm2 图片、鼠标上报、DECSET 2026、选择/复制、pty 尺寸协商。
 //
-// 对外只暴露四个函数，便于 ArkTS 侧把"字节流"换成"网格"：
-//   vtReset(cols, rows) · vtFeed(str) · vtScreen() · vtStatus()
+// 为什么 CJK 要单独处理：终端是固定网格，一个汉字的显示宽度是 2 列。
+// 若按 1 列存放，`abc|中文|def` 这类行会与真实终端错位，中文用户第一眼就能看出不对。
 #include <napi/native_api.h>
 
 #include <string>
@@ -18,12 +18,51 @@
 namespace {
 
 struct Cell {
-    char ch = ' ';
-    int fg = 0;  // 0 = 默认色；30..37 记录为前景色序号
+    std::string glyph;  // UTF-8；空表示"宽字符的右半格"或空格
+    int fg = 0;
+    bool blank = true;   // 真空白（用于 screenText 去尾随空格）
 };
 
 constexpr int kMaxCols = 400;
 constexpr int kMaxRows = 200;
+
+// 粗略的宽度判定：覆盖常见东亚宽字符区段。精确实现应查 wcwidth 表，
+// 这里按"足够覆盖 CJK/全角/韩文"的区段近似，并在 RUNBOOK 里写明这是近似。
+bool isWideRune(unsigned int cp) {
+    if (cp >= 0x1100 && cp <= 0x115F) return true;    // Hangul Jamo
+    if (cp >= 0x2E80 && cp <= 0x303E) return true;    // CJK 部首/标点
+    if (cp >= 0x3041 && cp <= 0x33FF) return true;    // 假名/CJK 兼容
+    if (cp >= 0x3400 && cp <= 0x4DBF) return true;    // CJK 扩展 A
+    if (cp >= 0x4E00 && cp <= 0x9FFF) return true;    // CJK 基本区
+    if (cp >= 0xA000 && cp <= 0xA4CF) return true;    // 彝文
+    if (cp >= 0xAC00 && cp <= 0xD7A3) return true;    // 韩文音节
+    if (cp >= 0xF900 && cp <= 0xFAFF) return true;    // CJK 兼容表意
+    if (cp >= 0xFE30 && cp <= 0xFE6F) return true;    // CJK 兼容形式
+    if (cp >= 0xFF00 && cp <= 0xFF60) return true;    // 全角 ASCII
+    if (cp >= 0xFFE0 && cp <= 0xFFE6) return true;    // 全角符号
+    if (cp >= 0x20000 && cp <= 0x3FFFD) return true;  // 扩展 B+
+    return false;
+}
+
+std::string encodeUtf8(unsigned int cp) {
+    std::string out;
+    if (cp < 0x80) {
+        out.push_back(static_cast<char>(cp));
+    } else if (cp < 0x800) {
+        out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
+        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+    } else if (cp < 0x10000) {
+        out.push_back(static_cast<char>(0xE0 | (cp >> 12)));
+        out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+    } else {
+        out.push_back(static_cast<char>(0xF0 | (cp >> 18)));
+        out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+    }
+    return out;
+}
 
 struct Screen {
     int cols = 80;
@@ -32,6 +71,7 @@ struct Screen {
     int curCol = 0;
     int fg = 0;
     std::vector<Cell> cells;
+    std::string utf8Pending;  // 跨 chunk 的半截 UTF-8 序列
 
     void resize(int c, int r) {
         cols = c < 8 ? 8 : (c > kMaxCols ? kMaxCols : c);
@@ -40,6 +80,7 @@ struct Screen {
         curRow = 0;
         curCol = 0;
         fg = 0;
+        utf8Pending.clear();
     }
 
     Cell &at(int row, int col) {
@@ -69,15 +110,27 @@ struct Screen {
         }
     }
 
-    void put(char ch) {
-        if (curCol >= cols) {
+    void putGlyph(const std::string &glyph, int width) {
+        if (width <= 0) {
+            width = 1;
+        }
+        if (curCol + width > cols) {
             curCol = 0;
             newline();
         }
         Cell &cell = at(curRow, curCol);
-        cell.ch = ch;
+        cell.glyph = glyph;
         cell.fg = fg;
+        cell.blank = false;
         curCol++;
+        if (width == 2) {
+            // 右半格标记为"被占据但无字形"，让 screenText 与光标推进都正确
+            Cell &right = at(curRow, curCol);
+            right.glyph.clear();
+            right.fg = fg;
+            right.blank = false;
+            curCol++;
+        }
     }
 };
 
@@ -105,6 +158,13 @@ int argOr(const std::vector<int> &p, size_t i, int fallback) {
     return p[i];
 }
 
+void clampCursor() {
+    if (g_screen.curRow < 0) g_screen.curRow = 0;
+    if (g_screen.curRow >= g_screen.rows) g_screen.curRow = g_screen.rows - 1;
+    if (g_screen.curCol < 0) g_screen.curCol = 0;
+    if (g_screen.curCol >= g_screen.cols) g_screen.curCol = g_screen.cols - 1;
+}
+
 void dispatchCsi(const std::string &body, char final) {
     const std::vector<int> p = parseParams(body);
     switch (final) {
@@ -113,44 +173,22 @@ void dispatchCsi(const std::string &body, char final) {
             g_screen.curRow = argOr(p, 0, 1) - 1;
             g_screen.curCol = argOr(p, 1, 1) - 1;
             break;
-        case 'A':
-            g_screen.curRow -= argOr(p, 0, 1);
-            break;
-        case 'B':
-            g_screen.curRow += argOr(p, 0, 1);
-            break;
-        case 'C':
-            g_screen.curCol += argOr(p, 0, 1);
-            break;
-        case 'D':
-            g_screen.curCol -= argOr(p, 0, 1);
-            break;
-        case 'G':
-            g_screen.curCol = argOr(p, 0, 1) - 1;
-            break;
-        case 'd':
-            g_screen.curRow = argOr(p, 0, 1) - 1;
-            break;
+        case 'A': g_screen.curRow -= argOr(p, 0, 1); break;
+        case 'B': g_screen.curRow += argOr(p, 0, 1); break;
+        case 'C': g_screen.curCol += argOr(p, 0, 1); break;
+        case 'D': g_screen.curCol -= argOr(p, 0, 1); break;
+        case 'G': g_screen.curCol = argOr(p, 0, 1) - 1; break;
+        case 'd': g_screen.curRow = argOr(p, 0, 1) - 1; break;
         case 'J': {
             const int mode = p.empty() ? 0 : p[0];
             if (mode == 2) {
-                for (int r = 0; r < g_screen.rows; r++) {
-                    g_screen.clearRow(r);
-                }
+                for (int r = 0; r < g_screen.rows; r++) g_screen.clearRow(r);
             } else if (mode == 1) {
-                for (int c = 0; c <= g_screen.curCol && c < g_screen.cols; c++) {
-                    g_screen.at(g_screen.curRow, c) = Cell{};
-                }
-                for (int r = 0; r < g_screen.curRow; r++) {
-                    g_screen.clearRow(r);
-                }
+                for (int c = 0; c <= g_screen.curCol && c < g_screen.cols; c++) g_screen.at(g_screen.curRow, c) = Cell{};
+                for (int r = 0; r < g_screen.curRow; r++) g_screen.clearRow(r);
             } else {
-                for (int c = g_screen.curCol; c < g_screen.cols; c++) {
-                    g_screen.at(g_screen.curRow, c) = Cell{};
-                }
-                for (int r = g_screen.curRow + 1; r < g_screen.rows; r++) {
-                    g_screen.clearRow(r);
-                }
+                for (int c = g_screen.curCol; c < g_screen.cols; c++) g_screen.at(g_screen.curRow, c) = Cell{};
+                for (int r = g_screen.curRow + 1; r < g_screen.rows; r++) g_screen.clearRow(r);
             }
             break;
         }
@@ -159,13 +197,9 @@ void dispatchCsi(const std::string &body, char final) {
             if (mode == 2) {
                 g_screen.clearRow(g_screen.curRow);
             } else if (mode == 1) {
-                for (int c = 0; c <= g_screen.curCol && c < g_screen.cols; c++) {
-                    g_screen.at(g_screen.curRow, c) = Cell{};
-                }
+                for (int c = 0; c <= g_screen.curCol && c < g_screen.cols; c++) g_screen.at(g_screen.curRow, c) = Cell{};
             } else {
-                for (int c = g_screen.curCol; c < g_screen.cols; c++) {
-                    g_screen.at(g_screen.curRow, c) = Cell{};
-                }
+                for (int c = g_screen.curCol; c < g_screen.cols; c++) g_screen.at(g_screen.curRow, c) = Cell{};
             }
             break;
         }
@@ -177,18 +211,67 @@ void dispatchCsi(const std::string &body, char final) {
                 } else if (v >= 30 && v <= 37) {
                     g_screen.fg = v;
                 }
-                // 其它 SGR（加粗/下划线/背景）暂不支持，忽略但不清空状态
             }
             break;
         }
-        default:
-            break;  // 未支持的 CSI 一律忽略（不破坏网格）
+        default: break;
     }
-    // 夹住光标
-    if (g_screen.curRow < 0) g_screen.curRow = 0;
-    if (g_screen.curRow >= g_screen.rows) g_screen.curRow = g_screen.rows - 1;
-    if (g_screen.curCol < 0) g_screen.curCol = 0;
-    if (g_screen.curCol >= g_screen.cols) g_screen.curCol = g_screen.cols - 1;
+    clampCursor();
+}
+
+// UTF-8 解码：把累积的 pending 里能完整解出的码点逐个交给 putGlyph，
+// 半截序列留在 pending 里等下一个 chunk（流式场景下这个边界必然发生）。
+void drainUtf8() {
+    std::string &buf = g_screen.utf8Pending;
+    size_t i = 0;
+    while (i < buf.size()) {
+        const unsigned char b0 = static_cast<unsigned char>(buf[i]);
+        size_t need = 0;
+        unsigned int cp = 0;
+        if (b0 < 0x80) {
+            need = 1;
+            cp = b0;
+        } else if ((b0 & 0xE0) == 0xC0) {
+            need = 2;
+            cp = b0 & 0x1F;
+        } else if ((b0 & 0xF0) == 0xE0) {
+            need = 3;
+            cp = b0 & 0x0F;
+        } else if ((b0 & 0xF8) == 0xF0) {
+            need = 4;
+            cp = b0 & 0x07;
+        } else {
+            buf.erase(0, i + 1);  // 非法首字节：丢弃
+            i = 0;
+            continue;
+        }
+        if (i + need > buf.size()) {
+            break;  // 半截，等下一个 chunk
+        }
+        bool ok = true;
+        for (size_t k = 1; k < need; k++) {
+            const unsigned char bk = static_cast<unsigned char>(buf[i + k]);
+            if ((bk & 0xC0) != 0x80) {
+                ok = false;
+                break;
+            }
+            cp = (cp << 6) | (bk & 0x3F);
+        }
+        if (!ok) {
+            buf.erase(0, i + 1);
+            i = 0;
+            continue;
+        }
+        if (cp < 0x20) {
+            // 控制字符已在别处处理；这里丢弃
+        } else {
+            g_screen.putGlyph(encodeUtf8(cp), isWideRune(cp) ? 2 : 1);
+        }
+        i += need;
+    }
+    if (i > 0) {
+        buf.erase(0, i);
+    }
 }
 
 void feed(const char *data, size_t len) {
@@ -199,15 +282,22 @@ void feed(const char *data, size_t len) {
         switch (state) {
             case State::Ground:
                 if (raw == 0x1B) {
+                    drainUtf8();  // 先把挂起的多字节收干净
                     state = State::Esc;
                 } else if (raw == '\r') {
+                    drainUtf8();
                     g_screen.curCol = 0;
                 } else if (raw == '\n') {
+                    drainUtf8();
                     g_screen.newline();
                 } else if (raw == '\b') {
+                    drainUtf8();
                     if (g_screen.curCol > 0) g_screen.curCol--;
-                } else if (raw >= 0x20 && raw < 0x7F) {
-                    g_screen.put(static_cast<char>(raw));
+                } else if (raw < 0x20) {
+                    // 其它控制字符忽略
+                } else {
+                    g_screen.utf8Pending.push_back(static_cast<char>(raw));
+                    drainUtf8();
                 }
                 break;
             case State::Esc:
@@ -215,7 +305,7 @@ void feed(const char *data, size_t len) {
                     state = State::Csi;
                     csiBody.clear();
                 } else {
-                    state = State::Ground;  // 其它 ESC 序列忽略
+                    state = State::Ground;
                 }
                 break;
             case State::Csi:
@@ -228,6 +318,7 @@ void feed(const char *data, size_t len) {
                 break;
         }
     }
+    drainUtf8();
 }
 
 std::string screenText() {
@@ -235,7 +326,12 @@ std::string screenText() {
     for (int r = 0; r < g_screen.rows; r++) {
         std::string line;
         for (int c = 0; c < g_screen.cols; c++) {
-            line.push_back(g_screen.at(r, c).ch);
+            const Cell &cell = g_screen.at(r, c);
+            if (cell.blank) {
+                line.push_back(' ');
+            } else {
+                line += cell.glyph;  // 宽字符右半格 glyph 为空，不产生字符
+            }
         }
         while (!line.empty() && line.back() == ' ') {
             line.pop_back();
@@ -254,14 +350,19 @@ std::string screenText() {
 
 std::string screenStatus() {
     int colored = 0;
+    int wide = 0;
     for (const Cell &cell : g_screen.cells) {
-        if (cell.ch != ' ' && cell.fg != 0) {
-            colored++;
+        if (!cell.blank && cell.fg != 0) colored++;
+    }
+    for (int r = 0; r < g_screen.rows; r++) {
+        for (int c = 0; c < g_screen.cols; c++) {
+            const Cell &cell = g_screen.at(r, c);
+            if (!cell.blank && cell.glyph.size() >= 3) wide++;
         }
     }
-    char buf[128];
-    snprintf(buf, sizeof(buf), "cur=%d,%d colors=%d size=%dx%d",
-             g_screen.curRow + 1, g_screen.curCol + 1, colored, g_screen.cols, g_screen.rows);
+    char buf[160];
+    snprintf(buf, sizeof(buf), "cur=%d,%d colors=%d wide=%d size=%dx%d",
+             g_screen.curRow + 1, g_screen.curCol + 1, colored, wide, g_screen.cols, g_screen.rows);
     return std::string(buf);
 }
 
@@ -318,7 +419,6 @@ napi_value vtStatus(napi_env env, napi_callback_info) {
 
 }  // namespace
 
-// 由 ssh_napi.cpp 的 Init 调用，把 vt* 函数挂到同一个 NAPI 模块上
 void RegisterVtFunctions(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
         {"vtReset", nullptr, vtReset, nullptr, nullptr, nullptr, napi_default, nullptr},
