@@ -978,3 +978,28 @@ None 模式 18 条 + auth 模式 2 条（`vnc.auth-hextile`、`vnc.negative`）�
 
 ### 许可
 OpenSSL 是 **Apache-2.0**，与 FreeRDP 一致，不引入新的 GPL 义务（整包已是 GPLv3 组合分发）。
+---
+
+## Round 32：FreeRDP 静态库产出并链接验证（仍不是 RDP）
+
+| 里程碑 | 状态 | 证据 |
+|---|---|---|
+| FreeRDP 配置（OpenSSL 后端） | **完成** | 关 SDL/X11/声音/打印/JSON/KRB5/PCSC，`configure exit=0` |
+| FreeRDP 静态库（x86_64） | **完成** | `libfreerdp3.a` 5.36 MB、`libfreerdp-client3.a` 1.45 MB、`libwinpr3.a` 2.60 MB |
+| 链接验证（x86_64） | **完成** | 探针 + `pthread_cancel` 桩链接成 **8.2 MB `.so`**，`EM_X86_64` |
+
+### 新踩的三个坑（固化进 `native/build-freerdp.ps1`）
+1. **`WITH_ABSOLUTE_PLUGIN_LOAD_PATHS=OFF` 必须关**：否则 `FREERDP_INSTALL_PREFIX` 里的
+   `E:\…\ohos\…` 反斜杠成为非法转义 `\o` → `expected '{' after '\o' escape sequence`
+2. **只构建库目标**：示例 `sfreerdp` 链接缺 `pthread_cancel`（musl 未实现）→ 全量构建必失败
+3. **winpr 头文件分三处**：源码 `include/`、`winpr/include/`、**构建目录生成的**
+   `wtypes.h / build-config.h / buildflags.h`——少一份就找不到头
+
+### 诚实边界
+- **RDP 仍是 E3**：这只是"库能编、能链"，客户端接入（连接/能力协商/位图/输入/通道）一样没做
+- arm64 的 FreeRDP 库尚未跑完（脚本已支持）
+- 应用侧最终必须提供 `pthread_cancel` 桩，这是 musl 的缺口，不是 FreeRDP 的 bug
+
+### 为什么这轮算"真进展"
+它把 RDP 从"完全不知道能不能做"推进到"依赖链已就位、只剩接入"。这类前置如果跳到接入阶段再补，
+就会像第 28 轮那样在最后一步回退。

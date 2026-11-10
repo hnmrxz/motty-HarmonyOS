@@ -60,3 +60,30 @@ FreeRDP 的 `docs/README.building.md` 写着支持：
 
 `forward.http` 用例（HTTP CONNECT 动态转发）已在双画像上通过——它实现于第 29 轮但当时未断言，
 本轮补齐证据：`200 Connection Established` 与隧道内 `SSH-2.0-` 同时断言。
+
+---
+
+## 6. 进展更新（2026-11-11）
+
+### 已完成
+| 里程碑 | 状态 | 证据 |
+|---|---|---|
+| OpenSSL 交叉编译（双 ABI） | **完成** | libcrypto.a 7.13/7.41 MB、libssl.a 1.16/1.11 MB；`EM_X86_64`/`EM_AARCH64`；用 `OpenSSL_version_num()` 探针链接成 .so |
+| FreeRDP 配置（OpenSSL 后端） | **完成** | `configure exit=0`（关 SDL/X11/声音/打印/JSON/KRB5/PCSC） |
+| FreeRDP 静态库（x86_64） | **完成** | libfreerdp3.a 5.36 MB、libfreerdp-client3.a 1.45 MB、libwinpr3.a 2.60 MB |
+| FreeRDP 链接验证（x86_64） | **完成** | 探针 + `pthread_cancel` 桩链接成 8.2 MB `.so`，`EM_X86_64` |
+
+### 新踩到的坑（已固化进 `native/build-freerdp.ps1`）
+1. **`WITH_ABSOLUTE_PLUGIN_LOAD_PATHS=OFF` 必须关**：否则 `FREERDP_INSTALL_PREFIX` 里
+   `E:\...\ohos\...` 的反斜杠变成非法转义 `\o` → 编译报
+   `expected '{' after '\o' escape sequence`
+2. **只构建库目标**（`freerdp` / `winpr` / `freerdp-client`）：示例 `sfreerdp` 链接时缺
+   `pthread_cancel`（musl 未实现）→ 全量构建必失败
+3. **winpr 头文件分三处**：源码 `include/`、源码 `winpr/include/`、以及**构建目录生成的**
+   `winpr/include/winpr/{wtypes.h,build-config.h,buildflags.h}`——少一份就 `file not found`
+4. **应用侧链接需要 pthread_cancel 桩**：musl 没有该符号，FreeRDP 的 `TerminateThread` 引用它
+
+### 仍未做（所以 RDP 仍是 E3）
+- arm64 的 FreeRDP 静态库（脚本已支持，尚未跑完）
+- RDP 客户端接入：连接、能力协商、位图更新、输入、通道（剪贴板/声音/磁盘）
+- 渲染与帧率、证书 pin、NLA 凭据
