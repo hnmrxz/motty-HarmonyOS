@@ -1216,8 +1216,10 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/ai.request.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {
@@ -1225,7 +1227,8 @@
         "planInMatrix": "原样；网络走 `@ohos.net.socket`",
         "deps": "G1",
         "acceptance": "`ai_*`"
-      }
+      },
+      "partialCoverage": "部分：上下文截取 + HTTP 请求/超时/错误分支/结果渲染已双画像实测（本地 stub 端点）；真实模型服务、令牌鉴权、流式响应、多轮对话、提示词模板未做。"
     },
     {
       "id": "F02",
@@ -1722,8 +1725,10 @@
         "where": null,
         "evidence": null
       },
-      "evidence": "E3",
-      "proof": [],
+      "evidence": "E1",
+      "proof": [
+        "spec/scenarios/ui.i18n.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {
@@ -1731,7 +1736,8 @@
         "planInMatrix": "由 Go 结构体生成 ArkTS 资源",
         "deps": "R28",
         "acceptance": "key 集合 1:1"
-      }
+      },
+      "partialCoverage": "部分：中英双语切换已双画像实测（顶栏与主机区 39 条文案键、缺键回退检测）；第三种语言、资源限定符方案、系统语言自动跟随、复数与日期本地化、其余面板文案未做。"
     },
     {
       "id": "H09",

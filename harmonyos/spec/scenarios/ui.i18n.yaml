@@ -1,0 +1,79 @@
+schema: 1
+id: ui.i18n
+title: 中英双语切换：顶栏与主机区文案随语言按钮变化，且无缺键
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - H08
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  # 默认英文
+  - action: wait
+    ms: 600
+    expect:
+      kind: screenRegex
+      regex: "New Host"
+      withinMs: 10000
+  - action: wait
+    ms: 300
+    expect:
+      kind: screenRegex
+      regex: "No hosts yet"
+      withinMs: 6000
+  # 切到中文
+  - action: click
+    target: id:ui/lang
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机"
+      withinMs: 8000
+  - action: wait
+    ms: 300
+    expect:
+      kind: screenRegex
+      regex: "还没有主机"
+      withinMs: 6000
+  # 切回英文
+  - action: click
+    target: id:ui/lang
+  - action: wait
+    ms: 800
+asserts:
+  - kind: screenRegex
+    regex: "New Host"
+    withinMs: 8000
+  - kind: absent
+    value: "新建主机"
+    withinMs: 3000
+  # 缺键会以键名显示（如 top.newHost / host.empty），这里必须一个都不出现
+  - kind: absent
+    value: "top.newHost"
+    withinMs: 2000
+  - kind: absent
+    value: "host.empty"
+    withinMs: 2000
+  - kind: absent
+    value: "top.known"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：顶栏与主机区文案的中英切换、切换后可切回、
+    缺键检测（缺键会显示键名，用例反向断言键名不出现）。
+    **不覆盖**：跟随系统语言自动切换、复数与日期数字本地化、其余面板（SFTP/转发/VNC/诊断）
+    的文案替换（当前只换了顶栏与主机区）、rtl 布局；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 用"键名不出现"作为缺键判据，比逐条断言文案更不容易漏
+notes: >-
+  这条用例的价值在反向断言：文案表缺键时 `Strings.get` 回退为键名本身，
+  界面上会显示 `top.newHost` 这种东西——断言它不出现，就等于断言"用到的键都存在"。

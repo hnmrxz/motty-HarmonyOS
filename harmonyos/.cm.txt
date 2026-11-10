@@ -1,0 +1,18 @@
+﻿feat(harmonyos): i18n 中英双语 + AI 通路最小切片
+
+i18n(用例 ui.i18n, 双画像通过):
+- ets/common/strings.ets: 中英两套文案表(39 键)，缺键回退为键名(让缺失在界面可见)
+- Index.ets: lang 状态 + ui/lang 切换按钮；顶栏与主机区改为取词
+- spec: 默认英文 -> 切中文 -> 切回英文；并反向断言键名(top.newHost/host.empty)不出现
+
+AI 通路(用例 ai.request, 双画像通过):
+- 夹具新增 ai_fixture.go: POST /v1/ai {"prompt"} -> {"answer":"stub: N chars"}，GET /v1/health，缺 prompt 返回 400
+- 参数 -ai-addr(默认 127.0.0.1:2297)
+- Index.ets: ai/ask 按钮截取终端尾部 200 字符 -> HTTP POST(5s 超时) -> ai/answer 显示；覆盖 200/非 200/异常三分支
+- spec: 断言 ai: stub: N chars(N>0)，反向断言 request failed / http 错误码 / empty context 不出现
+
+诚实边界: 证明的是通路(请求构造/超时/错误分支/渲染)，不是模型质量。
+若发空 body 端点返回 400 -> 界面出现 ai: http 400 -> 用例失败，所以断言有效。
+
+能力号纠正: i18n 应为 H08(3 语言)，AI 为 F01(Ask)；此前误写成 F01/G01。
+E1 能力 14 -> 16。双画像: ui.i18n 与 ai.request 在 2in1 与 tablet 均 passed

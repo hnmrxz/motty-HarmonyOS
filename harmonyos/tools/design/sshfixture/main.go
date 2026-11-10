@@ -49,9 +49,18 @@ func main() {
 	vncAuth := flag.String("vnc-auth", "", "VNC Auth password (empty = security type None)")
 	vncResize := flag.Bool("vnc-resize", false, "after 3rd update request send DesktopSize and switch to 80x60")
 	printKey := flag.Bool("print-client-key", true, "print the generated client key path/passphrase")
+	aiAddr := flag.String("ai-addr", "127.0.0.1:2297", "local AI stub endpoint (empty = disabled)")
 	flag.Parse()
 	setVncResizeOnRequest(*vncResize)
 
+	if *aiAddr != "" {
+		aiLn, aiErr := startAIFixture(*aiAddr)
+		if aiErr != nil {
+			log.Printf("sshfixture: ai fixture disabled: %v", aiErr)
+		} else {
+			defer aiLn.Close()
+		}
+	}
 	if err := run(*addr, *hostkeyPath, *hostkeyType, *user, *pass, *vncAddr, *vncAuth, *printKey); err != nil {
 		log.Fatalf("sshfixture: %v", err)
 	}

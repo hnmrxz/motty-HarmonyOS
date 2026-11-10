@@ -16,7 +16,8 @@
 import { common } from '@kit.AbilityKit';
 import { relationalStore } from '@kit.ArkData';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { socket } from '@kit.NetworkKit';
+import { http, socket } from '@kit.NetworkKit';
+import { Strings } from '../common/strings';
 import { BusinessError, pasteboard } from '@kit.BasicServicesKit';
 import { asset } from '@kit.AssetStoreKit';
 import { util } from '@kit.ArkTS';
@@ -156,6 +157,9 @@ struct Index {
   @State vtHistory: string = '';
   @State ptyStatus: string = '';
   @State vtScroll: number = 0;
+  @State lang: string = 'en';
+  @State aiAnswer: string = '';
+  @State aiEndpoint: string = 'http://127.0.0.1:2297/v1/ai';
   @State selText: string = '';
   @State clipText: string = '';
   private touchLastY: number = -1;
@@ -653,6 +657,42 @@ struct Index {
     }
     mottynapi.sendKey(tab.shellId, name);
     this.ptyStatus = 'sent ' + name;
+  }
+
+  // ---------------- AI 通路（最小切片） ----------------
+  // 真实产品接外部模型；这里把"请求构造 / 超时 / 错误处理 / 结果呈现"验证到可断言，
+  // 模型质量本身不在验证范围内（见 spec 的 evidence.limits）。
+  private async askAI(): Promise<void> {
+    const tab = this.activeTab();
+    const tail = tab === null ? this.termText.slice(-200)
+                              : this.termText.slice(Math.max(0, this.termText.length - 200));
+    if (tail.trim().length === 0) {
+      this.aiAnswer = 'ai: (empty context)';
+      return;
+    }
+    this.aiAnswer = 'ai: asking...';
+    try {
+      const client = http.createHttp();
+      const resp = await client.request(this.aiEndpoint, {
+        method: http.RequestMethod.POST,
+        header: { 'Content-Type': 'application/json' } as Record<string, string>,
+        extraData: JSON.stringify({ prompt: tail }),
+        connectTimeout: 5000,
+        readTimeout: 5000
+      });
+      const code: number = resp.responseCode as number;
+      const body: string = typeof resp.result === 'string' ? resp.result : JSON.stringify(resp.result);
+      if (code === 200) {
+        const obj: Record<string, string> = JSON.parse(body) as Record<string, string>;
+        this.aiAnswer = 'ai: ' + (obj.answer === undefined ? '(no answer field)' : obj.answer);
+      } else {
+        this.aiAnswer = 'ai: http ' + code;
+      }
+      client.destroy();
+    } catch (e) {
+      this.aiAnswer = 'ai: request failed';
+      hilog.error(DOMAIN, TAG, 'ai request failed: %{public}s', JSON.stringify(e));
+    }
   }
 
   private sendCtrlC(): void {
@@ -1221,6 +1261,14 @@ struct Index {
       }
     }
     return n;
+  }
+
+  private t(key: string): string {
+    return Strings.get(this.lang, key);
+  }
+
+  private toggleLang(): void {
+    this.lang = this.lang === 'zh' ? 'en' : 'zh';
   }
 
   private probeNet(): void {
@@ -1879,6 +1927,8 @@ struct Index {
           .onClick(() => { this.selectAllVisible(); })
         Button('Copy').id('terminal/copy').backgroundColor('#1A6DD0').fontColor(Color.White)
           .onClick(() => { this.copySelection().catch((e: BusinessError) => { this.ptyStatus = 'copy error'; }); })
+        Button('AI').id('ai/ask').backgroundColor('#6A1B9A').fontColor(Color.White)
+          .onClick(() => { this.askAI().catch((e: BusinessError) => { this.aiAnswer = 'ai: error'; }); })
         Button('^C').id('terminal/ctrl-c').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.sendCtrlC(); })
         Button('\u2191').id('terminal/up').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
@@ -1892,6 +1942,8 @@ struct Index {
       }.width('100%')
       Text(this.ptyStatus.length > 0 ? this.ptyStatus : 'pty: (idle)')
         .id('terminal/pty-status').fontSize(11).fontColor('#0A6C00').width('100%')
+      Text(this.aiAnswer.length > 0 ? this.aiAnswer : 'ai: (idle)')
+        .id('ai/answer').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')
       Text('selected: ' + (this.selText.length > 0 ? this.selText.length + ' chars' : '(none)'))
         .id('terminal/sel').fontSize(11).fontColor('#999999').width('100%')
       Text('clipboard: ' + (this.clipText.length > 0 ? this.clipText.length + ' chars' : '(empty)'))
@@ -1915,7 +1967,7 @@ struct Index {
   @Builder
   hostListView() {
     Column() {
-      Text('Hosts').fontSize(13).fontColor('#666666').width('100%')
+      Text(this.t('host.title')).id('host/title-text').fontSize(13).fontColor('#666666').width('100%')
         .padding({ left: 16, top: 10, bottom: 4 })
       TextInput({ text: this.hostQuery, placeholder: 'search label or address' })
         .id('hosts/search')
@@ -1935,15 +1987,15 @@ struct Index {
                     Text(':' + h.port).fontSize(12).fontColor('#999999')
                   }.width('100%')
                 }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-                Button('Test').id('host-row/' + index).backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+                Button(this.t('host.test')).id('host-row/' + index).backgroundColor('#E6E6E6').fontColor('#1A1A1A')
                   .onClick(() => { this.connectRow(index); })
-                Button('Edit').id('host-edit/' + index).backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+                Button(this.t('host.edit')).id('host-edit/' + index).backgroundColor('#E6E6E6').fontColor('#1A1A1A')
                   .onClick(() => { this.openEditHost(index); })
-                Button('Del').id('host-del/' + index).backgroundColor('#C62828').fontColor(Color.White)
+                Button(this.t('host.del')).id('host-del/' + index).backgroundColor('#C62828').fontColor(Color.White)
                   .onClick(() => { this.askDeleteHost(index); })
-                Button('Files').id('host-files/' + index).backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+                Button(this.t('host.files')).id('host-files/' + index).backgroundColor('#E6E6E6').fontColor('#1A1A1A')
                   .onClick(() => { this.openFiles(index); })
-                Button('Open').id('host-open/' + index).backgroundColor('#1A6DD0').fontColor(Color.White)
+                Button(this.t('host.open')).id('host-open/' + index).backgroundColor('#1A6DD0').fontColor(Color.White)
                   .onClick(() => { this.openSession(h.label, index); })
               }.width('100%')
               if (this.statuses.length > index && this.statuses[index].length > 0) {
@@ -1957,10 +2009,10 @@ struct Index {
       .id('host-grid/list').layoutWeight(1).width('100%').padding({ left: 16, right: 16, bottom: 16 })
 
       if (this.hosts.length === 0) {
-        Text('No hosts yet').id('host-grid/empty').fontSize(13).fontColor('#999999')
+        Text(this.t('host.empty')).id('host-grid/empty').fontSize(13).fontColor('#999999')
           .width('100%').textAlign(TextAlign.Center).padding({ bottom: 24 })
       } else if (this.matchCount() === 0) {
-        Text('no matching hosts').id('hosts/no-match').fontSize(13).fontColor('#999999')
+        Text(this.t('host.noMatch')).id('hosts/no-match').fontSize(13).fontColor('#999999')
           .width('100%').textAlign(TextAlign.Center).padding({ bottom: 24 })
       }
     }
@@ -1977,13 +2029,15 @@ struct Index {
             Button('Hosts').id('nav/hosts').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
               .onClick(() => { this.showHosts = true; })
           }
-          Button('Known').id('known/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          Button(this.t('top.known')).id('known/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
             .onClick(() => { this.openKnownHosts(); })
-          Button('Forward').id('fwd/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          Button(this.t('top.forward')).id('fwd/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
             .onClick(() => { this.fwdOpen = true; this.reloadRules(); })
-          Button('Diagnostics').id('diag/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          Button(this.t('top.diag')).id('diag/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
             .onClick(() => { this.diagOpen = true; })
-          Button('New Host').id('shell/add-host')
+          Button(this.t('top.lang')).id('ui/lang').backgroundColor('#455A64').fontColor(Color.White)
+            .onClick(() => { this.toggleLang(); })
+          Button(this.t('top.newHost')).id('shell/add-host')
             .onClick(() => { this.resetForm(); this.showDialog = true; })
         }
         .width('100%').padding({ left: 16, right: 16, top: 12, bottom: 12 }).backgroundColor('#F5F5F5')

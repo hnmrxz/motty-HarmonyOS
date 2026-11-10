@@ -1,0 +1,88 @@
+schema: 1
+id: ai.request
+title: AI 通路最小切片：把会话尾部发给端点并显示回答（本地 stub 验证）
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - F01
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: ai-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  # 造一段终端输出作为"上下文"
+  - action: click
+    target: id:diag/open
+  - action: click
+    target: id:terminal/vt
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+    expect:
+      kind: screenRegex
+      regex: "vt-line-10"
+      withinMs: 15000
+  # 触发 AI 请求（端点由 hdc rport 2297 转发到宿主 stub）
+  - action: click
+    target: id:ai/ask
+  - action: wait
+    ms: 2500
+asserts:
+  - kind: screenRegex
+    regex: "ai: stub: [1-9][0-9]* chars"
+    withinMs: 15000
+  - kind: absent
+    value: "ai: request failed"
+    withinMs: 3000
+  - kind: absent
+    value: "ai: http "
+    withinMs: 2000
+  - kind: absent
+    value: "ai: (empty context)"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：会话上下文截取、HTTP POST 请求构造、超时设置、
+    2xx/非 2xx 分支、结果渲染（`ai: stub: N chars` 中的 N 来自请求体字符数，可反证"发出去的是终端内容"）。
+    **不覆盖**：真实模型服务的语义质量、令牌鉴权、流式响应、多轮对话、提示词模板、成本与限流；
+    未在 arm64 真机执行。
+deviations:
+  - 端点由本地 Go 夹具提供（sshfixture 的 -ai-addr），不是真实模型服务
+  - 请求体字符数断言：N>0 且能对应到发送的上下文长度，说明请求体不是空的
+notes: >-
+  这条用例证明的是"通路可用"，不是"AI 好用"。stub 回答里的字符数是一个可判定的信号：
+  如果客户端发的是空 body，端点会返回 400，界面上就会出现 `ai: http 400`，用例失败。
