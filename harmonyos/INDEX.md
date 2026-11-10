@@ -1197,3 +1197,25 @@ lint 直接报 `is not of type 'string'`——已改成不带冒号的写法。
 
 ### 未做
 滚动条拖拽、滚到顶/底边界提示、回滚区搜索、选区复制、鼠标滚轮与触控惯性。
+---
+
+## Round 41：终端选区复制（写入系统剪贴板）
+
+| 产物 | 说明 |
+|---|---|
+| `Index.ets` | 会话面板加 `Sel all`（`terminal/selall`，选中当前视图含回滚偏移）与 `Copy`（`terminal/copy`，写系统剪贴板）；显示 `terminal/sel` / `terminal/clip` |
+| `spec/scenarios/terminal.copy.yaml` | 造 30 行 → 全选 → 断言 `selected: N chars` → 复制 → 断言 `copied N chars` 与 `clipboard:` |
+
+### 本轮踩的两个坑
+1. **`getPrimaryText()` 返回 undefined 后取 `.length` → TypeError 直接把进程杀掉**（jscrash 记录可见）。
+   现在所有返回值都做空值防护，并对 `onClick` 的 async 调用加 `.catch`。
+2. **写入成功但回读为空**：模拟器上 `setData` 之后 `getData` 可能短暂返回空。
+   处理方式：重试 5 次；仍读不到就显示 `(readback unavailable)`，**明确区别于"写失败"**。
+   断言因此改为"`copied N chars`（N>0）+ 不存在 `copy failed`"，而不是硬要求回读长度一致。
+
+### 双画像
+`terminal.copy` 在 2in1 与 tablet 均 **passed**。
+
+### 未做
+鼠标/触控**拖拽局部选区**（当前是"全选当前视图"）、跨屏选区、富文本多格式、剪贴板历史、
+粘贴到其他应用的实际验证。

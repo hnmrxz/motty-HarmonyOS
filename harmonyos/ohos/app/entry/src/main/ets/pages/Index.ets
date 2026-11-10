@@ -17,7 +17,7 @@ import { common } from '@kit.AbilityKit';
 import { relationalStore } from '@kit.ArkData';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { socket } from '@kit.NetworkKit';
-import { BusinessError } from '@kit.BasicServicesKit';
+import { BusinessError, pasteboard } from '@kit.BasicServicesKit';
 import { asset } from '@kit.AssetStoreKit';
 import { util } from '@kit.ArkTS';
 import mottynapi from 'libmottynapi.so';
@@ -156,6 +156,8 @@ struct Index {
   @State vtHistory: string = '';
   @State ptyStatus: string = '';
   @State vtScroll: number = 0;
+  @State selText: string = '';
+  @State clipText: string = '';
   @State filesOpen: boolean = false;
   @State sftpPath: string = '.';
   @State sftpFile: string = 'hello.txt';
@@ -563,6 +565,43 @@ struct Index {
     this.vtScroll = next < 0 ? 0 : next;
     this.termText = mottynapi.vtView(tab.vtId, this.vtScroll);
     this.ptyStatus = 'scroll=' + this.vtScroll;
+  }
+
+  // ---------------- 选区与复制 ----------------
+  // 选中"当前视图"（含回滚区偏移），点 Copy 写入系统剪贴板并回读自证。
+  private selectAllVisible(): void {
+    this.selText = this.termText;
+    this.ptyStatus = 'selected ' + this.selText.length + ' chars';
+  }
+
+  private async copySelection(): Promise<void> {
+    const text = this.selText;
+    if (text.length === 0) {
+      this.ptyStatus = 'copy: nothing selected';
+      return;
+    }
+    try {
+      const board = pasteboard.getSystemPasteboard();
+      await board.setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text));
+      // 回读只是加分项：模拟器上 setData 成功后 getData 可能短暂返回空，
+      // 所以重试几次；仍读不到就如实显示"读不到"，但明确区分于"写失败"。
+      let back = '';
+      for (let i = 0; i < 5; i++) {
+        const data = await board.getData();
+        const t: string = (data === undefined || data === null) ? '' : data.getPrimaryText();
+        back = (t === undefined || t === null) ? '' : t;
+        if (back.length > 0) {
+          break;
+        }
+        await new Promise<void>((resolve) => setTimeout(resolve, 150));
+      }
+      this.clipText = back.length > 0 ? back : '(readback empty)';
+      this.ptyStatus = 'copied ' + text.length + ' chars' +
+        (back.length > 0 ? ' (readback ok)' : ' (readback unavailable)');
+    } catch (e) {
+      this.clipText = '';
+      this.ptyStatus = 'copy failed: ' + JSON.stringify(e);
+    }
   }
 
   private sendTermInput(): void {
@@ -1658,9 +1697,17 @@ struct Index {
           .onClick(() => { this.scrollView(5); })
         Button('\u25bc').id('terminal/scroll-down').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.scrollView(-5); })
+        Button('Sel all').id('terminal/selall').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.selectAllVisible(); })
+        Button('Copy').id('terminal/copy').backgroundColor('#1A6DD0').fontColor(Color.White)
+          .onClick(() => { this.copySelection().catch((e: BusinessError) => { this.ptyStatus = 'copy error'; }); })
       }.width('100%')
       Text(this.ptyStatus.length > 0 ? this.ptyStatus : 'pty: (idle)')
         .id('terminal/pty-status').fontSize(11).fontColor('#0A6C00').width('100%')
+      Text('selected: ' + (this.selText.length > 0 ? this.selText.length + ' chars' : '(none)'))
+        .id('terminal/sel').fontSize(11).fontColor('#999999').width('100%')
+      Text('clipboard: ' + (this.clipText.length > 0 ? this.clipText.length + ' chars' : '(empty)'))
+        .id('terminal/clip').fontSize(11).fontColor('#0A6C00').width('100%')
       Text('history tail: ' + (this.vtHistory.length > 0 ? this.vtHistory.replace(/\n/g, ' | ') : '(empty)'))
         .id('terminal/history').fontSize(11).fontColor('#999999').width('100%')
       Text(this.vtStatus.length > 0 ? this.vtStatus : 'vt: (idle)')

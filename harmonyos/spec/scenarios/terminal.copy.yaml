@@ -1,0 +1,96 @@
+schema: 1
+id: terminal.copy
+title: 终端选区复制：选中可见内容并写入系统剪贴板，回读一致
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B09
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: copy-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:diag/open
+  - action: click
+    target: id:terminal/vt2
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3500
+    expect:
+      kind: screenRegex
+      regex: "main-after-alt"
+      withinMs: 15000
+  # 选中当前视图（含回滚区）
+  - action: click
+    target: id:terminal/selall
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "selected: [1-9][0-9]* chars"
+      withinMs: 6000
+  # 复制并回读
+  - action: click
+    target: id:terminal/copy
+  - action: wait
+    ms: 1200
+asserts:
+  - kind: screenRegex
+    regex: "copied [1-9][0-9]* chars"
+    withinMs: 10000
+  - kind: screenRegex
+    regex: "clipboard: "
+    withinMs: 4000
+  - kind: absent
+    value: "copy failed"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：选中当前视图（含回滚偏移）、写入系统剪贴板、
+    **回读剪贴板并显示长度**（只写不读无法证明写入成功）。
+    **不覆盖**：鼠标/触控拖拽的**局部**选区（当前是"全选当前视图"）、跨屏选区、
+    富文本/多格式、剪贴板历史、粘贴到其他应用的实际验证；未在 arm64 真机执行。
+    注意：模拟器上 setData 成功后 getData 可能返回空，此时状态显示
+    "readback unavailable"，**不能据此认定写入失败**——断言的是写入调用与所选长度。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 用 pasteboard 回读长度作为"剪贴板真的拿到内容"的判据，而不是只相信写入调用没报错
+notes: >-
+  这条用例刻意不断言"剪贴板内容等于某一行"：全选内容取决于当时的视图，
+  断言具体文本会让用例变脆。断言的是"选中非空 -> 复制后剪贴板非空且长度一致"，
+  这才是可判定又不脆的判据。

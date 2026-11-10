@@ -642,6 +642,7 @@
         "spec/scenarios/infra.host-create-by-id.yaml",
         "spec/scenarios/session.tabs.yaml",
         "spec/scenarios/ssh.connect-from-list.yaml",
+        "spec/scenarios/terminal.copy.yaml",
         "spec/scenarios/terminal.interactive.yaml",
         "spec/scenarios/terminal.pty.yaml",
         "spec/scenarios/terminal.scrollback.yaml",
@@ -657,7 +658,7 @@
         "deps": "—",
         "acceptance": "`host_*`"
       },
-      "partialCoverage": "部分：PTY 会话、VT 解析、回滚缓冲、备用屏、上屏、指针与键盘事件输入、回滚区上下滚动已双画像实测；选区复制、滚动条拖拽、回滚搜索、组合字符/emoji 宽度、鼠标上报未做。"
+      "partialCoverage": "部分：PTY 会话、VT 解析、回滚缓冲、备用屏、上屏、指针与键盘输入、回滚区滚动、选区复制到系统剪贴板已双画像实测；拖拽局部选区、组合字符/emoji 宽度、鼠标上报未做。"
     },
     {
       "id": "B10",
