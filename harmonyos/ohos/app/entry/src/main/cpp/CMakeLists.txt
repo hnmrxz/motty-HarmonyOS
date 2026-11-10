@@ -40,8 +40,8 @@ target_link_libraries(mottynapi PRIVATE
     ${OHOS_SSH_PREFIX}/lib/libmbedcrypto.a
     ${OHOS_SSH_PREFIX}/lib/libeverest.a
     ${OHOS_SSH_PREFIX}/lib/libp256m.a
-    ${OHOS_SSH_PREFIX}/lib/libvterm.a
-    # LibVNC client（GPL-2.0-or-later，按 v3 用于本组合分发；见 harmonyos/LICENSING.md）
-    ${OHOS_SSH_PREFIX}/lib/libvncclient.a)
+    ${OHOS_SSH_PREFIX}/lib/libvterm.a)
+    # LibVNC client 已交叉编译但**尚未接入运行时**（见 LICENSING.md / INDEX Round 28）；
+    # 接入与验证完成前不链接，避免"库在包里但没人用"的假象。
 
 target_link_libraries(mottynapi PRIVATE z)

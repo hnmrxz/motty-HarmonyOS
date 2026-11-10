@@ -846,3 +846,38 @@ None 模式 18 条 + VNC Auth 模式 2 条（`vnc.auth-hextile`、`vnc.negative`
 ### 五、操作提醒（本轮踩到）
 切换模拟器后 **`hdc rport` 需要重建**：这轮忘记给平板补 `tcp:5901`，
 导致两条 VNC 用例失败——不是产品缺陷，补上 rport 后即通过。
+---
+
+## Round 28：LibVNC 运行时替换 —— **尝试失败，已回退**
+
+### 做了什么
+按"用成熟组件"的方向，把自研 RFB 换成 LibVNC client（后端子线程 + 帧/输入/状态）。
+新增 `vnc_libvnc.cpp` / `vnc_backend.h`，并把 `vncProbe` 与 `vnc.handshake` 一起删掉（被会话取代）。
+
+### 结果：失败，且已回退
+三类失败依次出现，每一类都能定位：
+1. **收不到帧**：我把 `MallocFrameBuffer` 覆盖成返回 TRUE 的空实现，
+   把 LibVNC 默认的帧缓冲分配顶掉了 → 客户端只发 FBUpdateRequest，永远拿不到更新。
+2. **UI 线程冻结（appfreeze）**：`rfbInitClient` 是同步网络 I/O，直接在 JS 线程调用会卡死；
+   设备上留下 `appfreeze-com.motty.harmony-*.log`。
+3. **改后台线程后仍空白**：界面没有内容（dump 全是空节点），未能在本轮内定位。
+
+**处置**：回退到已验证的自研 RFB（`git checkout` 恢复 `ssh_napi.cpp`/`Index.ets`/`vnc.handshake.yaml`），
+删除 `vnc_libvnc.cpp`/`vnc_backend.h`，CMakeLists **不再链接** `libvncclient.a`，
+避免"库在包里但没人用"的假象。
+
+### 保留的成果（这些是真实有效的）
+- `native/build-libvnc.ps1` + 两个 ABI 的 `libvncclient.a`（148.5/144.7 KB）——**构建可用**
+- 许可证路线与台账（`LICENSING.md`）
+- 回退后的状态**重新验证通过**：`vnc.session`、`vnc.auth-hextile`、`vnc.negative`、`vnc.handshake`
+  在 2in1 上分别用 None/auth 模式跑通
+
+### 这轮的教训（写进 RUNBOOK）
+- **不要覆盖你不理解的 LibVNC 回调**：`MallocFrameBuffer` 覆盖即等于接管缓冲分配。
+- **第三方同步 API 一律不能放在 JS 线程**：本工程从第 12 轮就立了这条规矩，这次仍然踩了。
+- **替换核心组件的回合要单独留时间**：本轮把"接入 + 全量回归 + 文档"压在一轮里，
+  失败后只能回退而不可能既回退又完成验证。
+
+### 下一步
+LibVNC 接入需要**单独一轮**，并且先用设备日志确认帧缓冲与回调时序；在那之前，
+VNC 能力继续由自研 RFB 提供（Raw + Hextile + None/VNC Auth + 上屏 + 指针 + 键盘）。
