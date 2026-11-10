@@ -579,3 +579,31 @@ abc|中文|def
 ### 未做（SFTP 只到"能看"）
 上传、重命名、删除、权限/时间戳展示、进度与断点续传、符号链接、二进制文件（当前按 UTF-8 文本读，上限 256 KiB）、
 并发传输、SCP、本地↔远端双栏。
+---
+
+## Round 20：SFTP 写与删（上传 + 删除）
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/ssh_napi.cpp` | `sftpWrite(...)`（临时文件 + `rename_ex` 原子落位）、`sftpDelete(...)`（unlink，失败回退 rmdir） |
+| `Index.ets` | 文件面板增加上传名/内容/`Upload`（`sftp/upload`）与 `Delete`（`sftp/delete`）；新增独立结果行 `sftp/result` |
+| `spec/scenarios/sftp.write.yaml` | 写 → 列 → 读回 → 删 的完整往返 |
+
+### 三个实打实的坑
+1. **写文件必须用临时文件 + 改名**：直接 truncate 目标文件时若中途失败，远端会留一个坏文件。
+2. **结果文本会被刷新覆盖**：`refreshListing` 会把 `sftpStatus` 改成 "listed …"，删除/上传结果就看不见了。
+   所以单独开一行 `sftp/result` 只由操作写、不被列目录覆盖。
+3. **裸文件名断言会假通过**：上传目标输入框里本来就有 `uploaded.txt`，用 `uploaded\.txt` 匹配屏幕必然命中。
+   改成匹配目录列表格式 `uploaded\.txt\|[0-9]+`——只有真的出现在远端目录里才成立。
+
+### 双画像验收（14 条 × 2 画像）
+`sftp.write`、`sftp.browse`、`session.tabs`、`terminal.pty`、`terminal.scrollback`、`terminal.vt`、
+`terminal.view`、`terminal.interactive`、`ssh.connect-from-list`、`infra.host-create-by-id`、
+`host.persist`、`net.reachability`、`ssh.exec`、`ssh.hostkey` —— 全部 **passed**。
+
+> 一次瞬时失败记录：2in1 刚启动时屏幕处于锁屏，`launch` 报 `error code 10106102`；
+> 同一条 spec 重跑即通过。这是环境态而非产品缺陷，已写进 RUNBOOK §22。
+
+### 未做
+上传进度/断点续传、大文件、二进制上传、目录递归上传与删除、权限/时间戳保留、并发与冲突、
+本地↔远端双栏、SCP。

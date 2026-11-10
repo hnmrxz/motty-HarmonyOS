@@ -1,0 +1,103 @@
+schema: 1
+id: sftp.write
+title: SFTP 写与删：上传后目录可见、读回内容一致、删除成功
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - C02
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: sftp-w
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:host-files/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "hello\\.txt"
+      withinMs: 15000
+  - action: click
+    target: id:sftp/upload
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "uploaded\\.txt\\|[0-9]+"
+      withinMs: 15000
+  - action: click
+    target: id:sftp/entry/uploaded.txt
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:sftp/download
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "uploaded-marker-ok"
+      withinMs: 12000
+  - action: click
+    target: id:sftp/delete
+  - action: wait
+    ms: 2000
+asserts:
+  - kind: screenRegex
+    regex: "delete: deleted uploaded\\.txt"
+    withinMs: 10000
+  - kind: absent
+    value: "error open for write"
+    withinMs: 2000
+  - kind: absent
+    value: "error delete failed"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：写文件（临时文件 + rename 落位）、写后目录可见、
+    读回内容一致（round-trip）、删除文件。
+    **不覆盖**：上传进度、断点续传、大文件（read 侧仍有 256 KiB 文本上限）、二进制上传、
+    目录递归上传/删除、权限与时间戳保留、并发与冲突处理。未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 上传内容与目标名由面板预置默认值（uploaded.txt / uploaded-marker-ok），
+    spec 不依赖"在输入框打字驱动流程"（该做法在 round 19 已被证明不可靠）
+notes: >-
+  "写 → 列 → 读回 → 删"是一条完整往返，只验证写到一半不算通过。
+  断言 upload 结果用的是目录条目 id（sftp/entry/uploaded.txt）而不是裸文件名，
+  因为上传目标输入框里本来就有同名文本，裸字符串匹配会假通过。

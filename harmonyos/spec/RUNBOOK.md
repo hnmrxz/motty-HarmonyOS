@@ -583,3 +583,27 @@ sftp(host, port, user, password, expectedFingerprint, op, path, cb)   // op = "l
 把路径输入框**绑定状态**再用注入文本去改它，是**不可靠**的：注入提交后值会被回滚
 （与设置页输入框同源的问题）。所以目录导航做成"点击条目进入"（`sftp/entry/<name>`）——
 既可测，也才是正常交互。凡是要靠"打字改变量"来驱动流程的地方，都应改成显式控件。
+---
+
+## 22. 操作坑位（每一条都真实踩过）
+
+### 22.1 模拟器刚启动时可能锁屏
+`launch` 步骤会报：
+```
+error code 10106102: The device screen is locked during the application launch
+The current mode is developer mode, and the screen cannot be unlocked automatically
+```
+这是环境态，不是产品问题。**重跑即可**；批量跑时最好在第一条 spec 前先做一次唤醒/重试。
+不要把这类瞬时失败当成"用例通过"或"产品失败"记进结论。
+
+### 22.2 上传要避免中途失败留下坏文件
+`sftpWrite` 先写 `path + ".motty-tmp"`，成功后 `libssh2_sftp_rename_ex`（带 OVERWRITE）落位。
+失败则 `unlink` 临时文件。注意 libssh2 1.11 里没有 `libssh2_sftp_rename`，要用 `_ex` 版本并传长度。
+
+### 22.3 操作结果别和"刷新状态"共用一行
+列目录会把状态行改成 "listed …"，删除/上传的结果就被覆盖了。UI 里必须有**只由操作写**的独立结果行
+（本工程是 `sftp/result`），否则 spec 无法断言、用户也看不到。
+
+### 22.4 断言别用"裸文件名"
+上传目标输入框里本来就有 `uploaded.txt`，用裸文件名匹配屏幕会**假通过**。
+要匹配目录列表的格式（`uploaded\.txt\|[0-9]+`）——只有它真的出现在远端目录里才成立。

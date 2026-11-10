@@ -801,8 +801,9 @@ struct SftpJob {
     std::string user;
     std::string password;
     std::string expectedFingerprint;
-    std::string op;    // "list" | "read"
+    std::string op;    // "list" | "read" | "write" | "delete"
     std::string path;
+    std::string content;   // 仅 write 使用
     napi_threadsafe_function cb = nullptr;
 };
 
@@ -915,6 +916,45 @@ std::string sftpRun(const SftpJob &job) {
             libssh2_sftp_close(file);
             result = content;
         }
+    } else if (job.op == "write") {
+        // 先写临时文件再重命名，避免写一半留下坏文件
+        const std::string tmp = job.path + ".motty-tmp";
+        LIBSSH2_SFTP_HANDLE *file = libssh2_sftp_open(sftp, tmp.c_str(),
+            LIBSSH2_FXF_WRITE | LIBSSH2_FXF_CREAT | LIBSSH2_FXF_TRUNC, 0644);
+        if (file == nullptr) {
+            result = "error open for write failed";
+        } else {
+            size_t sent = 0;
+            bool failed = false;
+            while (sent < job.content.size()) {
+                ssize_t n = libssh2_sftp_write(file, job.content.data() + sent, job.content.size() - sent);
+                if (n < 0) {
+                    failed = true;
+                    break;
+                }
+                sent += static_cast<size_t>(n);
+            }
+            libssh2_sftp_close(file);
+            if (failed) {
+                libssh2_sftp_unlink(sftp, tmp.c_str());
+                result = "error write failed";
+            } else if (libssh2_sftp_rename_ex(sftp, tmp.c_str(), static_cast<unsigned int>(tmp.size()),
+                                              job.path.c_str(), static_cast<unsigned int>(job.path.size()),
+                                              LIBSSH2_SFTP_RENAME_OVERWRITE) != 0) {
+                libssh2_sftp_unlink(sftp, tmp.c_str());
+                result = "error rename failed";
+            } else {
+                result = "wrote " + std::to_string(static_cast<long long>(sent)) + " bytes to " + job.path;
+            }
+        }
+    } else if (job.op == "delete") {
+        if (libssh2_sftp_unlink(sftp, job.path.c_str()) == 0) {
+            result = "deleted " + job.path;
+        } else if (libssh2_sftp_rmdir(sftp, job.path.c_str()) == 0) {
+            result = "removed dir " + job.path;
+        } else {
+            result = "error delete failed";
+        }
     } else {
         result = "error unknown op";
     }
@@ -929,6 +969,83 @@ void sftpWorker(SftpJob *job) {
     napi_call_threadsafe_function(job->cb, payload, napi_tsfn_blocking);
     napi_release_threadsafe_function(job->cb, napi_tsfn_release);
     delete job;
+}
+
+// sftpWrite(host, port, user, password, expectedFingerprint, path, content, cb)
+napi_value SftpWrite(napi_env env, napi_callback_info info) {
+    size_t argc = 8;
+    napi_value args[8] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 8) {
+        napi_throw_type_error(env, nullptr, "sftpWrite(host, port, user, password, expectedFp, path, content, cb)");
+        return nullptr;
+    }
+    auto *job = new SftpJob();
+    auto readStr = [&](size_t i, std::string &dst) {
+        size_t len = 0;
+        napi_get_value_string_utf8(env, args[i], static_cast<char *>(nullptr), 0, &len);
+        if (len == 0) { dst.clear(); return; }
+        dst.resize(len);
+        napi_get_value_string_utf8(env, args[i], &dst[0], len + 1, &len);
+    };
+    readStr(0, job->host);
+    int32_t port = 22;
+    napi_get_value_int32(env, args[1], &port);
+    job->port = port;
+    readStr(2, job->user);
+    readStr(3, job->password);
+    readStr(4, job->expectedFingerprint);
+    job->op = "write";
+    readStr(5, job->path);
+    readStr(6, job->content);
+    napi_value n1 = nullptr;
+    napi_create_string_utf8(env, "motty.sftp.write", NAPI_AUTO_LENGTH, &n1);
+    if (napi_create_threadsafe_function(env, args[7], nullptr, n1, 0, 1, nullptr, nullptr, nullptr,
+                                        callJs, &job->cb) != napi_ok) {
+        delete job;
+        napi_throw_error(env, nullptr, "tsfn failed");
+        return nullptr;
+    }
+    std::thread(sftpWorker, job).detach();
+    return nullptr;
+}
+
+// sftpDelete(host, port, user, password, expectedFingerprint, path, cb)
+napi_value SftpDelete(napi_env env, napi_callback_info info) {
+    size_t argc = 7;
+    napi_value args[7] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 7) {
+        napi_throw_type_error(env, nullptr, "sftpDelete(host, port, user, password, expectedFp, path, cb)");
+        return nullptr;
+    }
+    auto *job = new SftpJob();
+    auto readStr = [&](size_t i, std::string &dst) {
+        size_t len = 0;
+        napi_get_value_string_utf8(env, args[i], static_cast<char *>(nullptr), 0, &len);
+        if (len == 0) { dst.clear(); return; }
+        dst.resize(len);
+        napi_get_value_string_utf8(env, args[i], &dst[0], len + 1, &len);
+    };
+    readStr(0, job->host);
+    int32_t port = 22;
+    napi_get_value_int32(env, args[1], &port);
+    job->port = port;
+    readStr(2, job->user);
+    readStr(3, job->password);
+    readStr(4, job->expectedFingerprint);
+    job->op = "delete";
+    readStr(5, job->path);
+    napi_value n1 = nullptr;
+    napi_create_string_utf8(env, "motty.sftp.delete", NAPI_AUTO_LENGTH, &n1);
+    if (napi_create_threadsafe_function(env, args[6], nullptr, n1, 0, 1, nullptr, nullptr, nullptr,
+                                        callJs, &job->cb) != napi_ok) {
+        delete job;
+        napi_throw_error(env, nullptr, "tsfn failed");
+        return nullptr;
+    }
+    std::thread(sftpWorker, job).detach();
+    return nullptr;
 }
 
 // sftp(host, port, user, password, expectedFingerprint, op, path, cb)
@@ -997,6 +1114,8 @@ napi_value Init(napi_env env, napi_value exports) {
         {"openChannel", nullptr, OpenChannel, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"resizeShell", nullptr, ResizeShell, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"sftp", nullptr, Sftp, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"sftpWrite", nullptr, SftpWrite, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"sftpDelete", nullptr, SftpDelete, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     RegisterVtFunctions(env, exports);

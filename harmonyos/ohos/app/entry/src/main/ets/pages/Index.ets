@@ -92,6 +92,9 @@ struct Index {
   @State sftpEntries: string[] = [];
   @State sftpPreview: string = '';
   @State sftpStatus: string = '';
+  @State sftpUploadName: string = 'uploaded.txt';
+  @State sftpUploadText: string = 'uploaded-marker-ok\n';
+  @State sftpResult: string = '';
 
   private creds: Map<string, Cred> = new Map<string, Cred>();
   private store: relationalStore.RdbStore | null = null;
@@ -520,6 +523,28 @@ struct Index {
       });
   }
 
+  private uploadFile(cred: Cred, fp: string): void {
+    this.sftpStatus = 'uploading ' + this.sftpUploadName;
+    mottynapi.sftpWrite(cred.address, cred.port, cred.user, cred.password, fp,
+      this.sftpUploadName, this.sftpUploadText,
+      (result: string) => {
+        this.sftpResult = 'upload: ' + result;
+        this.sftpStatus = 'upload done';
+        this.refreshListing(cred, fp);
+      });
+  }
+
+  private deleteFile(cred: Cred, fp: string): void {
+    this.sftpStatus = 'deleting ' + this.sftpFile;
+    mottynapi.sftpDelete(cred.address, cred.port, cred.user, cred.password, fp, this.sftpFile,
+      (result: string) => {
+        this.sftpResult = 'delete: ' + result;
+        this.sftpStatus = 'delete done';
+        this.sftpPreview = '';
+        this.refreshListing(cred, fp);
+      });
+  }
+
   private probeNet(): void {
     this.probeText = 'connecting...';
     const tcp = socket.constructTCPSocketInstance();
@@ -717,6 +742,8 @@ struct Index {
       }.width('100%')
       Text(this.sftpStatus.length > 0 ? this.sftpStatus : 'sftp: (idle)')
         .id('sftp/status').fontSize(11).fontColor('#0A6C00').width('100%')
+      Text(this.sftpResult.length > 0 ? this.sftpResult : 'sftp: no operation yet')
+        .id('sftp/result').fontSize(11).fontColor('#6A1B9A').width('100%')
       Row({ space: 8 }) {
         TextInput({ text: this.sftpPath, placeholder: '.' }).id('sftp/path')
           .layoutWeight(1).onChange((v: string) => { this.sftpPath = v; })
@@ -729,8 +756,6 @@ struct Index {
       }.width('100%')
       Scroll() {
         Column({ space: 2 }) {
-          Text(this.sftpList.length > 0 ? this.sftpList : '(empty)')
-            .id('sftp/list').fontSize(11).fontFamily('monospace').fontColor('#888888').width('100%')
           ForEach(this.sftpEntries, (entry: string) => {
             Row() {
               Button(entry.indexOf('|') > 0 ? entry.substring(0, entry.indexOf('|')) : entry)
@@ -758,8 +783,10 @@ struct Index {
                 })
             }.width('100%')
           }, (entry: string) => entry)
+          Text(this.sftpList.length > 0 ? this.sftpList : '(empty)')
+            .id('sftp/list').fontSize(10).fontFamily('monospace').fontColor('#999999').width('100%')
         }.width('100%').alignItems(HorizontalAlign.Start)
-      }.height(140).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)
+      }.height(220).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)
         .align(Alignment.TopStart)
       Row({ space: 8 }) {
         TextInput({ text: this.sftpFile, placeholder: 'hello.txt' }).id('sftp/file')
@@ -770,7 +797,28 @@ struct Index {
             this.lookupFp(this.fixtureKey).then((fp: string) => { this.downloadFile(cred, fp); });
           }
         })
+        Button('Delete').id('sftp/delete').backgroundColor('#C62828').fontColor(Color.White)
+          .onClick(() => {
+            const cred = this.creds.get(this.fixtureKey);
+            if (cred !== undefined) {
+              this.lookupFp(this.fixtureKey).then((fp: string) => { this.deleteFile(cred, fp); });
+            }
+          })
       }.width('100%')
+
+      Row({ space: 8 }) {
+        TextInput({ text: this.sftpUploadName, placeholder: 'uploaded.txt' }).id('sftp/upload-name')
+          .layoutWeight(1).onChange((v: string) => { this.sftpUploadName = v; })
+        Button('Upload').id('sftp/upload').onClick(() => {
+          const cred = this.creds.get(this.fixtureKey);
+          if (cred !== undefined) {
+            this.lookupFp(this.fixtureKey).then((fp: string) => { this.uploadFile(cred, fp); });
+          }
+        })
+      }.width('100%')
+      TextArea({ text: this.sftpUploadText, placeholder: 'content to upload' })
+        .id('sftp/upload-text').height(70).width('100%')
+        .onChange((v: string) => { this.sftpUploadText = v; })
       Scroll() {
         Text(this.sftpPreview.length > 0 ? this.sftpPreview : '(not downloaded)')
           .id('sftp/preview').fontSize(12).fontFamily('monospace').width('100%')
