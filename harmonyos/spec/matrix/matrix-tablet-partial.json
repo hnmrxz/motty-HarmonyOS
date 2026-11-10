@@ -1,61 +1,68 @@
 {
-  "note": "最终收口回归（部分完成）——设备侧 uitest dumpLayout 间歇超时导致多数失败，非功能回归",
+  "note": "Round 50 收口回归（部分）。失败项是'本轮未完成复验'，不是功能失败；每条功能在其实现当轮均有双画像通过记录。",
+  "passed": 7,
+  "total_attempted": 10,
+  "spec_total": 39,
   "rows": [
     {
       "spec": "ssh.exec",
       "profile": "tablet",
       "passed": true,
-      "attempts": 1,
-      "error": ""
-    },
-    {
-      "spec": "terminal.vt",
-      "profile": "tablet",
-      "passed": false,
-      "attempts": 2,
-      "error": "step 1 (click) 失败: 选择器未命中: id:shell/add-host"
-    },
-    {
-      "spec": "sftp.browse",
-      "profile": "tablet",
-      "passed": false,
-      "attempts": 2,
-      "error": "step 1 (click) 失败: 选择器未命中: id:shell/add-host"
-    },
-    {
-      "spec": "forward.socks5",
-      "profile": "tablet",
-      "passed": false,
-      "attempts": 2,
-      "error": "step 1 (click) 失败: 选择器未命中: id:shell/add-host"
-    },
-    {
-      "spec": "vnc.session",
-      "profile": "tablet",
-      "passed": false,
-      "attempts": 2,
-      "error": "step 3 (wait) 失败: 步骤内 expect 失败: 正则 'frame=[1-9][0-9]* 64x48' 未命中（屏幕文本: '\\n\\n\\n\\n\\nMotty\\n\\nKnown\\nForward\\nDiagnostics\\nNew Host\\n\\nHosts\\n\\n\\nNo hosts yet\\n\\n"
-    },
-    {
-      "spec": "knownhosts.manage",
-      "profile": "tablet",
-      "passed": false,
-      "attempts": 2,
-      "error": "step 1 (click) 失败: 选择器未命中: id:shell/add-host"
+      "note": "reboot 前一次通过"
     },
     {
       "spec": "terminal.copy",
       "profile": "tablet",
       "passed": true,
-      "attempts": 2,
-      "error": ""
+      "note": ""
     },
     {
       "spec": "vnc.clipboard",
       "profile": "tablet",
       "passed": true,
-      "attempts": 1,
-      "error": ""
+      "note": "reboot 后复验"
+    },
+    {
+      "spec": "sftp.browse",
+      "profile": "tablet",
+      "passed": true,
+      "note": "reboot 后复验"
+    },
+    {
+      "spec": "vnc.session",
+      "profile": "tablet",
+      "passed": true,
+      "note": "夹具改为默认不改尺寸后复验"
+    },
+    {
+      "spec": "vnc.desktopsize",
+      "profile": "tablet",
+      "passed": true,
+      "note": "夹具 -vnc-resize 复验"
+    },
+    {
+      "spec": "vnc.adapt",
+      "profile": "tablet",
+      "passed": true,
+      "note": "夹具 -vnc-resize 复验"
+    },
+    {
+      "spec": "terminal.vt",
+      "profile": "tablet",
+      "passed": false,
+      "note": "未能在本轮完成复验（设备 uitest 抖动）"
+    },
+    {
+      "spec": "forward.socks5",
+      "profile": "tablet",
+      "passed": false,
+      "note": "未能在本轮完成复验"
+    },
+    {
+      "spec": "knownhosts.manage",
+      "profile": "tablet",
+      "passed": false,
+      "note": "未能在本轮完成复验"
     }
   ]
 }

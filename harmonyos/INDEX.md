@@ -1430,3 +1430,19 @@ ExtendedDesktopSize、Tight/ZRLE/Cursor 编码、双指缩放。
 ### 四、目标状态
 **未完成**。剩余缺口（RDP 完整链路、AI 能力、i18n、上架材料、arm64 真机、SBOM/渗透测试）见
 [COMPLETION-REPORT.md](./COMPLETION-REPORT.md)。
+---
+
+## Round 50 补记：夹具 DesktopSize 改为按需开启（修一个跨用例干扰）
+
+Round 48 为了让 `vnc.desktopsize` 能验证尺寸变化，让夹具"第 3 次请求后自动切到 80x60"——
+结果**干扰了 `vnc.session`**：它断言初值 `64x48`，但尺寸已被改成 80x60。
+
+修法：夹具新增 `-vnc-resize`（默认关闭），只有这两条用例带该参数：
+`vnc.desktopsize`、`vnc.adapt`。`tools/sweep.ps1` 已加对应映射。
+
+复验（平板，复位后）：
+- `vnc.session`、`vnc.clipboard`（默认夹具）**PASS**
+- `vnc.desktopsize`、`vnc.adapt`（`-vnc-resize`）**PASS**
+- `sftp.browse` **PASS**
+
+这条也说明：**共享夹具的行为变更必须按需开关**，否则会让无关用例悄悄失败。

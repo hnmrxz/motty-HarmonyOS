@@ -69,6 +69,7 @@ evidence:
     **不覆盖**：尺寸变小时的裁剪、缩放显示（UI 固定 320x240 Canvas，未做自适应）、
     多显示器拓扑、ExtendedDesktopSize 变体；未在 arm64 真机执行。
 deviations:
+  - 夹具必须带 -vnc-resize 启动（默认不改分辨率，否则会影响 vnc.session）
   - 纯新增规格，无 upstream 对应脚本
   - 夹具固定在第 3 次 FramebufferUpdateRequest 后改尺寸，避免随机性
 notes: >-

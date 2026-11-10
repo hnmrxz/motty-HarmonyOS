@@ -31,6 +31,13 @@ var (
 
 var rfbPassword string
 
+// vncResizeOnRequest：只有显式开启时，第 3 次请求后才发 DesktopSize。
+// 默认关闭——否则会打断 vnc.session 这类期望固定 64x48 的用例。
+var vncResizeOnRequest bool
+
+// setVncResizeOnRequest 由 main 在解析参数后调用（保持 rfb_fixture.go 与 main.go 解耦）
+func setVncResizeOnRequest(on bool) { vncResizeOnRequest = on }
+
 // reverseBits 与客户端保持一致：VNC Auth 的 key 是口令每字节位反序
 func reverseBits(b byte) byte {
 	var r byte
@@ -198,7 +205,7 @@ func serveRFB(conn net.Conn) {
 			log.Printf("rfb: SetEncodings count=%d hextile=%v", count, useHextile)
 		case 3: // FramebufferUpdateRequest
 			reqCount++
-			if reqCount == 3 {
+			if vncResizeOnRequest && reqCount == 3 {
 				// DesktopSize 伪编码：通知客户端桌面尺寸变为 80x60（没有像素数据）
 				hdr := []byte{0, 0, 0, 1} // type 0 + padding + 1 rect
 				rect := []byte{0, 0, 0, 0, 0, 80, 0, 60, 0xFF, 0xFF, 0xFF, 0x21}

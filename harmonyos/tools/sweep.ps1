@@ -13,6 +13,8 @@ New-Item -ItemType Directory -Path (Join-Path $repo $OutDir) -Force | Out-Null
 
 # 需要 VNC Auth 的两条（其余走 None）
 $authSpecs = @("vnc.auth-hextile", "vnc.negative")
+# 需要夹具在运行中改分辨率的用例（DesktopSize）
+$resizeSpecs = @("vnc.desktopsize", "vnc.adapt")
 
 $specs = Get-ChildItem (Join-Path $repo "harmonyos\spec\scenarios") -Filter "*.yaml" | Sort-Object Name
 $matrix = @()
@@ -24,6 +26,7 @@ foreach ($sp in $specs) {
     Start-Sleep -Milliseconds 400
     $args = @("-addr", "127.0.0.1:2223", "-hostkey", $key, "-hostkeytype", "rsa")
     if ($mode -eq "auth") { $args += @("-vnc-auth", "secret") }
+    if ($resizeSpecs -contains $name) { $args += @("-vnc-resize") }
     Start-Process -FilePath $exe -ArgumentList $args -RedirectStandardOutput (Join-Path $repo "harmonyos\.bin\sshfixture.log") -RedirectStandardError (Join-Path $repo "harmonyos\.bin\sshfixture.err") -WindowStyle Hidden
     Start-Sleep -Milliseconds 1200
 

@@ -47,8 +47,10 @@ func main() {
 	pass := flag.String("password", "secret", "password for password auth")
 	vncAddr := flag.String("vnc", "127.0.0.1:5901", "VNC(RFB) fixture listen address")
 	vncAuth := flag.String("vnc-auth", "", "VNC Auth password (empty = security type None)")
+	vncResize := flag.Bool("vnc-resize", false, "after 3rd update request send DesktopSize and switch to 80x60")
 	printKey := flag.Bool("print-client-key", true, "print the generated client key path/passphrase")
 	flag.Parse()
+	setVncResizeOnRequest(*vncResize)
 
 	if err := run(*addr, *hostkeyPath, *hostkeyType, *user, *pass, *vncAddr, *vncAuth, *printKey); err != nil {
 		log.Fatalf("sshfixture: %v", err)
