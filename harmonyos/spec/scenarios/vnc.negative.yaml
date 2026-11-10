@@ -1,0 +1,58 @@
+schema: 1
+id: vnc.negative
+title: VNC 认证失败必须明确失败：错误口令不得出帧，改正口令后即可出帧
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - E03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:diag/open
+  - action: click
+    target: id:vnc/session-bad
+  - action: wait
+    ms: 3000
+    expect:
+      kind: screenRegex
+      regex: "authentication failed"
+      withinMs: 15000
+  - action: click
+    target: id:vnc/close
+  - action: click
+    target: id:diag/open
+  - action: click
+    target: id:vnc/session
+  - action: wait
+    ms: 3000
+asserts:
+  - kind: screenRegex
+    regex: "auth=vncauth"
+    withinMs: 15000
+  - kind: screenRegex
+    regex: "frame=[1-9][0-9]*"
+    withinMs: 8000
+  - kind: absent
+    value: "authentication failed"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：VNC Auth 口令错误时服务器回 SecurityResult=1，
+    客户端给出明确错误且**不产生任何帧**；随后用正确口令可正常出帧。
+    **不覆盖**：超过 3 次失败后的服务器锁定行为、错误口令的时长/时序差异、
+    VeNCrypt/TLS 认证、真实 VNC 服务器、arm64 真机。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 需要夹具以 `-vnc-auth secret` 启动；页面里错误口令固定为 wrong-password
+notes: >-
+  这条用例的重点是"失败要明确失败"：错误口令时界面显示 authentication failed，
+  且不出现 frame=（没有画面）。随后用正确口令连上并出帧，说明失败原因确实是口令，
+  而不是网络或对端不可用——两者必须能区分开。

@@ -35,6 +35,10 @@ steps:
     target: id:vnc/tap
   - action: wait
     ms: 2500
+  - action: click
+    target: id:vnc/key
+  - action: wait
+    ms: 2500
 asserts:
   - kind: screenRegex
     regex: "auth=vncauth"
@@ -48,6 +52,9 @@ asserts:
   - kind: screenRegex
     regex: "red=[1-9][0-9]*"
     withinMs: 6000
+  - kind: screenRegex
+    regex: "magenta=[1-9][0-9]*"
+    withinMs: 12000
   - kind: absent
     value: "error unsupported encoding"
     withinMs: 2000

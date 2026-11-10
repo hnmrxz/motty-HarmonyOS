@@ -27,7 +27,8 @@ add_library(mottynapi SHARED ssh_napi.cpp vt_core.cpp)
 target_include_directories(mottynapi PRIVATE
     ${NATIVERENDER_ROOT_PATH}
     ${NATIVERENDER_ROOT_PATH}/include
-    ${OHOS_SSH_PREFIX}/include)
+    ${OHOS_SSH_PREFIX}/include
+    ${OHOS_SSH_PREFIX}/include/vterm)
 
 target_link_libraries(mottynapi PUBLIC libace_napi.z.so)
 
@@ -38,6 +39,9 @@ target_link_libraries(mottynapi PRIVATE
     ${OHOS_SSH_PREFIX}/lib/libmbedx509.a
     ${OHOS_SSH_PREFIX}/lib/libmbedcrypto.a
     ${OHOS_SSH_PREFIX}/lib/libeverest.a
-    ${OHOS_SSH_PREFIX}/lib/libp256m.a)
+    ${OHOS_SSH_PREFIX}/lib/libp256m.a
+    ${OHOS_SSH_PREFIX}/lib/libvterm.a
+    # LibVNC client（GPL-2.0-or-later，按 v3 用于本组合分发；见 harmonyos/LICENSING.md）
+    ${OHOS_SSH_PREFIX}/lib/libvncclient.a)
 
 target_link_libraries(mottynapi PRIVATE z)

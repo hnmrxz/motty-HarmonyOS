@@ -1923,11 +1923,13 @@ void vncLoop(VncSession *sess, int id) {
             }
         }
         frameNo++;
-        long reds = 0, greens = 0, blues = 0;
+        long reds = 0, greens = 0, blues = 0, magentas = 0;
         for (size_t i = 0; i + 3 < rgba.size(); i += 4) {
             if (rgba[i] > 200 && rgba[i + 1] < 60) reds++;
             if (rgba[i + 1] > 200 && rgba[i] < 60) greens++;
             if (rgba[i + 2] > 200 && rgba[i] < 60) blues++;
+            // 键盘事件的观测面：对端收到 KeyEvent 后画洋红块
+            if (rgba[i] > 200 && rgba[i + 2] > 200 && rgba[i + 1] < 60) magentas++;
         }
         // 帧以 "WxH:<hex RGB>" 交给 ArkTS。为什么不用 ArrayBuffer：
         // 在 TSFN 回调里 napi_create_arraybuffer + napi_call_function 实测会让进程崩溃；
@@ -1947,8 +1949,9 @@ void vncLoop(VncSession *sess, int id) {
         // 不用 putImageData/ImageData：那条路会触发 SkiaImage::Serialize 崩溃（RUNBOOK §26）。
         napi_call_threadsafe_function(sess->onFrame, new std::string(frameStr), napi_tsfn_blocking);
         char status[192];
-        snprintf(status, sizeof(status), "frame=%d %dx%d red=%ld green=%ld blue=%ld auth=%s enc=%s",
-                 frameNo, w, h, reds, greens, blues,
+        snprintf(status, sizeof(status),
+                 "frame=%d %dx%d red=%ld green=%ld blue=%ld magenta=%ld auth=%s enc=%s",
+                 frameNo, w, h, reds, greens, blues, magentas,
                  sess->usedVncAuth ? "vncauth" : "none",
                  sess->usedHextile ? "hextile" : "raw");
         vncStatus(sess, std::string(status));

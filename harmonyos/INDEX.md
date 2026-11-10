@@ -813,3 +813,36 @@ abc|中文|def
 - RFB 3.3 / 3.7（只实现 3.8）
 - 错误口令的负向用例（需夹具以另一口令启动）
 - 键盘事件断言、剪贴板、缩放滚动、VeNCrypt/TLS、真实 VNC 服务器、RDP
+---
+
+## Round 27：换用成熟开源组件（libvterm 接入 + LibVNC 就位 + GPLv3 决定）
+
+### 一、许可证决定（用户确认）
+仓库原 Apache-2.0，LibVNC 是 **GPL-2.0-or-later**（官方 FAQ：链接即衍生作品）。
+Apache-2.0 与 **GPLv3** 兼容、与 GPLv2 不兼容 → 所以按 **GPL-3.0-or-later 组合分发**。
+记录在 [LICENSING.md](./LICENSING.md)，含义务清单与第三方台账。**这是单向门**，已明确写清。
+
+### 二、终端换成 libvterm（MIT）
+手写"最小 VT"换掉，改用 libvterm（Neovim 在用）：
+- 源码 9 个 .c，仅 stdlib 依赖；`.inc` 表随仓库提供（**不需要 Perl**——本机没有）
+- 交叉编译为静态库：x86_64 105.6 KB / arm64 81.2 KB
+- NAPI 接口（vtNew/vtFeed/vtScreen/vtStatus/vtScrollBack）保持不变，spec 不用改
+
+接入时踩到两个 libvterm 语义坑：
+1. **`settermprop` 回调返回 1 = "已处理"** → libvterm 会跳过自己的备用屏切换，
+   导致主屏被 `\x1b[2J` 清空。必须返回 0。
+2. **备用屏要在 screen 层显式启用**：`vterm_screen_enable_altscreen(vts, 1)`，
+   否则 1049 只发通知、不真的切缓冲。
+
+### 三、LibVNC client 就位（尚未替换运行时）
+- 交叉编译成功：libvncclient.a 148.5 KB(x86_64) / 144.7 KB(arm64)
+- 已加 `native/build-libvnc.ps1`（GPL 要求可复现构建）
+- CMakeLists 已链接 `libvncclient.a`；**运行时仍走自研 RFB**，下一轮再替换并验证
+
+### 四、双画像验收（20 条 × 2 画像 = 40 次）
+None 模式 18 条 + VNC Auth 模式 2 条（`vnc.auth-hextile`、`vnc.negative`），
+2in1 与 tablet 全部 **passed**。
+
+### 五、操作提醒（本轮踩到）
+切换模拟器后 **`hdc rport` 需要重建**：这轮忘记给平板补 `tcp:5901`，
+导致两条 VNC 用例失败——不是产品缺陷，补上 rport 后即通过。

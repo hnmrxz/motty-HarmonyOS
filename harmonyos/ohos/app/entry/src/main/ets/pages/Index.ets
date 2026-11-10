@@ -702,14 +702,14 @@ struct Index {
   }
 
   // ---------------- VNC 会话（上屏 + 指针）----------------
-  private startVnc(): void {
+  private startVnc(pwd: string): void {
     this.vncOpen = true;
     this.vncReady = false;
     this.vncStatus = 'connecting...';
     this.vncFrameInfo = '';
     this.lookupFp(this.fixtureKey).then((_fp: string) => {
       try {
-        this.vncId = mottynapi.vncStart('127.0.0.1', 5901, this.vncPassword,
+        this.vncId = mottynapi.vncStart('127.0.0.1', 5901, pwd,
           (frameStr: string) => {
             // 帧格式："WxH:hexRGB..."。用 Canvas 的 fillRect 画网格，
             // 不用 putImageData/ImageData——那条路会触发 SkiaImage::Serialize 崩溃。
@@ -1141,6 +1141,14 @@ struct Index {
         Button('Send pointer (10,10)')
           .id('vnc/tap')
           .onClick(() => { this.sendVncPointer(10, 10, 1); this.sendVncPointer(10, 10, 0); })
+        Button('Send key a')
+          .id('vnc/key')
+          .onClick(() => {
+            if (this.vncId !== 0) {
+              mottynapi.vncKey(this.vncId, 0x61, 1);
+              mottynapi.vncKey(this.vncId, 0x61, 0);
+            }
+          })
       }.width('100%')
 
       Text(this.vncFrameInfo.length > 0 ? this.vncFrameInfo : 'frame: (none)')
@@ -1183,7 +1191,9 @@ struct Index {
         Button('VNC probe').id('vnc/probe').backgroundColor('#6A1B9A').fontColor(Color.White)
           .onClick(() => { this.probeVnc(); })
         Button('VNC session').id('vnc/session').backgroundColor('#6A1B9A').fontColor(Color.White)
-          .onClick(() => { this.diagOpen = false; this.startVnc(); })
+          .onClick(() => { this.diagOpen = false; this.startVnc('secret'); })
+        Button('VNC bad pw').id('vnc/session-bad').backgroundColor('#C62828').fontColor(Color.White)
+          .onClick(() => { this.diagOpen = false; this.startVnc('wrong-password'); })
       }.width('100%')
       Text(this.vncResult.length > 0 ? this.vncResult : 'vnc: (not probed)')
         .id('vnc/result').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')

@@ -778,3 +778,35 @@ subrect 用两字节 `(x<<4|y)` 与 `((w-1)<<4|(h-1))` 表示。
   这次是靠"状态行里还是旧错误文案"才发现的。
 - **Go 的 `:=` 会遮蔽外层变量**：夹具里 `useHextile := false` 写进 switch 分支后，
   外层的判断永远不生效，服务器一直发 Raw，客户端自然看不到 `enc=hextile`。
+---
+
+## 28. 第三方组件：构建与接入
+
+### 28.1 libvterm（MIT，终端网格）
+源码：`third_party/src/libvterm`（`git clone --depth 1 https://github.com/neovim/libvterm`）。
+**不需要 Perl**：`.inc` 表已随仓库提供（这点很关键，本机没有 Perl）。
+编译（每个 .c 一个对象，然后 llvm-ar）：
+```
+clang -target x86_64-linux-ohos --sysroot=C:/ohos-ndk/sysroot -D__MUSL__ -O2 -fPIC -std=c99 \
+      -I<src>/include -I<src>/src -c src/*.c
+llvm-ar rcs libvterm.a *.o
+```
+接入要点（两个都会踩）：
+1. `vterm_screen_set_callbacks` 里 **settermprop 必须返回 0**：返回 1 表示"已处理"，
+   libvterm 会跳过自己的备用屏切换，主屏随后被 `\x1b[2J` 清空。
+2. **`vterm_screen_enable_altscreen(vts, 1)`**：不启用的话 1047/1049 只发通知不切缓冲。
+3. 单元格颜色在 `VTermScreenCell.fg/bg`（不在 attrs 里），判断默认色用
+   `VTERM_COLOR_IS_DEFAULT_FG(&cell.fg)`；宽字符 `cell.width == 2` 且右侧格 width=0。
+
+### 28.2 LibVNC client（GPL-2.0-or-later，按 v3 用于组合分发）
+构建：`native/build-libvnc.ps1`（GPL 义务：构建必须可复现）。
+关闭 TLS/JPEG/PNG/SASL/LZO/ZSTD，保留 zlib → 初期只多出 VNC Auth。
+装到 `third_party/ohos/<arch>/lib/libvncclient.a` 后由 CMakeLists 链接。
+
+### 28.3 模拟器切换后必做
+`hdc rport` **不会跨模拟器实例保留**。切到另一台后要重新建立：
+```
+hdc -t <serial> rport tcp:2222 tcp:2223   # SSH 夹具
+hdc -t <serial> rport tcp:5901 tcp:5901   # VNC 夹具
+```
+漏了第二条会让 VNC 用例以"握手失败"报错——是环境问题，不是产品缺陷。

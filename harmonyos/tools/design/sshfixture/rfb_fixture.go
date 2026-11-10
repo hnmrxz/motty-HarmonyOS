@@ -61,6 +61,9 @@ type pointerMark struct {
 	x, y  int
 }
 
+// keyMark：收到 KeyEvent 后画洋红块，作为"键盘事件真的到了对端"的观测面
+var keyMark bool
+
 // serveRFB 处理一个 VNC 客户端连接
 func serveRFB(conn net.Conn) {
 	defer conn.Close()
@@ -212,6 +215,9 @@ func serveRFB(conn net.Conn) {
 			}
 			ks := binary.BigEndian.Uint32(ke[3:])
 			log.Printf("rfb: KeyEvent down=%d keysym=%d", ke[0], ks)
+			if ke[0] == 1 {
+				keyMark = true
+			}
 		case 5: // PointerEvent：type(1)+pad(1)+x(2)+y(2)+mask(1) = 共 7 字节
 			// 曾经只读 5 字节（少读 mask），导致下一个字节被当成消息类型，报 unsupported message type
 			pe := make([]byte, 6)
@@ -270,6 +276,12 @@ func sendRawUpdate(conn net.Conn, mark pointerMark) error {
 				pixels[i+2] = 0x00
 				pixels[i+3] = 0x00
 			}
+			if keyMark && x >= 26 && x <= 34 && y >= 26 && y <= 34 {
+				pixels[i+0] = 0xFF // B
+				pixels[i+1] = 0x00
+				pixels[i+2] = 0xFF // R -> FF00FF 洋红
+				pixels[i+3] = 0x00
+			}
 		}
 	}
 	_, err := conn.Write(pixels)
@@ -295,6 +307,7 @@ func sendHextileUpdate(conn net.Conn, mark pointerMark) error {
 	redPx := []byte{0x00, 0x00, 0xFF, 0x00}
 	bluePx := []byte{0xFF, 0x00, 0x00, 0x00}
 	greenPx := []byte{0x00, 0xFF, 0x00, 0x00}
+	magentaPx := []byte{0xFF, 0x00, 0xFF, 0x00}
 
 	for ty := 0; ty < rfbHeight; ty += 16 {
 		for tx := 0; tx < rfbWidth; tx += 16 {
@@ -356,6 +369,28 @@ func sendHextileUpdate(conn net.Conn, mark pointerMark) error {
 				}
 				if ix2 > ix && iy2 > iy {
 					subs = append(subs, subrect{greenPx, ix - tx, iy - ty, ix2 - ix, iy2 - iy})
+				}
+			}
+			// 键盘标记：洋红块固定在 (26..34, 26..34)，与 Raw 路径保持一致
+			if keyMark {
+				ix := 26
+				if ix < tx {
+					ix = tx
+				}
+				iy := 26
+				if iy < ty {
+					iy = ty
+				}
+				ix2 := 35
+				if ix2 > tx+tileW {
+					ix2 = tx + tileW
+				}
+				iy2 := 35
+				if iy2 > ty+tileH {
+					iy2 = ty + tileH
+				}
+				if ix2 > ix && iy2 > iy {
+					subs = append(subs, subrect{magentaPx, ix - tx, iy - ty, ix2 - ix, iy2 - iy})
 				}
 			}
 			if err := binary.Write(conn, binary.BigEndian, byte(len(subs))); err != nil {
