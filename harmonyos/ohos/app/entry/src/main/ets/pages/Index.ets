@@ -77,6 +77,7 @@ struct Index {
   @State termInput: string = '';
   @State vtStatus: string = '';
   @State vtHistory: string = '';
+  @State ptyStatus: string = '';
 
   // 密码只在内存：键为 address:port。进程退出即失，这是刻意的。
   private creds: Map<string, Cred> = new Map<string, Cred>();
@@ -339,6 +340,60 @@ struct Index {
       });
   }
 
+  // 真 shell：pty-req + shell（对端是 Windows ConPTY 上的 cmd.exe）。
+  // 与 term-echo 的区别是"远端跑的是真 shell"，而不是行回显夹具。
+  private openRealShell(): void {
+    this.pendingAction = 'shell';
+    const cred = this.creds.get(this.fixtureKey);
+    if (cred === undefined) {
+      this.probeText = 'no fixture credentials';
+      return;
+    }
+    this.lookupFp(this.fixtureKey).then((fp: string) => {
+      if (fp.length === 0) {
+        mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo no-auth-yet', '',
+          (first: string) => {
+            const m = new RegExp('SHA256:[A-Za-z0-9+/]+').exec(first);
+            if (m === null || first.indexOf('unknown_host') !== 0) {
+              this.probeText = first;
+              return;
+            }
+            this.pendingFp = m[0];
+            this.pendingKey = this.fixtureKey;
+            this.keyDialog = true;
+          });
+        return;
+      }
+      this.startRealShell(cred, fp);
+    });
+  }
+
+  private startRealShell(cred: Cred, fp: string): void {
+    this.termVisible = true;
+    this.termText = '';
+    this.vtHistory = '';
+    mottynapi.vtReset(80, 24);
+    this.vtStatus = mottynapi.vtStatus();
+    const id: number = mottynapi.openChannel(cred.address, cred.port, cred.user, cred.password,
+      fp, 80, 24, true,
+      (chunk: string) => {
+        mottynapi.vtFeed(chunk);
+        this.termText = mottynapi.vtScreen();
+        this.vtStatus = mottynapi.vtStatus();
+        this.vtHistory = mottynapi.vtScrollBack(3);
+      },
+      (status: string) => {
+        this.termText = mottynapi.vtScreen();
+        this.vtStatus = mottynapi.vtStatus();
+        this.setStatus(0, 'shell: ' + status);
+        this.shellId = 0;
+      });
+    this.shellId = id;
+    if (id === 0) {
+      this.termText = 'failed to open pty shell';
+    }
+  }
+
   private sendTermInput(): void {
     if (this.shellId === 0) {
       this.termText = this.termText + '\n[no session]';
@@ -411,7 +466,9 @@ struct Index {
       for (let i = 0; i < this.hosts.length; i++) {
         if (this.hostKey(this.hosts[i].address, this.hosts[i].port) === key) {
           this.setStatus(i, 'trusted ' + fp + ', connecting...');
-          if (this.pendingAction === 'vt2') {
+          if (this.pendingAction === 'shell') {
+            this.startRealShell(cred, fp);
+          } else if (this.pendingAction === 'vt2') {
             this.runDemo(cred, fp, 'vt-demo2');
           } else if (this.pendingAction === 'vt') {
             this.runDemo(cred, fp, 'vt-demo');
@@ -598,6 +655,12 @@ struct Index {
       .border({ width: 1, color: '#CCCCCC' })
       .padding(8)
 
+      Text(this.ptyStatus.length > 0 ? this.ptyStatus : 'pty: (idle)')
+        .id('terminal/pty-status')
+        .fontSize(11)
+        .fontColor('#8AC98A')
+        .width('100%')
+
       Text('history tail: ' + (this.vtHistory.length > 0 ? this.vtHistory.replace(/\n/g, ' | ') : '(empty)'))
         .id('terminal/history')
         .fontSize(11)
@@ -618,6 +681,18 @@ struct Index {
         Button('Send')
           .id('terminal/send')
           .onClick(() => { this.sendTermInput(); })
+        Button('Resize')
+          .id('terminal/resize')
+          .backgroundColor('#E6E6E6')
+          .fontColor('#1A1A1A')
+          .onClick(() => {
+            if (this.shellId !== 0) {
+              mottynapi.resizeShell(this.shellId, 100, 30);
+              this.ptyStatus = 'resize->100x30';
+            } else {
+              this.ptyStatus = 'resize: no session';
+            }
+          })
       }.width('100%')
     }
     .id('terminal/panel')
@@ -671,6 +746,8 @@ struct Index {
             .onClick(() => { this.openVtDemo(); })
           Button('VT2').id('terminal/vt2').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
             .onClick(() => { this.openVt2Demo(); })
+          Button('Shell').id('terminal/shell').backgroundColor('#0A6C00').fontColor(Color.White)
+            .onClick(() => { this.openRealShell(); })
           Button('SSH Test').id('ssh/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
             .onClick(() => { this.probeSsh(); })
           Button('Hostkey Check').id('ssh/hostkey-check').backgroundColor('#E6E6E6').fontColor('#1A1A1A')

@@ -353,7 +353,7 @@ void drainUtf8() {
 }
 
 void feed(const char *data, size_t len) {
-    enum class State { Ground, Esc, Csi } state = State::Ground;
+    enum class State { Ground, Esc, Csi, Osc, OscEsc } state = State::Ground;
     std::string csiBody;
     for (size_t i = 0; i < len; i++) {
         const unsigned char raw = static_cast<unsigned char>(data[i]);
@@ -382,9 +382,22 @@ void feed(const char *data, size_t len) {
                 if (raw == '[') {
                     state = State::Csi;
                     csiBody.clear();
+                } else if (raw == ']') {
+                    state = State::Osc;   // OSC：到 BEL 或 ST(ESC \) 结束，内容整段丢弃
                 } else {
                     state = State::Ground;
                 }
+                break;
+            case State::Osc:
+                if (raw == 0x07) {
+                    state = State::Ground;
+                } else if (raw == 0x1B) {
+                    state = State::OscEsc;
+                }
+                break;
+            case State::OscEsc:
+                // ST = ESC \；其它情况按 OSC 内容继续吞掉
+                state = (raw == '\\') ? State::Ground : State::Osc;
                 break;
             case State::Csi:
                 if (raw >= 0x40 && raw <= 0x7E) {

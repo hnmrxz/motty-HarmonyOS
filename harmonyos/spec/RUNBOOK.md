@@ -524,3 +524,40 @@ fixture 的 `term-echo`：读一行、回 `echo: <line>`。真实产品里这里
 - 回滚：造出超过屏幕行数的输出，然后断言**已滚出的行**出现在 `terminal/history` 里
 - 备用屏：进入后写标记 → 退出 → 断言该标记**不出现**在主屏上
 两条都必须经过 `vtStatus`/`vtScrollBack` 这类观测面，否则 UI 上看不出来。
+---
+
+## 20. 真 pty（ConPTY 对端）
+
+### 20.1 客户端（产品代码）
+```
+openChannel(host, port, user, password, expectedFp, cols, rows, usePty, onData, onDone) -> id
+resizeShell(id, cols, rows) -> 1/0
+```
+`usePty=true` 时：`libssh2_channel_request_pty_ex(channel, "xterm-256color", ...)` → `libssh2_channel_shell`。
+**必须先申请 pty 再开 shell**，否则远端拿到默认 80x24，与真实窗口不符。
+
+`resizeShell` 只入队，真正的 `libssh2_channel_request_pty_size_ex` 在会话工作线程里执行——
+libssh2 会话非线程安全，这条约束在 §17.1 已经踩过一次。
+
+### 20.2 对端（夹具，Windows ConPTY）
+`pty_windows.go` 用 `CreatePseudoConsole` + `CreateProcessW(EXTENDED_STARTUPINFO_PRESENT)` 起 `cmd.exe`。
+
+**两个必须照做的细节（都是实测踩出来的）**
+1. 交给 ConPTY 的 `ptyIn` / `ptyOut` 句柄**不能在 CreateProcess 后关闭**。
+   提前关掉会让子进程退回父控制台：我们从管道只读到 16 字节初始化序列
+   （`\x1b[?9001h\x1b[?1004h`），而 cmd 的 banner 直接印在调用方控制台上。
+2. `STARTUPINFOEXW.StartupInfo.Flags` 要置 `STARTF_USESTDHANDLES`，`Cb` 要等于 `sizeof(STARTUPINFOEXW)`。
+
+### 20.3 调试方法（比读日志快）
+`pty_manual_test.go` 把 ConPTY 从 SSH 链路里隔离出来：
+`go test -run TestPtyManual -v -count=1 -timeout 90s .`
+注意 pty 的 `Read` 是阻塞的，测试里必须用 goroutine + select 超时，否则测试会永久挂住。
+
+### 20.4 真 shell 会发 OSC
+`cmd.exe` 通过 ConPTY 会发 `ESC ] 0;标题 BEL`。VT 引擎必须**整段跳过 OSC**（直到 BEL 或 `ESC \`），
+否则标题会被当成文本打印进网格。已在 `vt_core.cpp` 的 `Osc/OscEsc` 状态里处理。
+
+### 20.5 RUNBOOK 里最容易被忽略的一条
+`uitest uiInput inputText <x> <y> <text>` 的 text 若含空格，**必须加引号**：
+`hdc shell` 会把命令按空格拆参数，`uitest` 只吃到第一个单词（实测 `echo hello-pty-ok` 变成 `echo`）。
+`spec/run.py` 已统一用单引号引用并转义内部单引号。

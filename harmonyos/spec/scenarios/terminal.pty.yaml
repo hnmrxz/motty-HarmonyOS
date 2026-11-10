@@ -1,0 +1,98 @@
+schema: 1
+id: terminal.pty
+title: 真 pty 会话：pty-req + shell（对端 ConPTY 上的 cmd.exe）+ window-change
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B01
+  - B09
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: pty-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:terminal/shell
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 4000
+    expect:
+      kind: screenRegex
+      regex: "[A-Z]:\\\\"
+      withinMs: 20000
+  - action: click
+    target: id:terminal/resize
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "resize->100x30"
+      withinMs: 6000
+  - action: type
+    target: id:terminal/input
+    text: echo hello-pty-ok
+  - action: click
+    target: id:terminal/send
+  - action: wait
+    ms: 1800
+asserts:
+  - kind: screenRegex
+    regex: "hello-pty-ok"
+    withinMs: 10000
+  - kind: screenRegex
+    regex: "resize->100x30"
+    withinMs: 3000
+  - kind: absent
+    value: "failed to open pty shell"
+    withinMs: 2000
+  - kind: absent
+    value: "pty-req failed"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。对端是 Windows ConPTY 上的 cmd.exe，
+    所以这是"真 pty + 真 shell"的端到端会话，而非行回显夹具。
+    **不覆盖**：Linux bash/zsh 的 terminfo 行为、vim/less 等全屏程序、真实 SIGWINCH 对
+    shell 布局的影响（只验证 window-change 请求被发出并回显）、arm64 真机。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 提示符断言用 [A-Z]:\\ （cmd.exe 的盘符提示），因为对端是 Windows shell
+notes: >-
+  这条 spec 与 terminal.interactive 的区别：后者打的是 fixture 的 term-echo（行回显），
+  本 spec 打的是 pty 后面的真 shell。断言 hello-pty-ok 证明命令被 shell 执行并回显，
+  resize->100x30 证明 window-change 这条链路是通的（该文本由 UI 在发出请求时写入，
+  对端日志会同时出现 window-change -> 100x30）。

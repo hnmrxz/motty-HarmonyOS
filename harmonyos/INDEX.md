@@ -462,3 +462,33 @@ abc|中文|def
 - 没有滚动条交互、回滚内搜索、DECSTBM 滚动区域、resize 重排
 - 没有组合字符/零宽连接/emoji 序列（宽度仍是区段近似）
 - 没有真 pty：对端是"行回显"而非 shell
+---
+
+## Round 16：真 pty（pty-req + shell + window-change）
+
+| 产物 | 说明 |
+|---|---|
+| `tools/design/sshfixture/pty_windows.go` | **ConPTY** 实现：真 pty 后面跑 `cmd.exe`；`ResizePseudoConsole` 支持 window-change |
+| `tools/design/sshfixture/pty_other.go` | 非 Windows 平台明确报错（不提供假 pty） |
+| `tools/design/sshfixture/pty_manual_test.go` | 把 ConPTY 从 SSH 链路里隔离出来的单测（本次调试的关键工具） |
+| `cpp/ssh_napi.cpp` | `openChannel(...,cols,rows,usePty,...)`：`libssh2_channel_request_pty_ex` + `libssh2_channel_shell`；`resizeShell(id,cols,rows)` 走 `request_pty_size_ex`（入队到工作线程） |
+| `cpp/vt_core.cpp` | **跳过 OSC 序列**（真 shell 会发 `ESC ] 0;标题 BEL`，不跳过会当文本打印） |
+| `spec/run.py` | **type 注入加引号**：`hdc shell` 会把含空格的命令拆成多参数，之前只喂进第一个单词 |
+| `spec/scenarios/terminal.pty.yaml` | pty 会话 + resize 的端到端断言 |
+
+### 本轮的两个真实 bug（都不是猜出来的）
+1. **ConPTY 子进程把输出写回父控制台**：先只收到 16 字节初始化序列。对照已知可用实现后发现两处差异——**交给 ConPTY 的两个句柄不能提前关闭**，且 `STARTUPINFOEXW` 要置 `STARTF_USESTDHANDLES`。修完立刻拿到真 cmd.exe banner 与提示符。
+2. **`inputText` 遇空格被截断**：`hdc shell` 按空格拆参数，`echo hello-pty-ok` 只进去了 `echo`。加设备侧单引号引用后正常。
+
+调试方法值得记：先用一个 Go 单测把 ConPTY 单独跑通（2 秒出结果），再回到端到端 spec。否则"pty 没输出"和"SSH 没转发"在 spec 里长得一模一样。
+
+### 双画像验收（11 条 × 2 画像）
+`terminal.pty`、`terminal.scrollback`、`terminal.vt`、`terminal.view`、`terminal.interactive`、
+`ssh.connect-from-list`、`infra.host-create-by-id`、`host.persist`、`net.reachability`、`ssh.exec`、`ssh.hostkey` —— 全部 **passed**。
+
+对端日志证据：`pty-req term=xterm-256color size=80x24` → `shell started on pty 80x24` → `window-change -> 100x30`。
+
+### 边界（对端是 Windows ConPTY，不是 Linux bash）
+- 未覆盖 Linux bash/zsh 的 terminfo 行为、vim/less 等全屏程序
+- window-change 只验证请求被发出且对端执行，未验证 shell 实际重排
+- 终端仍无组合字符/emoji 宽度、无鼠标上报、无 DECSET 2026

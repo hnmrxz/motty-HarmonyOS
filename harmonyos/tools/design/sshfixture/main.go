@@ -132,9 +132,23 @@ func handle(conn net.Conn, cfg *ssh.ServerConfig) {
 
 func serveSession(ch ssh.Channel, reqs <-chan *ssh.Request, auth string) {
 	defer ch.Close()
+	var ptyWanted bool
+	ptyCols, ptyRows := 80, 24
+	var session *ptySession
+	defer func() {
+		if session != nil {
+			session.Close()
+		}
+	}()
 	for req := range reqs {
 		switch req.Type {
 		case "exec":
+			if session != nil {
+				// 同一通道上 pty 与 exec 混用没有意义，明确拒绝而不是含糊执行
+				req.Reply(false, nil)
+				log.Printf("exec refused: pty session already active")
+				continue
+			}
 			var payload struct{ Command string }
 			if err := ssh.Unmarshal(req.Payload, &payload); err != nil {
 				req.Reply(false, nil)
@@ -212,16 +226,88 @@ func serveSession(ch ssh.Channel, reqs <-chan *ssh.Request, auth string) {
 			ch.SendRequest("exit-status", false, ssh.Marshal(&status))
 			return
 		case "pty-req":
-			// 刻意拒绝：没有 Windows pty 就先明说，别让 pty 相关 spec 假通过
-			req.Reply(false, nil)
-			log.Printf("pty-req refused (no pty on this fixture)")
+			var pr struct {
+				Term                string
+				Columns, Rows       uint32
+				Width, Height       uint32
+				Modes               string
+			}
+			if err := ssh.Unmarshal(req.Payload, &pr); err != nil {
+				req.Reply(false, nil)
+				continue
+			}
+			ptyCols, ptyRows = int(pr.Columns), int(pr.Rows)
+			ptyWanted = true
+			req.Reply(true, nil)
+			log.Printf("pty-req term=%s size=%dx%d", pr.Term, ptyCols, ptyRows)
+		case "window-change":
+			var wc struct{ Columns, Rows, Width, Height uint32 }
+			if err := ssh.Unmarshal(req.Payload, &wc); err == nil {
+				ptyCols, ptyRows = int(wc.Columns), int(wc.Rows)
+				if session != nil {
+					if rerr := session.Resize(ptyCols, ptyRows); rerr != nil {
+						log.Printf("window-change resize failed: %v", rerr)
+					} else {
+						log.Printf("window-change -> %dx%d", ptyCols, ptyRows)
+					}
+				}
+				req.Reply(true, nil)
+			} else {
+				req.Reply(false, nil)
+			}
 		case "shell":
-			req.Reply(false, nil)
-			log.Printf("shell refused (no pty on this fixture)")
-			fmt.Fprint(ch, "sshfixture: interactive shell is not supported; use exec\n")
-			status := struct{ Status uint32 }{1}
-			ch.SendRequest("exit-status", false, ssh.Marshal(&status))
-			return
+			if session != nil {
+				req.Reply(false, nil)
+				continue
+			}
+			if !ptyWanted {
+				req.Reply(false, nil)
+				fmt.Fprint(ch, "sshfixture: shell requires a pty\n")
+				status := struct{ Status uint32 }{1}
+				ch.SendRequest("exit-status", false, ssh.Marshal(&status))
+				return
+			}
+			st, serr := startPty(ptyCols, ptyRows)
+			if serr != nil {
+				req.Reply(false, nil)
+				log.Printf("pty start failed: %v", serr)
+				status := struct{ Status uint32 }{1}
+				ch.SendRequest("exit-status", false, ssh.Marshal(&status))
+				return
+			}
+			session = st
+			req.Reply(true, nil)
+			log.Printf("shell started on pty %dx%d", ptyCols, ptyRows)
+			// pty -> 客户端
+			go func() {
+				buf := make([]byte, 4096)
+				for {
+					n, rerr := session.Read(buf)
+					if n > 0 {
+						if _, werr := ch.Write(buf[:n]); werr != nil {
+							return
+						}
+					}
+					if rerr != nil {
+						break
+					}
+				}
+			}()
+			// 客户端 -> pty（阻塞读，直到通道关闭）
+			go func() {
+				buf := make([]byte, 4096)
+				for {
+					n, rerr := ch.Read(buf)
+					if n > 0 {
+						if _, werr := session.Write(buf[:n]); werr != nil {
+							return
+						}
+					}
+					if rerr != nil {
+						break
+					}
+				}
+			}()
 		default:
 			req.Reply(false, nil)
 		}

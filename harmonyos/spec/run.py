@@ -41,6 +41,11 @@ HDC = r'C:\Program Files\Huawei\DevEco Studio\sdk\default\openharmony\toolchains
 DEV_TMP = '/data/local/tmp'
 
 
+def shquote(text):
+    """给设备 shell 用的单引号引用。' 用 '\'' 转义（POSIX 惯例）。"""
+    return "'" + text.replace("'", "'\\''") + "'"
+
+
 class EnvError(RuntimeError):
     pass
 
@@ -205,7 +210,7 @@ class Runner:
             if node is None:
                 return False, f'聚焦后选择器消失: {selector}'
             x, y = self.center(node)
-            self.sh(f'uitest uiInput inputText {x} {y} {text}', check=False)
+            self.sh(f"uitest uiInput inputText {x} {y} {shquote(text)}", check=False)
             time.sleep(0.85)   # 输入法组词需要时间，太快就看不到组合串
             # inputText 同样走输入法：字符只落到组合串里（实测 pinyinTextInput + candidateView）。
             # 必须发 ENTER(2054) 提交组合，应用输入框才会真正拿到文本。
@@ -326,7 +331,7 @@ class Runner:
                         if not ok:
                             raise AssertionError(detail)
                     else:
-                        self.sh(f'uitest uiInput text {step["text"]}', check=False)
+                        self.sh(f'uitest uiInput text {shquote(step["text"])}', check=False)
                         time.sleep(0.2)
                 elif act == 'key':
                     self.sh(f'uitest uiInput keyEvent {step["text"]}', check=False)

@@ -406,6 +406,9 @@ struct ShellSession {
     std::mutex mtx;
     std::string pending;
     std::atomic<bool> closed{false};
+    bool resizePending = false;   // window-change 由工作线程执行（libssh2 非线程安全）
+    int resizeCols = 0;
+    int resizeRows = 0;
     napi_threadsafe_function onData = nullptr;
     napi_threadsafe_function onDone = nullptr;
 };
@@ -425,6 +428,22 @@ void shellLoop(ShellSession *sess, int id) {
     char buf[512];
     while (!sess->closed.load()) {
         bool progressed = false;
+
+        bool doResize = false;
+        int rc = 0;
+        int rr = 0;
+        {
+            std::lock_guard<std::mutex> lock(sess->mtx);
+            if (sess->resizePending) {
+                sess->resizePending = false;
+                doResize = true;
+                rc = sess->resizeCols;
+                rr = sess->resizeRows;
+            }
+        }
+        if (doResize && rc > 0 && rr > 0) {
+            libssh2_channel_request_pty_size_ex(sess->channel, rc, rr, 0, 0);
+        }
 
         // 1) 先把待写数据送出去
         std::string out;
@@ -634,6 +653,145 @@ napi_value SendInput(napi_env env, napi_callback_info info) {
     return out;
 }
 
+// openChannel(host, port, user, password, expectedFingerprint, cols, rows, usePty, onData, onDone)
+// usePty=true: pty-req + shell（真 shell 会话）；false: exec "term-echo"（行回显，用于最小验证）
+napi_value OpenChannel(napi_env env, napi_callback_info info) {
+    size_t argc = 10;
+    napi_value args[10] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 10) {
+        napi_throw_type_error(env, nullptr,
+            "openChannel(host, port, user, password, expectedFp, cols, rows, usePty, onData, onDone)");
+        return nullptr;
+    }
+    auto readStr = [&](size_t i, std::string &dst) {
+        size_t len = 0;
+        napi_get_value_string_utf8(env, args[i], static_cast<char *>(nullptr), 0, &len);
+        if (len == 0) { dst.clear(); return; }
+        dst.resize(len);
+        napi_get_value_string_utf8(env, args[i], &dst[0], len + 1, &len);
+    };
+    std::string host, user, pass, expected;
+    readStr(0, host);
+    int32_t port = 22;
+    napi_get_value_int32(env, args[1], &port);
+    readStr(2, user);
+    readStr(3, pass);
+    readStr(4, expected);
+    int32_t cols = 80, rows = 24;
+    napi_get_value_int32(env, args[5], &cols);
+    napi_get_value_int32(env, args[6], &rows);
+    bool usePty = false;
+    napi_get_value_bool(env, args[7], &usePty);
+
+    auto reply = [&](int code, const char *msg) {
+        napi_value out = nullptr;
+        napi_create_int32(env, code, &out);
+        if (msg != nullptr) { napi_throw_error(env, nullptr, msg); }
+        return out;
+    };
+
+    std::string err;
+    int fd = tcpConnect(host, port, err);
+    if (fd < 0) { return reply(0, "connect failed"); }
+    LIBSSH2_SESSION *session = libssh2_session_init();
+    if (session == nullptr) { close(fd); return reply(0, "session init failed"); }
+    if (libssh2_session_handshake(session, fd) != 0) {
+        libssh2_session_free(session); close(fd); return reply(0, "handshake failed");
+    }
+    const char *hash = libssh2_hostkey_hash(session, LIBSSH2_HOSTKEY_HASH_SHA256);
+    std::string fp = hash ? "SHA256:" + base64(reinterpret_cast<const unsigned char *>(hash), 32) : "unavailable";
+    if (expected.empty() || expected != fp) {
+        libssh2_session_disconnect(session, "hostkey not trusted");
+        libssh2_session_free(session); close(fd);
+        return reply(0, expected.empty() ? "unknown host key" : "host key mismatch");
+    }
+    if (libssh2_userauth_password(session, user.c_str(), pass.c_str()) != 0) {
+        libssh2_session_disconnect(session, "auth failed");
+        libssh2_session_free(session); close(fd);
+        return reply(0, "auth failed");
+    }
+    LIBSSH2_CHANNEL *channel = libssh2_channel_open_session(session);
+    if (channel == nullptr) {
+        libssh2_session_disconnect(session, "channel failed");
+        libssh2_session_free(session); close(fd);
+        return reply(0, "channel open failed");
+    }
+
+    if (usePty) {
+        // 先申请 pty：不给尺寸的 shell 会让远端拿到 80x24 默认值，与真实终端不符
+        if (libssh2_channel_request_pty_ex(channel, "xterm-256color", 14, nullptr, 0,
+                                           cols, rows, 0, 0) != 0) {
+            libssh2_channel_free(channel);
+            libssh2_session_disconnect(session, "pty failed");
+            libssh2_session_free(session); close(fd);
+            return reply(0, "pty-req failed");
+        }
+        if (libssh2_channel_shell(channel) != 0) {
+            libssh2_channel_free(channel);
+            libssh2_session_disconnect(session, "shell failed");
+            libssh2_session_free(session); close(fd);
+            return reply(0, "shell failed");
+        }
+    } else {
+        if (libssh2_channel_exec(channel, "term-echo") != 0) {
+            libssh2_channel_free(channel);
+            libssh2_session_disconnect(session, "exec failed");
+            libssh2_session_free(session); close(fd);
+            return reply(0, "exec failed");
+        }
+    }
+
+    libssh2_session_set_blocking(session, 0);
+
+    auto *sess = new ShellSession();
+    sess->session = session;
+    sess->channel = channel;
+    sess->fd = fd;
+    napi_value n1 = nullptr;
+    napi_value n2 = nullptr;
+    napi_create_string_utf8(env, "motty.ssh.channel.data", NAPI_AUTO_LENGTH, &n1);
+    napi_create_string_utf8(env, "motty.ssh.channel.done", NAPI_AUTO_LENGTH, &n2);
+    if (napi_create_threadsafe_function(env, args[8], nullptr, n1, 0, 1, nullptr, nullptr, nullptr, callJs, &sess->onData) != napi_ok ||
+        napi_create_threadsafe_function(env, args[9], nullptr, n2, 0, 1, nullptr, nullptr, nullptr, callJs, &sess->onDone) != napi_ok) {
+        libssh2_channel_free(channel);
+        libssh2_session_free(session);
+        close(fd);
+        delete sess;
+        return reply(0, "tsfn failed");
+    }
+    int id = g_nextId.fetch_add(1);
+    {
+        std::lock_guard<std::mutex> lock(g_sessionsMtx);
+        g_sessions[id] = sess;
+    }
+    std::thread([sess, id]() { shellLoop(sess, id); }).detach();
+    return reply(id, nullptr);
+}
+
+// resizeShell(id, cols, rows)：只入队，真正的 window-change 在工作线程里发
+napi_value ResizeShell(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int32_t id = 0, cols = 0, rows = 0;
+    napi_get_value_int32(env, args[0], &id);
+    napi_get_value_int32(env, args[1], &cols);
+    napi_get_value_int32(env, args[2], &rows);
+    ShellSession *sess = findSession(id);
+    int ok = 0;
+    if (sess != nullptr && !sess->closed.load()) {
+        std::lock_guard<std::mutex> lock(sess->mtx);
+        sess->resizePending = true;
+        sess->resizeCols = cols;
+        sess->resizeRows = rows;
+        ok = 1;
+    }
+    napi_value out = nullptr;
+    napi_create_int32(env, ok, &out);
+    return out;
+}
+
 // closeShell(id)
 napi_value CloseShell(napi_env env, napi_callback_info info) {
     size_t argc = 1;
@@ -657,6 +815,8 @@ napi_value Init(napi_env env, napi_value exports) {
         {"openShell", nullptr, OpenShell, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"sendInput", nullptr, SendInput, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"closeShell", nullptr, CloseShell, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"openChannel", nullptr, OpenChannel, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"resizeShell", nullptr, ResizeShell, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     RegisterVtFunctions(env, exports);
