@@ -1,0 +1,78 @@
+schema: 1
+id: terminal.view
+title: 终端视图最小闭环：点 Term → TOFU 确认 → 远端流式输出渲染到终端区域
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B01
+  - B09
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: term-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:host-term/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3500
+    expect:
+      kind: screenRegex
+      regex: "term-line-1 start"
+      withinMs: 15000
+asserts:
+  - kind: screenRegex
+    regex: "term-line-5"
+    withinMs: 12000
+  - kind: screenRegex
+    regex: "term-line-6 green"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "\\[status\\] ok"
+    withinMs: 8000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。验证的是"SSH 流式输出渲染进终端区域"这一条通路。
+    **本版没有 VT 解析**：不渲染颜色/光标/备用屏/回滚，只把字节追加成文本（所以
+    term-line-6 里的 ESC 序列是原样出现的）。不覆盖真实 shell 会话、窗口尺寸变更、
+    键盘输入；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 远端命令固定为 fixture 的 term-demo（6 行 + 延迟），用于验证流式接收而非一次性返回
+notes: >-
+  这条 spec 的价值在于区分"一次性 exec 返回值"与"流式分块到达"：term-demo 每 120ms 吐一行，
+  最后一行带 ANSI 颜色序列。断言 term-line-5/term-line-6 证明多块数据都进了终端缓冲区。

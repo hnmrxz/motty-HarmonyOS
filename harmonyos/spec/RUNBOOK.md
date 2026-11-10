@@ -434,3 +434,27 @@ schema 早就声明了 `steps[].expect`，但之前 runner 没实现——而"�
 ### 15.3 一条 spec 的取舍原则
 `ssh.knownhost` 已删除：它断言的两件事被 `ssh.connect-from-list` 完整覆盖。
 **保留两份不会增加证据，只会增加维护成本与漂移风险。**
+---
+
+## 16. 流式 exec（终端数据通路）
+
+### 16.1 签名
+```
+exec(host, port, user, password, command, expectedFingerprint, onData, onDone)
+```
+- `onData(chunk)`：每读到一块就回调一次（两个 TSFN 分别承载 data 与 done）
+- `onDone(status)`：`ok` 或 `error …` / `unknown_host …` / `hostkey-mismatch …`
+- 主机密钥语义与 `probe` 完全一致：未知/不匹配**不认证**，因此不会有任何数据回调
+
+### 16.2 当前渲染的上限（别当成终端模拟器）
+应用侧只是把 chunk 追加到一个字符串并显示在 `terminal/output` 里：
+- **没有 VT 解析**：ANSI 颜色、光标移动、备用屏、回滚、宽字符对齐都不支持
+- 没有真实 shell、没有窗口尺寸协商、没有键盘输入
+- 验证点是"多块数据都到了"，不是"渲染正确"
+
+真正的终端模拟器（VT 解析 + 网格 + 5000 行回滚 + 图片/连字）是 M1 剩余的最大一块，
+计划以 libvterm 为骨架 + 自有扩展（见 A-PRIME-PLAN §5 待决项 D1）。
+
+### 16.3 fixture 的 term-demo
+`term-demo` 输出 6 行、每行间隔 120ms、末行 `\x1b[32m…\x1b[0m`：
+用来同时验证"流式分块"和"ANSI 序列原样透传"（因为还没有 VT 解析）。

@@ -287,3 +287,33 @@ known_hosts 持久化、`@cert-authority`、hostkey 算法白名单、指纹变�
 `ohos/app/build-profile.json5` 里含**明文签名口令与绝对路径** → 已 `gitignore`，
 改为提交 `build-profile.example.json5` 模板。第三方源码（99 MB）与构建产物同样不入库，
 由 `native/build-thirdparty.ps1`（含自动下载）重建。
+---
+
+## Round 11：终端视图最小闭环（流式输出 → 渲染）
+
+| 产物 | 说明 |
+|---|---|
+| `cpp/ssh_napi.cpp` | 新增 **流式** `exec(host,port,user,pass,cmd,expectedFp,onData,onDone)`：分块回调（两个 TSFN），不再等全部读完 |
+| `Index.ets` | 行内 `Term` 按钮 → TOFU 确认 → 终端面板（`terminal/panel`，输出区 `terminal/output`），文本随流式数据追加 |
+| `tools/design/sshfixture` | 新增 `term-demo` 命令：6 行、每行间隔 120ms、末行带 ANSI 颜色序列 |
+| `spec/scenarios/terminal.view.yaml` | 断言 `term-line-1` / `term-line-5` / `term-line-6 green` / `[status] ok` |
+
+### 为什么这条 spec 有意义
+它区分"一次性 exec 返回"与"流式分块到达"：term-demo 每 120ms 吐一行，
+断言到第 5、6 行说明多块数据都进了终端缓冲区，而不是只拿到最后一次读的结果。
+
+### 双画像验收（7 条 × 2 画像）
+| spec | 2in1 | tablet |
+|---|---|---|
+| `terminal.view` | **passed** | **passed** |
+| `ssh.connect-from-list` | **passed** | **passed** |
+| `infra.host-create-by-id` | **passed** | **passed** |
+| `host.persist` | **passed** | **passed** |
+| `net.reachability` | **passed** | **passed** |
+| `ssh.exec` | **passed** | **passed** |
+| `ssh.hostkey` | **passed** | **passed** |
+
+### 明确不做（本版是"数据通路"，不是终端模拟器）
+- **没有 VT 解析**：颜色、光标、备用屏、回滚、宽字符整形一律没有；ESC 序列原样显示
+- 没有真实 shell 会话（远端命令是固定的 `term-demo`）
+- 没有窗口尺寸协商、没有键盘输入、没有选择/复制

@@ -30,6 +30,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -141,9 +142,20 @@ func serveSession(ch ssh.Channel, reqs <-chan *ssh.Request, auth string) {
 			}
 			req.Reply(true, nil)
 			log.Printf("exec: %q", payload.Command)
-			// 固定、可断言的输出：让 spec 能判断"命令真的在远端执行了"
-			fmt.Fprintf(ch, "fixture-exec-ok auth=%s\n", auth)
-			fmt.Fprintf(ch, "command=%s\n", payload.Command)
+			if strings.HasPrefix(payload.Command, "term-demo") {
+				// 多行 + 延迟：终端渲染/流式接收的验证用。刻意带 \r\n 与转义序列，
+				// 让后续真正的 VT 解析有东西可吃。
+				fmt.Fprint(ch, "term-line-1 start\r\n")
+				for i := 2; i <= 5; i++ {
+					time.Sleep(120 * time.Millisecond)
+					fmt.Fprintf(ch, "term-line-%d\r\n", i)
+				}
+				fmt.Fprint(ch, "\x1b[32mterm-line-6 green\x1b[0m\r\n")
+			} else {
+				// 固定、可断言的输出：让 spec 能判断"命令真的在远端执行了"
+				fmt.Fprintf(ch, "fixture-exec-ok auth=%s\n", auth)
+				fmt.Fprintf(ch, "command=%s\n", payload.Command)
+			}
 			status := struct{ Status uint32 }{0}
 			ch.SendRequest("exit-status", false, ssh.Marshal(&status))
 			return
