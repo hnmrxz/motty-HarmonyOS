@@ -1,0 +1,21 @@
+﻿docs(harmonyos/rdp): 量到"面板垂直预算只有 1324px" —— 所有布局失败的根因
+
+实测: diag/panel [914,351][2206,1675] -> 可用高度 = 1324px
+而面板内容(终端按钮/VNC/服务端控制/预览/探测/输入框/探测结果/实验说明/snapshot 信息/
+512x384 Canvas/catalog 组/长状态文本)纵向合计约 1900px
+=> 任何"多插一行/上移一块"都会把别的控件挤出这 1324px:
+  uitest dump 里没有它 -> 用例"选择器未命中"; 用户也点不到 -> 真实可用性缺陷
+
+本轮两次尝试印证:
+1) 状态行移顶 + Scroll(1600) + 拆按钮行 -> 6 条 RDP 用例 6/6 PASS(rdp/srv-stop 首次可点)
+2) 再把 catalog 组也移顶 -> srv-stop/render 被挤出 1324px -> RDP 用例又红; catalog/export-file 随后也丢
+   => 每次都"修好一组、挤掉另一组"的跷跷板
+
+结论: 必须换结构(分页/分组), 不能再调顺序
+  页1 RDP: 服务端控制 + 预览 + 帧状态(断言需要的状态行在页顶部)
+  页2 调试: 终端/VNC/协议探测/catalog
+  页3 快照: Canvas 与 snapshot 统计
+
+本轮状态: 布局改动全部回退(保 6/7); ui.i18n.panels 失败经查是夹具没跑(重启 sshfixture 后 PASS), 不是回归
+最终: rdp.server-peer / rdp.client-render / rdp.client-input / rdp.preview / rdp.preview-idle /
+  host.catalog / ui.i18n.panels => 7/7 PASS

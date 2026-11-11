@@ -1,0 +1,38 @@
+{
+  "spec": "ui.i18n.panels",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "click",
+      "ok": false,
+      "detail": "选择器未命中: id:catalog/reset-hosts"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：SFTP 面板标题/下载/上传/上级/列表 两组语言取词、以及\"键名泄漏\"的反向检测。 **不覆盖**：转发表单与 VNC 面板的逐条文案、跟随系统语言热切换、第三种语言、复数与日期本地化、arm64 真机。"
+  },
+  "passed": false,
+  "error": "step 3 (click) 失败: 选择器未命中: id:catalog/reset-hosts"
+}

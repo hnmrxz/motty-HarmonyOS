@@ -1016,3 +1016,41 @@ FreeRDP 内部的连接/解码细节日志看不到了；我们自己的诊断�
 代码 = 保留"关日志"这一处修复；布局改动全部回退。
 `rdp.client-render / rdp.client-input / rdp.preview / rdp.preview-idle / rdp.server-peer => 5/5 PASS`
 
+---
+
+## Round 56：量到了"面板垂直预算只有 1324px"——这是所有布局失败的根因
+
+### 实测数据（决定性）
+```
+diag/panel [914,351][2206,1675]   -> 可用高度 = 1675 - 351 = 1324 px
+```
+而面板内容（终端按钮、VNC、服务端控制、预览、探测、输入框、探测结果、实验说明、
+snapshot 信息、512×384 的 Canvas、catalog 组、长状态文本…）**纵向合计约 1900px**。
+⇒ **任何"多插一行/上移一块"的改动，都会把别的控件挤出这 1324px**，于是：
+- `uitest dump` 里没有它 → 用例"选择器未命中"；
+- 用户也点不到 → 真实可用性缺陷。
+
+本轮又做了两次尝试，都印证了这条：
+| 尝试 | 结果 |
+|---|---|
+| 状态行移顶 + Scroll(1600) + 拆按钮行 | 6 条 RDP 用例 **6/6 PASS**（`rdp/srv-stop` 首次可点） |
+| 再把 catalog 组也移顶 | `srv-stop`/`render` 被挤出 1324px → RDP 用例又红；`catalog/export-file` 随后也丢 |
+每次都是"修好一组、挤掉另一组"的跷跷板。
+
+### 结论：这里必须换结构，不能再调顺序
+面板里现在混了三类东西：
+1. **产品要用的**（RDP 启动/停止、预览）；
+2. **调试用的**（终端 demo、VNC demo、协议探测、catalog 导入导出）；
+3. **诊断信息**（状态串、帧统计、Canvas 快照）。
+
+正确做法是**分页/分组**（Tab 或分段控件）：
+- 页1「RDP」：服务端控制 + 预览 + 帧状态（断言需要的状态行都在这一页顶部）；
+- 页2「调试」：终端/VNC/协议探测/catalog；
+- 页3「快照」：Canvas 与 snapshot 统计。
+每页内容都远小于 1324px，且用例能按页断言。
+
+### 本轮状态
+布局改动全部回退（保 6/7），`ui.i18n.panels` 的失败经查是**夹具没跑**（重启 sshfixture 后 PASS），不是回归。
+最终：`rdp.server-peer / rdp.client-render / rdp.client-input / rdp.preview / rdp.preview-idle /
+host.catalog / ui.i18n.panels => 7/7 PASS`。
+
