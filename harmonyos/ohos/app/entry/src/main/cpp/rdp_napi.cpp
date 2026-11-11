@@ -11,6 +11,7 @@
 #include <napi/native_api.h>
 
 #include <freerdp/client.h>
+#include <winpr/wlog.h>
 #include <freerdp/codec/interleaved.h>
 #include <freerdp/codec/planar.h>
 #include <freerdp/gdi/gdi.h>
@@ -224,6 +225,21 @@ static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
 }
 
 
+
+
+// 关掉 FreeRDP 自己的日志：实测客户端渲染期间会间歇性崩在 WLog_PrintMessageVA
+// （strchr 收到 NULL）——先把日志关掉，看崩溃是否消失；我们自己的诊断日志走 fprintf，不受影响。
+static void mottySilenceFreeRdpLogs(const char *why) {
+    auto *root = WLog_GetRoot();
+    if (root != nullptr) {
+        WLog_SetLogLevel(root, WLOG_OFF);
+    }
+    auto *jni = WLog_Get("com.motty.rdp");
+    if (jni != nullptr) {
+        WLog_SetLogLevel(jni, WLOG_OFF);
+    }
+    fprintf(stderr, "[MOTTY_RDP] freerdp logs silenced (%s)\n", why);
+}
 
 struct RdpJob {
     bool useNla = false;
@@ -471,6 +487,7 @@ std::string rdpTryConnect(const RdpJob &job) {
     if (instance == nullptr) {
         return "error new";
     }
+    mottySilenceFreeRdpLogs("connect");
     if (!freerdp_context_new(instance)) {
         freerdp_free(instance);
         return "error context";
@@ -521,6 +538,7 @@ void inputProbeWorker(RdpJob *job) {
     std::string result;
     RDP_CLIENT_ENTRY_POINTS entryPoints = {0};
     RdpClientEntry(&entryPoints);
+    mottySilenceFreeRdpLogs("client-context");
     rdpContext *context = freerdp_client_context_new(&entryPoints);
     freerdp *instance = context != nullptr ? context->instance : nullptr;
     if (instance == nullptr) {
@@ -600,6 +618,7 @@ void renderWorker(RdpJob *job) {
     // 与 rdpTryConnect 一致：只链 libfreerdp 时用 freerdp_new + freerdp_context_new
     RDP_CLIENT_ENTRY_POINTS entryPoints = {0};
     RdpClientEntry(&entryPoints);
+    mottySilenceFreeRdpLogs("client-context");
     rdpContext *context = freerdp_client_context_new(&entryPoints);
     freerdp *instance = context != nullptr ? context->instance : nullptr;
     if (instance == nullptr) {

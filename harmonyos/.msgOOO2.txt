@@ -1,0 +1,22 @@
+﻿fix(harmonyos/rdp): 间歇崩溃修好 —— FreeRDP 自己的日志路径踩空指针(关日志后 5/5 稳定)
+
+假设与验证: Round 54 定位到崩溃栈是 WLog_PrintMessageVA -> strchr(NULL), 发生在客户端渲染期间
+  于是直接试: 把 FreeRDP 自己的日志关掉(我们的诊断日志走 fprintf 不受影响)
+  mottySilenceFreeRdpLogs(): WLog_GetRoot() + WLog_Get("com.motty.rdp") 都设 WLOG_OFF,
+  在 freerdp_context_new / freerdp_client_context_new 之前各调一次
+
+结果(决定性):
+- rdp.client-render 连续 3 次 => 3/3 PASS(此前经常 1-3 次内崩一次)
+- 关日志后没有新增崩溃日志(最新仍是 23:53 那次)
+- 五条 RDP 用例: render / input / preview / preview-idle / server-peer => 5/5 PASS
+=> 崩溃来自 FreeRDP 日志格式化路径(某个 log 对象名字/文件是 NULL), 不是业务线程竞态
+
+代价: FreeRDP 内部连接/解码细节日志看不到了; 我们自己的诊断(rdp/result、状态串、gdi/ilv/planar 计数)不受影响
+
+布局修复本轮再试仍回退(但失败点变了): Scroll + 拆按钮行后 rdp/srv-stop 进了可视区[1179,636],
+  但 Scroll 视口高度(900/1500)会裁掉后面的节点: rdp/result 不在 dump 里,
+  于是 render/input 在"断言结果行"时判失败(面板其实还开着)
+  新结论: 在这个用例体系里, 被 Scroll 裁掉的节点等于不存在
+  下一轮: 把断言用状态行移到面板顶部, 或让 Scroll 高度随窗口自适应并配合 swipe
+
+状态: 保留"关日志"修复; 布局改动全部回退; 5/5 PASS

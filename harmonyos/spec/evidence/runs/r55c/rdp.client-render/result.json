@@ -1,0 +1,77 @@
+{
+  "spec": "rdp.client-render",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": false,
+      "detail": "正则 'rdp-render: frames=[1-9][0-9]* paints=[1-9][0-9]*' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n调试\\n\\n\\n\\n会话日志\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）"
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：内置服务端启动、客户端连接本机服务端、收到桌面更新并绘制、 位图解码链路有数据（bmp/rects>0、valid=1）、尺寸与像素数正确。 覆盖：像素内容真的非空——自解码帧 64x48 采样得到 1000+ 种颜色（`snap colors=`）， 且主色不是 `#FFFFFF`。 **不覆盖**：与真实 Windows 桌面的逐像素一致性（对端是我们自己的 shadow 服务端， 画的是测试图案）、跨机网络、缩放/多显示器。"
+  },
+  "passed": false,
+  "error": "assert 0 (screenRegex) 失败: 正则 'rdp-render: frames=[1-9][0-9]* paints=[1-9][0-9]*' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n调试\\n\\n\\n\\n会话日志\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）"
+}

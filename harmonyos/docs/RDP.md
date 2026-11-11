@@ -972,3 +972,47 @@ rdp/render    [1223,731] rdp/input     [1460,731] rdp/tcpprobe  [1679,731]
 结构修复本身是对的（`srv-stop` 可达），但**在既有崩溃修掉之前不能落**——
 否则就会把"环境间歇崩溃"记成"布局回归"，这是上一轮已经踩过的坑。
 
+---
+
+## Round 55：**间歇崩溃修好了** —— FreeRDP 自己的日志路径踩空指针
+
+### 假设与验证
+Round 54 定位到崩溃栈是 `WLog_PrintMessageVA` → `strchr`（NULL），发生在**客户端渲染期间**。
+于是直接试：**把 FreeRDP 的日志关掉**（我们自己的诊断日志走 `fprintf`，不受影响）。
+```cpp
+static void mottySilenceFreeRdpLogs(const char* why) {
+    auto* root = WLog_GetRoot();
+    if (root) WLog_SetLogLevel(root, WLOG_OFF);
+    auto* mine = WLog_Get("com.motty.rdp");
+    if (mine) WLog_SetLogLevel(mine, WLOG_OFF);
+    fprintf(stderr, "[MOTTY_RDP] freerdp logs silenced (%s)\n", why);
+}
+```
+在 `freerdp_new + freerdp_context_new` 与 `freerdp_client_context_new` 之前各调一次。
+
+### 结果（决定性）
+| 验证 | 结果 |
+|---|---|
+| `rdp.client-render` 连续 3 次 | **3/3 PASS**（此前经常 1～3 次内崩一次） |
+| 关日志后崩溃日志 | **没有新增**（最新一条仍是 23:53 那次） |
+| 五条 RDP 用例 | `render / input / preview / preview-idle / server-peer => 5/5 PASS` |
+
+⇒ 结论：**崩溃来自 FreeRDP 的日志格式化路径**（某个 log 对象的名字/文件是 NULL），
+不是我们的业务线程竞态。关掉它的日志后，客户端渲染可以连续跑而不崩。
+
+### 代价
+FreeRDP 内部的连接/解码细节日志看不到了；我们自己的诊断（`rdp/result`、`rdp-server: ...` 状态串、
+`gdi/ilv/planar` 计数）都是自己打的，**不受影响**。
+
+### 布局修复仍然被回退（本轮第二次尝试也失败，但失败点变了）
+把诊断面板包进 `Scroll` + 拆按钮行后：
+- `rdp/srv-stop` 确实进了可视区（`[1179,636]`）；
+- 但 **`Scroll` 视口高度（900/1500）会裁掉后面的节点**：`rdp/result` 不在 dump 里，
+  于是 `rdp.client-render` / `rdp.client-input` 在"断言结果行"时就判失败（面板其实还开着）。
+⇒ 新结论：在这个用例体系里，**被 Scroll 裁掉的节点等于不存在**。
+下一轮要么把断言用的状态行**移到面板顶部**，要么让 Scroll 高度随窗口自适应并配合 `swipe`。
+
+### 本轮状态
+代码 = 保留"关日志"这一处修复；布局改动全部回退。
+`rdp.client-render / rdp.client-input / rdp.preview / rdp.preview-idle / rdp.server-peer => 5/5 PASS`
+
