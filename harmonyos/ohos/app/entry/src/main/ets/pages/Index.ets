@@ -170,6 +170,8 @@ struct Index {
   @State collapsedGroups: string[] = [];
   @State hoverRow: number = -1;
   @State selectAll: boolean = false;
+  @State hostView: string = 'list';
+  @State hostSort: string = 'manual';
   @State aiAnswer: string = '';
   @State aiEndpoint: string = 'http://127.0.0.1:2297/v1/ai';
   @State rdpSrvStatus: string = '';
@@ -2198,10 +2200,14 @@ struct Index {
                   Column().width(3).height(40).borderRadius(2)
                     .backgroundColor(h.color.length > 0 ? h.color : Color.Transparent)
                   // 图标块：首字母
-                  Text(h.label.substring(0, 1).toUpperCase()).fontSize(16).fontWeight(FontWeight.Bold)
-                    .fontColor(Color.White).width(40).height(40).textAlign(TextAlign.Center)
-                    .borderRadius(20)
-                    .backgroundColor(h.color.length > 0 ? h.color : '#2A2D33')
+                  if (this.osIcon(h) !== null) {
+                    Image(this.osIcon(h)).width(26).height(26)
+                  } else {
+                    Text(h.label.substring(0, 1).toUpperCase()).fontSize(16).fontWeight(FontWeight.Bold)
+                      .fontColor(Color.White).width(40).height(40).textAlign(TextAlign.Center)
+                      .borderRadius(20)
+                      .backgroundColor(h.color.length > 0 ? h.color : '#2A2D33')
+                  }
                   // 名称 + 用户
                   Column({ space: 4 }) {
                     Text(h.label).fontSize(15).fontColor('#E8EAED').fontWeight(FontWeight.Medium)
@@ -2402,8 +2408,11 @@ struct Index {
       Image($r('app.media.ic_chevron_right')).id('chips/expand').width(15).height(15)
         .onClick(() => { this.collapsedGroups = []; })
       Image($r('app.media.ic_rows')).id('view/list').width(16).height(16)
+        .onClick(() => { this.hostView = 'list'; })
       Image($r('app.media.ic_grid')).id('view/grid').width(16).height(16)
+        .onClick(() => { this.hostView = 'grid'; })
       Image($r('app.media.ic_sort')).id('view/sort').width(16).height(16)
+        .onClick(() => { this.hostSort = this.hostSort === 'manual' ? 'name' : (this.hostSort === 'name' ? 'ip' : 'manual'); })
       Image($r('app.media.ic_sliders')).id('view/order').width(16).height(16)
     }.width('100%').padding({ left: 22, right: 22, bottom: 8 })
   }
@@ -2466,6 +2475,99 @@ struct Index {
     }
   }
 
+
+  private osIcon(h: HostItem): Resource | null {
+    const probe: string = (h.label + ' ' + h.address + ' ' + h.tags).toLowerCase();
+    if (probe.includes('oracle')) { return $r('app.media.os_oraclelinux'); }
+    if (probe.includes('ubuntu')) { return $r('app.media.os_ubuntu'); }
+    if (probe.includes('debian')) { return $r('app.media.os_debian'); }
+    if (probe.includes('centos')) { return $r('app.media.os_centos'); }
+    if (probe.includes('redhat') || probe.includes('rhel')) { return $r('app.media.os_redhat'); }
+    if (probe.includes('windows')) { return $r('app.media.os_windows'); }
+    if (probe.includes('nas') || probe.includes('synology')) { return $r('app.media.os_synology'); }
+    if (probe.includes('openwrt')) { return $r('app.media.os_openwrt'); }
+    if (probe.includes('alpine')) { return $r('app.media.os_alpine'); }
+    if (probe.includes('arch')) { return $r('app.media.os_arch'); }
+    if (probe.includes('freebsd')) { return $r('app.media.os_freebsd'); }
+    if (probe.includes('esxi') || probe.includes('vmware')) { return $r('app.media.os_esxi'); }
+    if (probe.includes('proxmox')) { return $r('app.media.os_proxmox'); }
+    if (probe.includes('fedora')) { return $r('app.media.os_fedora'); }
+    if (probe.includes('kali')) { return $r('app.media.os_kali'); }
+    return null;
+  }
+
+  // 按当前排序返回主机下标（manual 保持插入顺序）
+  private sortedHosts(group: string): HostItem[] {
+    const list: HostItem[] = this.hosts.filter((h: HostItem) => this.hostGroupOf(h) === group && this.matchesQuery(h));
+    if (this.hostSort === 'name') {
+      list.sort((a: HostItem, b: HostItem) => a.label.localeCompare(b.label));
+    } else if (this.hostSort === 'ip') {
+      list.sort((a: HostItem, b: HostItem) => a.address.localeCompare(b.address));
+    }
+    return list;
+  }
+
+
+  @Builder
+  hostGridView() {
+    Scroll() {
+      Column({ space: 10 }) {
+        ForEach(this.sections(), (g: string) => {
+          // 分组表头
+          Row({ space: 8 }) {
+            Image(this.isCollapsed(g) ? $r('app.media.ic_chevron_right') : $r('app.media.ic_chevron_down'))
+              .width(14).height(14)
+            Text(this.sectionLabel(g)).fontSize(13).fontColor('#C7CBD1').fontWeight(FontWeight.Medium)
+            Text('(' + this.countGroup(g) + ')').fontSize(12).fontColor('#6B7078')
+            Blank()
+          }
+          .width('100%').height(34).padding({ left: 6, right: 6 })
+          .onClick(() => { this.toggleGroup(g); })
+          if (!this.isCollapsed(g)) {
+            Flex({ wrap: FlexWrap.Wrap }) {
+              ForEach(this.sortedHosts(g), (h: HostItem) => {
+                Column({ space: 6 }) {
+                  Row({ space: 10 }) {
+                    if (this.osIcon(h) !== null) {
+                      Image(this.osIcon(h)).width(24).height(24)
+                    } else {
+                      Text(h.label.substring(0, 1).toUpperCase()).fontSize(14).fontWeight(FontWeight.Bold)
+                        .fontColor(Color.White).width(32).height(32).textAlign(TextAlign.Center)
+                        .borderRadius(16).backgroundColor(h.color.length > 0 ? h.color : '#2A2D33')
+                    }
+                    Column({ space: 3 }) {
+                      Text(h.label).fontSize(14).fontColor('#E8EAED').maxLines(1)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                      Text(h.user).fontSize(11).fontColor('#8A8F98')
+                    }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+                  }.width('100%')
+                  Row({ space: 6 }) {
+                    Text(h.address + (h.port.length > 0 ? ':' + h.port : '')).fontSize(11)
+                      .fontColor('#6B7078').maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+                      .layoutWeight(1)
+                    ForEach(this.tagList(h), (tg: string) => {
+                      Text(tg).fontSize(10).fontColor('#C7CBD1')
+                        .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+                        .backgroundColor('#23262B').borderRadius(10)
+                    }, (tg: string) => h.id + 'g' + tg)
+                  }.width('100%')
+                }
+                .id('host-card/' + h.id)
+                .width(280).height(64).padding({ left: 12, right: 12, top: 8, bottom: 8 })
+                .borderRadius(10).backgroundColor('#1C1F24')
+                .margin({ right: 12, bottom: 12 })
+                .onClick(() => {
+                  const idx = this.hosts.findIndex((x: HostItem) => x.id === h.id);
+                  if (idx >= 0) { this.openSession(h.label, idx); }
+                })
+              }, (h: HostItem) => h.id)
+            }.width('100%')
+          }
+        }, (g: string) => 'grid-' + g)
+      }.width('100%').padding({ left: 22, right: 22, bottom: 16 })
+    }.id('host-grid/view').layoutWeight(1).width('100%').align(Alignment.Top)
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       this.pcTopBar()
@@ -2478,7 +2580,11 @@ struct Index {
             this.tabBar()
           }
           if (this.showHosts || this.tabs.length === 0) {
-            this.hostListView()
+            if (this.hostView === 'grid') {
+              this.hostGridView()
+            } else {
+              this.hostListView()
+            }
           } else {
             this.terminalView()
           }

@@ -100,3 +100,27 @@ python harmonyos/spec/run.py harmonyos/spec/scenarios/<spec>.yaml --serial 127.0
 - 导入/导出、排序、设置等按钮的**实际功能**
 - 窗口默认尺寸（`resize(1500,860)` 在 2in1 模拟器未生效）
 
+---
+
+## Round 3 追加：列表/网格双视图 + 排序 + OS 彩色图标
+
+### 已对齐
+| 项 | 实现 |
+|---|---|
+| 视图切换（真实生效） | `view/list` / `view/grid` 切换 `hostView`；网格用官方度量：卡片 280×64、间距 12 |
+| 排序（三态循环） | `view/sort`：manual → name → ip（官方 `hostSort` 的 name/IP/手动语义） |
+| 分组内排序 | `sortedHosts(group)` 只对当前分组过滤+排序，符合官方"按分组渲染"的顺序 |
+| **OS 彩色图标** | 从上游 `internal/workbench/icons/` 取 18 个发行版图标（`os_oraclelinux/ubuntu/debian/centos/redhat/windows/synology/openwrt/alpine/arch/freebsd/esxi/proxmox/fedora/kali/…`），按标签/地址关键词匹配 |
+| 网格卡片内容 | OS 图标 + 名称 + 用户 + 地址 + 标签 chips，点击连接 |
+| 列表行图标 | 有 OS 图标显示图标，否则颜色圆底首字母 |
+
+### 已知问题（下一轮修）
+1. `NAS` 行仍显示首字母而非 synology 图标：`osIcon()` 命中判断在列表里未生效（网格里正常），
+   怀疑 ArkTS 在 `if (this.osIcon(h) !== null)` 分支对 Resource 的判空行为与网格分支不同 → 改用
+   `hasOsIcon(h): boolean` + `osIconRes(h): Resource` 两个方法分离。
+2. 网格卡片在窗口很窄时不会自动降到单列（现在固定 280 宽 + wrap，窗口 < 600 时会溢出）。
+3. 排序未持久化（官方会 `state.save()`）。
+
+### 证据
+`harmonyos/.bin/ui/app-grid.png`（网格 + Oracle/NAS/测试/求是）、`app-list2.png`（列表 + OS 图标）。
+
