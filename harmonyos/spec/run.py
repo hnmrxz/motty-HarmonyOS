@@ -313,26 +313,24 @@ class Runner:
         if spec.get('app', {}).get('skipFresh') is True:
             self.fresh = False
         if self.fresh and 'app' in spec:
-            # 注意（实测）：本机的 `bm clean -d` 会让应用**回滚到先前安装的版本**，
-            # 于是用例跑的是旧二进制，而手动启动是新二进制——表现为"改了代码却测不到"。
-            # 因此清理数据后必须重装当前 HAP。路径可用 MOTTY_HAP 覆盖。
-            pass
-        if self.fresh and 'app' in spec:
-            # 清应用数据：让断言不依赖上一次运行遗留的库内容（可重复性）
             bundle = spec["app"]["bundleName"]
-            self.sh(f"aa force-stop {bundle}", check=False)
-            self.sh("bm clean -n " + bundle + " -d", check=False)
-            time.sleep(0.5)
             hap = os.environ.get("MOTTY_HAP")
             if hap is None:
                 hap = str(pathlib.Path(__file__).resolve().parents[1] /
                           "ohos/app/entry/build/default/outputs/default/entry-default-signed.hap")
-            if pathlib.Path(hap).exists():
-                proc = subprocess.run([HDC, "-t", self.serial, "install", "-r", hap],
-                                      capture_output=True, text=True)
-                time.sleep(0.5)
-            else:
-                print(f"警告: --fresh 找不到 HAP（{hap}），可能测到旧版本", file=sys.stderr)
+            if not pathlib.Path(hap).exists():
+                raise EnvError(f"--fresh 需要 HAP 但找不到: {hap}（可用 MOTTY_HAP 指定）")
+            self.sh(f"aa force-stop {bundle}", check=False)
+            # 注意：`bm uninstall` 在 hdc shell 下会静默失败（权限），必须用 hdc uninstall
+            subprocess.run([HDC, "-t", self.serial, "uninstall", bundle],
+                           capture_output=True, text=True)
+            proc = subprocess.run([HDC, "-t", self.serial, "install", "-r", hap],
+                                  capture_output=True, text=True)
+            installed = "success" in (proc.stdout or "").lower() or "AppMod finish" in (proc.stdout or "")
+            if not installed:
+                raise EnvError(f"--fresh 重装失败: {(proc.stdout or proc.stderr)[:200]}")
+            time.sleep(0.8)
+
         result = {
             'spec': spec['id'],
             'profile': self.profile,

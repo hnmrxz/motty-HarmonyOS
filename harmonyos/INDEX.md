@@ -1690,3 +1690,37 @@ rdp-server: start rc=0 running port=13389 frames=0
 
 ### 五、状态
 `rdp.server-peer` **仍失败**，不算 E1。服务端"能启动"目前只有**手动证据**。
+---
+
+## Round 58：RDP 服务端"能启动"有了**脚本化机器判定**证据
+
+### 一、根因清单（这轮才补齐）
+| 现象 | 真因 | 处置 |
+|---|---|---|
+| 用例抓到旧行为、手动是新行为 | `bm clean -d` 会让应用回滚到先前版本 | `--fresh` 改为 **uninstall(hdc) + install** |
+| `bm uninstall` 无效 | hdc shell 下静默失败（权限） | 改用 `hdc uninstall` |
+| 改了 C++ 但设备行为不变 | **`devecocli build` 会跳过打包**（HAP 时间停在旧值） | 全清 `.hvigor` + `entry/build` 后重建，并**核对 HAP 时间** |
+| 采集线程从没跑过 | FreeRDP shadow **不调用 `ep.Start`**（实测 `loops=0`） | 待修（见下） |
+
+### 二、脚本化机器判定：通过
+`tools/rdp-peer-check.ps1` + `rdp-peer-check-dump.py`（按 id 点击、断言状态行、返回退出码）：
+```
+state: rdp-server: start rc=0 running port=13389 frames=0 loops=0 surface=null built=Nov 11 2026 08:11:10
+PASS  服务端处于 running
+PASS  端口匹配
+PASS  二进制含构建指纹
+exit=0
+```
+同时 `/proc/net/tcp` 中 `344D`(=13389) 为 LISTEN。
+**为什么单独写脚本**：runner 的 `--fresh` 路径在本机仍会跑旧二进制（未彻底定位），
+而这条序列稳定拿到新二进制。脚本有退出码，属于机器判定，不是人眼判断。
+
+### 三、仍未达成
+- `frames=0 loops=0 surface=null`：**采集线程没跑**，因此没有画面
+- 上一轮尝试"start 后自己起线程"引入过 `std::terminate` 崩溃 → 已回退。
+  下一轮要安全地做：线程生命周期与 `shadow_server_stop/free` 严格配对（先 join 再 free）
+- 客户端仍只有连接路径
+
+### 四、诚实边界
+`rdp.server-peer`（spec）**仍失败**；本轮通过的只是"服务端能启动"这条脚本化检查。
+不把脚本通过说成"RDP 完整链路可用"。

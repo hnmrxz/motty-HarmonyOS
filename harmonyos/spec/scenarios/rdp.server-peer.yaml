@@ -11,8 +11,6 @@ app:
   bundleName: com.motty.harmony
   ability: EntryAbility
   settleMs: 4000
-  # 本机 bm clean -d 会让应用回滚到先前版本（实测），这条用例不清数据
-  skipFresh: true
 steps:
   - action: launch
   # 先等首屏真的起来（清数据后首次启动更慢；之前 1.8s 会在 UI 未就绪时点空）
