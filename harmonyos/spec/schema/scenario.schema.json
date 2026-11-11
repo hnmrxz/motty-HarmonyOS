@@ -166,6 +166,9 @@
           },
           "durationMs": {
             "type": "integer"
+          },
+          "code": {
+            "type": "integer"
           }
         }
       }

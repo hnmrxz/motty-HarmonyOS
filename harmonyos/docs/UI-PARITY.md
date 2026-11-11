@@ -811,3 +811,35 @@ G1/G2 各一台 → 点 G1 → 断言只有 `in-g1`、没有 `in-g2` → 点「�
 - 协议 chips（SSH/RDP/VNC）筛选（现在只有分组 chips 可用）；
 - 分组顺序/固定（官方 `savedHostGroup.Order/Pinned`）。
 
+---
+
+## Round 30 追加：命令面板键盘导航（↑↓ / 回车）
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 焦点 | 面板打开时 `openPalette()` 主动 `requestFocus('palette/input')`；**不聚焦则 keyEvent 没有接收者**（实测按什么都没反应） |
+| ↑ / ↓ | `KeyCode 2012 / 2013`，环形移动选中项（`paletteIndex`），选中项绿底高亮 |
+| 回车 | `KeyCode 2054` 执行当前选中项并关闭面板；输入框也挂了 `onSubmit` |
+| 输入变化 | 过滤条件变化时把选中重置为 0，避免越界 |
+
+### 测试基础设施
+runner 新增动作 **`key`**（`uitest uiInput keyEvent <code>`，`code` 已进 schema），这样键盘路径可以被用例驱动。
+
+### 用例拆分（避免一条用例假装覆盖两件事）
+| 用例 | 覆盖 | 结果 |
+|---|---|---|
+| `command.palette-keys`（新） | 打开面板 → 连按 9 次 ↓ 到「设置」→ 回车 → 断言设置面板打开、命令面板关闭 | PASS |
+| `command.palette`（重写） | 打开面板 → 点第 0 项「新建主机」→ 断言新建主机对话框出现、面板关闭 | PASS |
+
+### 一个真实的冲突（已记录，未强行糊过去）
+`ENTER` 同时承担两件事：**提交输入法组合**（runner 的 `type` 动作结尾会按它）和**执行当前条目**（官方行为）。
+在 `type` 里输入"设置"时，过滤后只剩一项，回车就直接执行了它，导致"输入回读"必然失败。
+
+处理方式：**不把两件事塞进一条用例**——
+- 执行路径用 `command.palette`（点击）与 `command.palette-keys`（键盘）覆盖；
+- 输入过滤没有专门用例，**明确写在 deviations 里未覆盖**，而不是改代码去迎合测试。
+
+### 回归
+`command.palette / command.palette-keys / ui.i18n.panels => 3/3 PASS`
+

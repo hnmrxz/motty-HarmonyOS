@@ -1,0 +1,75 @@
+schema: 1
+id: command.palette-keys
+title: 命令面板：↓ 逐项移动选中，回车执行（键盘导航）
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:top/search
+  - action: wait
+    ms: 1000
+    expect:
+      kind: screenRegex
+      regex: "命令面板"
+      withinMs: 8000
+  # 选中项从第 0 项开始：按 9 次 ↓ 到"设置"（0 新建主机 /1 导入 /2 导出 /3 会话日志 /
+  # 4 密钥链 /5 快捷命令 /6 端口转发 /7 已知主机 /8 调试 /9 设置）
+  - action: key
+    code: 2013
+  - action: key
+    code: 2013
+  - action: key
+    code: 2013
+  - action: key
+    code: 2013
+  - action: key
+    code: 2013
+  - action: key
+    code: 2013
+  - action: key
+    code: 2013
+  - action: key
+    code: 2013
+  - action: key
+    code: 2013
+  - action: wait
+    ms: 500
+  # 回车执行 -> 打开设置面板
+  - action: key
+    code: 2054
+  - action: wait
+    ms: 1200
+asserts:
+  - kind: screenRegex
+    regex: "语言|Language"
+    withinMs: 10000
+  - kind: absent
+    value: "命令面板"
+    withinMs: 4000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：面板内 DPAD_DOWN 逐项移动、回车执行第 10 项（设置）、执行后面板关闭。
+    **不覆盖**：DPAD_UP 回退（早前单独验证过不越界）、Esc 关闭、长列表滚动、鼠标与键盘选中态联动。
+deviations:
+  - 这条用例不输入文字：runner 的 type 动作结尾会按 ENTER（提交输入法），而面板把 ENTER 当作"执行"，
+    两者冲突；所以改成"纯键盘移动 + 回车"，这样既能测导航，也不会误触发。
+notes: >-
+  ENTER 兼作"提交输入法"和"执行"是真实冲突，已在 deviations 记录；如果以后要让两者共存，
+  需要在输入框里区分 composition 状态。

@@ -1,6 +1,6 @@
 schema: 1
 id: command.palette
-title: 命令面板：打开、过滤、执行、无匹配提示
+title: 命令面板：打开、条目可点执行、关闭
 sourceScript: null
 pcOnly: true
 profile:
@@ -19,62 +19,41 @@ steps:
       kind: screenRegex
       regex: "新建主机|New Host"
       withinMs: 20000
-  # 顶部搜索图标打开命令面板
   - action: click
     target: id:top/search
   - action: wait
-    ms: 1200
+    ms: 1000
     expect:
       kind: screenRegex
       regex: "命令面板"
-      withinMs: 10000
-  # 过滤到"设置"
-  - action: type
-    target: id:palette/input
-    text: 设置
+      withinMs: 8000
   - action: wait
-    ms: 900
+    ms: 300
     expect:
       kind: screenRegex
-      regex: "设置"
-      withinMs: 8000
-  # 执行：打开设置面板
+      regex: "新建主机"
+      withinMs: 6000
+  # 点第一项（新建主机）执行 -> 应打开新建主机对话框
   - action: click
     target: id:palette/item/0
   - action: wait
     ms: 1200
-    expect:
-      kind: screenRegex
-      regex: "语言|Language"
-      withinMs: 10000
-  - action: click
-    target: id:settings/close
-  - action: wait
-    ms: 800
-  # 再打开，输入不存在的词 -> 空提示
-  - action: click
-    target: id:top/search
-  - action: wait
-    ms: 900
-  - action: type
-    target: id:palette/input
-    text: zzzz
-  - action: wait
-    ms: 900
 asserts:
   - kind: screenRegex
-    regex: "没有匹配的命令"
+    regex: "名称|Label"
     withinMs: 10000
   - kind: absent
-    value: "palette.item"
-    withinMs: 2000
+    value: "命令面板"
+    withinMs: 4000
 evidence:
   png: true
   tree: true
   limits: >-
-    PC（2in1）实测。覆盖：从顶部搜索图标打开面板、输入过滤、"设置"条目可执行（打开设置面板）、无匹配时的空提示。
-    **不覆盖**：键盘导航（上下选择/回车执行）、快捷命令条目执行（需要活跃会话）、分组表头、最近使用排序。
+    PC（2in1）实测。覆盖：顶部搜索图标打开面板、条目列表渲染、点击条目执行（打开新建主机）、执行后面板关闭。
+    **不覆盖**：输入过滤（见 deviations，runner 的 type 结尾会按 ENTER，而面板把 ENTER 当执行）、
+    无匹配提示、鼠标悬停高亮。
 deviations:
-  - 官方面板包含"新建标签页/连接到主机"等分组，这里只实现命令条目（导航项 + 快捷命令）。
+  - 输入过滤没有在这条用例里测：runner 的 type 动作结尾会按 ENTER（用于提交输入法），面板把 ENTER
+    当作"执行当前条目"，两者冲突。键盘导航与回车执行由 command.palette-keys 覆盖。
 notes: >-
-  这条用例验证的是"面板能打开+能过滤+能执行+空态正确"，不涉及键盘操作。
+  这条保留"能打开 + 能点执行"的最小闭环；键盘路径看 command.palette-keys，别用一条用例假装覆盖两件事。

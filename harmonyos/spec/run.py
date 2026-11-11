@@ -370,6 +370,13 @@ class Runner:
                     self.sh(f"aa force-stop {spec['app']['bundleName']}", check=False)
                     time.sleep(1.5)
                     self.launch(spec['app'])
+                elif act == 'key':
+                    # 直接发按键（uitest uiInput keyEvent <code>）；用于键盘导航类用例
+                    code = step.get('code')
+                    if code is None:
+                        raise AssertionError('key 动作缺少 code')
+                    self.sh(f'uitest uiInput keyEvent {code}', check=False)
+                    time.sleep(float(step.get('ms', 350)) / 1000.0)
                 elif act == 'swipe':
                     # 触控滑动：用 uitest uiInput swipe。目标取节点中心，
                     # dy 为"手指位移"（负值=向上滑，通常是回看历史）。

@@ -1,0 +1,52 @@
+{
+  "spec": "command.palette-keys",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 4,
+      "action": "type",
+      "ok": false,
+      "detail": "选择器未命中: id:palette/input"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：面板内 DPAD_UP/DOWN 不越界、回车执行当前条目（打开设置面板）、执行后面板关闭。 **不覆盖**：鼠标悬停与键盘选中态联动、Esc 关闭、长列表滚动、快捷命令条目经键盘执行。"
+  },
+  "passed": false,
+  "error": "step 4 (type) 失败: 选择器未命中: id:palette/input"
+}

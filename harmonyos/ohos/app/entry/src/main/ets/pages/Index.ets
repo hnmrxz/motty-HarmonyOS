@@ -256,6 +256,7 @@ struct Index {
   @State snippetDialog: boolean = false;
   @State paletteOpen: boolean = false;
   @State paletteQuery: string = '';
+  @State paletteIndex: number = 0;
   @State snipName: string = '';
   @State snipCmd: string = '';
   @State snipEditingId: string = '';
@@ -2558,7 +2559,7 @@ struct Index {
       Image($r('app.media.ic_columns')).id('top/paste').width(16).height(16)
       Image($r('app.media.ic_terminal')).id('top/terminal').width(16).height(16)
       Image($r('app.media.ic_search')).id('top/search').width(16).height(16)
-        .onClick(() => { this.paletteOpen = true; this.paletteQuery = ''; })
+        .onClick(() => { this.openPalette(); })
       Image($r('app.media.ic_sparkles')).id('top/ai').width(16).height(16)
       Image($r('app.media.ic_bell')).id('top/notice').width(16).height(16)
       Image($r('app.media.ic_settings')).id('top/settings').width(16).height(16)
@@ -3616,6 +3617,9 @@ struct Index {
       }.width('100%')
       TextInput({ placeholder: '输入命令…', text: this.paletteQuery })
         .id('palette/input').width('100%').height(36)
+        .onChange((v: string) => { this.paletteIndex = 0; })
+        .onKeyEvent((e: KeyEvent) => { this.paletteKey(e); })
+        .onSubmit(() => { this.runPaletteCurrent(); })
         .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
         .onChange((v: string) => { this.paletteQuery = v; })
       if (this.paletteLabels().length === 0) {
@@ -3626,18 +3630,22 @@ struct Index {
         ForEach(this.paletteLabels(), (label: string, idx: number) => {
           ListItem() {
             Row() {
-              Text(label).fontSize(13).fontColor('#E8EAED').layoutWeight(1)
-                .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+              Text(label).fontSize(13)
+                .fontColor(this.paletteIndex === idx ? '#12141A' : '#E8EAED')
+                .layoutWeight(1).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
             }
             .id('palette/item/' + idx)
             .width('100%').height(34).padding({ left: 10, right: 10 })
             .borderRadius(6)
+            .backgroundColor(this.paletteIndex === idx ? '#3DDC97' : Color.Transparent)
             .onClick(() => { this.runPalette(label); })
           }
         }, (label: string) => label)
       }.id('palette/list').layoutWeight(1).width('100%')
     }
     .id('palette/panel')
+    .focusable(true)
+    .onKeyEvent((e: KeyEvent) => { this.paletteKey(e); })
     .width(560).height(420).padding(16).backgroundColor('#1C1F24').borderRadius(12)
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
@@ -3783,6 +3791,44 @@ struct Index {
     }
     .id('note/dialog').width(560).padding(20).backgroundColor('#1C1F24').borderRadius(14)
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
+  }
+
+
+  private paletteKey(e: KeyEvent): void {
+    const n: number = this.paletteLabels().length;
+    if (e.type !== KeyType.Down || n === 0) { return; }
+    if (e.keyCode === 2012) {
+      this.paletteIndex = (this.paletteIndex + n - 1) % n;
+    } else if (e.keyCode === 2013) {
+      this.paletteIndex = (this.paletteIndex + 1) % n;
+    } else if (e.keyCode === 2054) {
+      const labels: string[] = this.paletteLabels();
+      if (this.paletteIndex >= 0 && this.paletteIndex < labels.length) {
+        this.runPalette(labels[this.paletteIndex]);
+      }
+    }
+  }
+
+  private runPaletteCurrent(): void {
+    const labels: string[] = this.paletteLabels();
+    if (this.paletteIndex >= 0 && this.paletteIndex < labels.length) {
+      this.runPalette(labels[this.paletteIndex]);
+    }
+  }
+
+
+  private openPalette(): void {
+    this.paletteOpen = true;
+    this.paletteQuery = '';
+    this.paletteIndex = 0;
+    // 面板打开后必须把焦点放进输入框，否则 keyEvent 没有接收者（实测回车/方向键都不会触发）
+    setTimeout(() => {
+      try {
+        this.getUIContext().getFocusController().requestFocus('palette/input');
+      } catch (e) {
+        hilog.error(DOMAIN, TAG, 'requestFocus palette failed: %{public}s', JSON.stringify(e));
+      }
+    }, 120);
   }
 
   build() {
