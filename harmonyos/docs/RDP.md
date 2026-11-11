@@ -203,3 +203,30 @@ rdp-input: input: sent key+mouse; serverSaw keys=1 mouse=3 sync=0 (before 0/0/0)
 **边界**：这只证明输入**到达服务端子系统**；是否被真实桌面消费、修饰键/Unicode、坐标映射、
 丢事件与延迟都未验证。对真实 Windows 服务端的输入仍属 E3。
 
+---
+
+## Round 92–99：专家团会诊后的重大发现与本轮进展（更新）
+
+### 一、被推翻的旧结论（诚实更正）
+旧文档写"`BitmapUpdate` 不触发是因为 gdi 接管"——**错**。真相是我们在 `gdi_init` 之后
+**覆盖**了 `update->BitmapUpdate`，把 gdi 唯一解码器 `gdi_bitmap_update`
+（`libfreerdp/cache/bitmap.c:281`）删掉了；而 GDI 主缓冲初始化就是 `memset 0xFF`
+（`libfreerdp/gdi/bitmap.c:174`），所以"未解码 = 纯白"。这解释了 `#FFFFFF`。
+修复：改为**链式包装**（保存原指针并调用），并改用 `gdi->primary->bitmap->data`
+与 `gdi->stride`；同时把泵循环的"3 个更新就 break"改为等到 ≥24 个瓦片。
+
+### 二、服务端侧已被独立证明（E4 哈希法）
+- 帧源改为单一通道（JS tick）。实测：`paint=72`、`rows=74481`、`surface hash 变化 69 次/72 帧`
+  ⇒ **服务端内容真的每帧在变**。
+- 客户端侧已收到 `bmp=24 rects=24`（shadow 按 64×64 瓦片发送）。
+
+### 三、仍未解决（E3）
+客户端快照仍读到统一白色，且**客户端连接内嵌服务端时偶发 `SIGABRT`**：
+栈为 `shadow_multiclient_publish_and_wait+34` —— 单线程 `publish` 与客户端连接/断开抖动冲突。
+已加"仅在有客户端时 publish"护栏，崩溃仍在。
+
+### 四、结论与路线调整
+- 内嵌 shadow 服务端当作**测试对端**已到收益边界（崩溃在库内部事件语义）；
+- 更有价值的是**用真实 RDP 服务端验证鸿蒙客户端**（客户端路径不依赖内嵌服务端）；
+- 内嵌服务端保留但标注"实验、可能崩溃"，不得作为可用功能宣传。
+

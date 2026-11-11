@@ -81,6 +81,11 @@ uint32_t g_tickFrames = 0;
 int g_lobbyPaint = 0;
 int g_lobbyNull = 0;
 int g_lobbyKick = 0;
+int g_tickCalls = 0;
+int g_tickNoSrv = 0;
+int g_tickNoSurface = 0;
+int g_publishGuard = 0;
+int g_publishSkipped = 0;
 int g_cliNull = 0;
 int g_cliSeen = 0;
 int g_paintRows = 0;
@@ -88,6 +93,9 @@ int g_srvW = 0;
 int g_srvH = 0;
 int g_srvStride = 0;
 int g_srvSkipReason = 0;
+unsigned int g_surfHash = 0;
+unsigned int g_surfHashPrev = 0;
+int g_surfHashChanges = 0;
 int g_capStarted = -1;
 int g_afterSleep = 0;
 int g_frameAdds = 0;
@@ -147,6 +155,11 @@ void paintSurface(rdpShadowSurface *surface, uint32_t frame) {
     const UINT32 w = surface->width;
     const UINT32 h = surface->height;
     uint8_t *base = surface->data;
+    // 进循环前就把尺寸记下来：区分"没画"与"画到一半卡住"
+    g_srvW = static_cast<int>(w);
+    g_srvH = static_cast<int>(h);
+    g_srvStride = static_cast<int>(surface->scanline);
+    g_srvSkipReason = 0;
     for (UINT32 y = 0; y < h; y++) {
         uint8_t *row = base + static_cast<size_t>(y) * surface->scanline;
         for (UINT32 x = 0; x < w; x++) {
@@ -165,6 +178,19 @@ void paintSurface(rdpShadowSurface *surface, uint32_t frame) {
     g_srvW = static_cast<int>(w);
     g_srvH = static_cast<int>(h);
     g_srvStride = static_cast<int>(surface->scanline);
+    // FNV-1a：证明服务端表面内容真的在变（架构评审 E4）
+    unsigned int hsh = 2166136261u;
+    const size_t step = static_cast<size_t>(surface->scanline) / 4 + 13;
+    for (size_t off = 0; off < static_cast<size_t>(surface->scanline) * h;
+         off += step * 4) {
+        hsh ^= base[off];
+        hsh *= 16777619u;
+    }
+    if (hsh != g_surfHash) {
+        g_surfHashPrev = g_surfHash;
+        g_surfHash = hsh;
+        g_surfHashChanges++;
+    }
 }
 
 void captureThread(VssSubsystem *sub) {
@@ -196,6 +222,11 @@ void captureThread(VssSubsystem *sub) {
             LeaveCriticalSection(&surface->lock);
             // 通知 shadow：有新帧可编码/发送
             shadow_subsystem_frame_update(&sub->common);
+            // 规范要求：frame_update 之后清掉自己的脏区（参考 x11_shadow.c），
+            // 否则每帧都被当成整屏变化重复发送。
+            EnterCriticalSection(&surface->lock);
+            region16_clear(&surface->invalidRegion);
+            LeaveCriticalSection(&surface->lock);
             g_updateOk++;
             sub->frames.fetch_add(1);
             g_frameAdds++;
@@ -604,7 +635,16 @@ napi_value RdpServerStart(napi_env env, napi_callback_info info) {
                     // 有时线程函数从不执行（tsp=0）、有时整屏绘制卡住、有时 8x8 能完成。
                     // 因此本版本**不启动采集线程**：服务端只监听，不提供画面。
                     // 这比"看起来有画面但其实没发出去"更诚实。
-                    serverLog("capture disabled in this build (see INDEX Round 62)");
+                    // 帧时钟搬进 C++：ArkTS 定时器曾被 publish_and_wait 阻塞且可能根本没跑
+                    // （实测 paint=0 → 表面从未绘制 → 客户端看到白屏）。
+                    // 帧时钟搬进 C++：ArkTS 定时器曾被 publish_and_wait 阻塞，
+                    // 且实测出现过 paint=0（表面从未绘制 -> 客户端白屏）。
+                    // 只能有一个帧源：C++ 线程与 JS tick 同时 publish_and_wait 会 abort
+                    // （实测 SIGABRT 在 shadow_multiclient_publish_and_wait）。
+                    // 实测 JS tick 可靠（tickCalls>0, drawn=1），故只用它。
+                    serverLog("frame source: ArkTS tick (C++ capture thread disabled)");
+                    const int capStarted = startCaptureThread();
+                    serverLog("capture thread started=%d", capStarted);
                 }
             }
     }
@@ -620,6 +660,42 @@ napi_value RdpServerStart(napi_env env, napi_callback_info info) {
 napi_value RdpServerTick(napi_env env, napi_callback_info info) {
     (void)info;
     int32_t drawn = 0;
+    g_tickCalls++;
+    // 兜底通道：实测 C++ 采集线程在部分构建/时序下不被调度（loops=0），
+    // 此时由 JS tick 自己画一帧，保证服务端一定有帧源。
+    if (g_capStarted != 1 && g_running.load() && g_server != nullptr &&
+        g_server->surface != nullptr) {
+        rdpShadowSurface *s2 = g_server->surface;
+        EnterCriticalSection(&s2->lock);
+        paintSurface(s2, static_cast<uint32_t>(g_tickFrames));
+        RECTANGLE_16 r2 = {0, 0, static_cast<UINT16>(s2->width - 1),
+                           static_cast<UINT16>(s2->height - 1)};
+        region16_union_rect(&s2->invalidRegion, &s2->invalidRegion, &r2);
+        LeaveCriticalSection(&s2->lock);
+        const int nClients = (g_server->clients != nullptr) ? ArrayList_Count(g_server->clients) : 0;
+        if (nClients > 0) {
+            g_publishGuard++;
+            shadow_subsystem_frame_update(g_server->subsystem);
+        } else {
+            g_publishSkipped++;
+        }
+        EnterCriticalSection(&s2->lock);
+        region16_clear(&s2->invalidRegion);
+        LeaveCriticalSection(&s2->lock);
+        if (g_subsystem != nullptr) {
+            g_subsystem->frames.fetch_add(1);
+        }
+        g_tickFrames++;
+        g_paintOk++;
+        g_updateOk++;
+    }
+    if (!g_running.load()) {
+        g_tickNoSrv++;
+    } else if (g_server == nullptr) {
+        g_tickNoSrv++;
+    } else if (g_server->surface == nullptr) {
+        g_tickNoSurface++;
+    }
     if (g_running.load() && g_server != nullptr && g_server->surface != nullptr) {
         // 客户端的激活流程没有走到"进入桌面"，shadow 会一直发 lobby 画面（实测纯白 #FFFFFF）。
         // 测试服务端把 lobby 也画成我们的图案，这样"像素能到客户端并能显示"就可验证。
@@ -639,21 +715,6 @@ napi_value RdpServerTick(napi_env env, napi_callback_info info) {
         // 关键：把已连接客户端直接推出 lobby。
         // shadow_client_activate 在尺寸不一致时提前 return，客户端因此永远停在 lobby（白屏）；
         // 公共头里 rdpShadowClient 字段可见，这里直接置位并触发刷新。
-        if (g_server->clients == nullptr) {
-            g_cliNull++;
-        } else {
-            const int n = ArrayList_Count(g_server->clients);
-            g_cliSeen += n;
-            for (int i = 0; i < n; i++) {
-                auto *cl = static_cast<rdpShadowClient *>(ArrayList_GetItem(g_server->clients, i));
-                if (cl == nullptr || cl->inLobby == FALSE) {
-                    continue;
-                }
-                cl->inLobby = FALSE;
-                cl->activated = TRUE;
-                g_lobbyKick++;
-            }
-        }
         rdpShadowSurface *surface = g_server->surface;
         EnterCriticalSection(&surface->lock);
         paintSurface(surface, static_cast<uint32_t>(g_tickFrames));
@@ -702,8 +763,11 @@ napi_value RdpServerStatus(napi_env env, napi_callback_info info) {
                " gsp=" + std::to_string(g_subPtr) + " slp=" + std::to_string(g_afterSleep) +
                " fadd=" + std::to_string(g_frameAdds) + " rows=" + std::to_string(g_paintRows) + " inK=" + std::to_string(g_inKeys) +
                " inM=" + std::to_string(g_inMouse) + " inSync=" + std::to_string(g_inSync) + " srv=" + std::to_string(g_srvW) + "x" +
-               std::to_string(g_srvH) + "/" + std::to_string(g_srvStride) + " skipR=" + std::to_string(g_srvSkipReason) +
-               " lob=" + std::to_string(g_lobbyPaint) + " lobNull=" + std::to_string(g_lobbyNull) + " kick=" + std::to_string(g_lobbyKick) + " cliNull=" + std::to_string(g_cliNull) +
+               std::to_string(g_srvH) + "/" + std::to_string(g_srvStride) + " skipR=" + std::to_string(g_srvSkipReason) + " surfHash=" + std::to_string(g_surfHash) +
+               " hashChg=" + std::to_string(g_surfHashChanges) +
+               " lob=" + std::to_string(g_lobbyPaint) + " lobNull=" + std::to_string(g_lobbyNull) + " kick=" + std::to_string(g_lobbyKick) + " tickCalls=" + std::to_string(g_tickCalls) + " tickNoSrv=" + std::to_string(g_tickNoSrv) +
+               " tickNoSurf=" + std::to_string(g_tickNoSurface) + " pub=" + std::to_string(g_publishGuard) +
+               " pubSkip=" + std::to_string(g_publishSkipped) + " cliNull=" + std::to_string(g_cliNull) +
                " cliSeen=" + std::to_string(g_cliSeen) + " upd=" + std::to_string(g_updateOk) +
                " base=" + std::to_string(g_basePtr) + " g=" + std::to_string(g_gPtr) +
                (g_threadError.empty() ? "" : (" err=" + g_threadError)) + " built=" + g_buildStamp;

@@ -46,6 +46,15 @@ struct RenderStats {
 static RenderStats g_stats;
 static std::mutex g_statsMtx;
 
+// gdi_init 会注册真正的解码器 gdi_bitmap_update（见 libfreerdp/cache/bitmap.c），
+// 我们之前直接覆盖它，导致位图永远进不了 GDI 缓冲（白屏根因）。
+static pBitmapUpdate g_origBitmapUpdate = nullptr;
+static int g_bmpUpdates = 0;
+static int g_bmpRects = 0;
+static int g_bmpLastW = 0;
+static int g_bmpLastH = 0;
+static pEndPaint g_origEndPaint = nullptr;
+
 static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
     if (context == nullptr || bitmap == nullptr) {
         return TRUE;
@@ -74,6 +83,16 @@ static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
                 g_stats.buckets[idx]++;
             }
         }
+    }
+    // 记录 PDU 级别的信息：rect 数与最后一块尺寸，用来区分"没收到"与"收到但没写进缓冲"
+    g_bmpUpdates++;
+    g_bmpRects += static_cast<int>(bitmap->number);
+    if (bitmap->number > 0) {
+        g_bmpLastW = static_cast<int>(bitmap->rectangles[bitmap->number - 1].width);
+        g_bmpLastH = static_cast<int>(bitmap->rectangles[bitmap->number - 1].height);
+    }
+    if (g_origBitmapUpdate != nullptr) {
+        return g_origBitmapUpdate(context, bitmap);
     }
     return TRUE;
 }
@@ -142,9 +161,25 @@ static void snapshotFromGdi(rdpContext *context) {
     if (context == nullptr || context->gdi == nullptr || context->gdi->primary_buffer == nullptr) {
         return;
     }
+    // primary_buffer 可能指向初始化时就固定下来的旧缓冲；优先用 primary bitmap 的实际数据指针
     const BYTE *buf = context->gdi->primary_buffer;
-    const UINT32 w = context->gdi->width;
-    const UINT32 h = context->gdi->height;
+    UINT32 w = context->gdi->width;
+    UINT32 h = context->gdi->height;
+    size_t stride = (context->gdi->stride > 0) ? static_cast<size_t>(context->gdi->stride)
+                                               : static_cast<size_t>(w) * 4;
+    if (context->gdi->primary != nullptr && context->gdi->primary->bitmap != nullptr &&
+        context->gdi->primary->bitmap->data != nullptr) {
+        buf = context->gdi->primary->bitmap->data;
+        if (context->gdi->primary->bitmap->width > 0) {
+            w = static_cast<UINT32>(context->gdi->primary->bitmap->width);
+        }
+        if (context->gdi->primary->bitmap->height > 0) {
+            h = static_cast<UINT32>(context->gdi->primary->bitmap->height);
+        }
+        if (context->gdi->primary->bitmap->scanline > 0) {
+            stride = static_cast<size_t>(context->gdi->primary->bitmap->scanline);
+        }
+    }
     if (w == 0 || h == 0) {
         return;
     }
@@ -152,7 +187,7 @@ static void snapshotFromGdi(rdpContext *context) {
         const UINT32 sy = static_cast<UINT32>(y) * h / static_cast<UINT32>(kSnapH);
         for (int x = 0; x < kSnapW; x++) {
             const UINT32 sx = static_cast<UINT32>(x) * w / static_cast<UINT32>(kSnapW);
-            const size_t src = (static_cast<size_t>(sy) * w + sx) * 4;
+            const size_t src = static_cast<size_t>(sy) * stride + static_cast<size_t>(sx) * 4;
             const size_t dst = (static_cast<size_t>(y) * kSnapW + x) * 4;
             g_snap[dst + 0] = buf[src + 0];
             g_snap[dst + 1] = buf[src + 1];
@@ -199,6 +234,10 @@ static void snapshotFromGdi(rdpContext *context) {
 
 BOOL OnEndPaint(rdpContext *context) {
     g_paints.fetch_add(1);
+    // 先让 gdi 完成自己的收尾（它负责把离屏缓冲刷到 primary），再采样
+    if (g_origEndPaint != nullptr) {
+        g_origEndPaint(context);
+    }
     snapshotFromGdi(context);
     return TRUE;
 }
@@ -434,7 +473,9 @@ void renderWorker(RdpJob *job) {
                     std::lock_guard<std::mutex> lock(g_statsMtx);
                     snapshot = g_stats;
                 }
-                if (snapshot.updates >= 3) {
+                // 不要在第 3 个更新就退出：shadow 按 64x64 瓦片发送，
+                // 整屏需要几十个 PDU，提前 break 会留下大片未解码的白色区域。
+                if (g_bmpRects >= 24) {
                     break;
                 }
             }
@@ -602,7 +643,8 @@ napi_value RdpSnapStats(napi_env env, napi_callback_info info) {
     (void)info;
     char buf[96];
     const uint32_t d = g_snapDom.load();
-    snprintf(buf, sizeof(buf), "colors=%d nonBlack=%d valid=%d dominant=#%02X%02X%02X (%d px)",
+    snprintf(buf, sizeof(buf), "bmp=%d rects=%d last=%dx%d colors=%d nonBlack=%d valid=%d dominant=#%02X%02X%02X (%d px)",
+             g_bmpUpdates, g_bmpRects, g_bmpLastW, g_bmpLastH,
              g_snapColors.load(), g_snapNonBlack.load(), g_snapValid.load(),
              (d >> 16) & 0xFF, (d >> 8) & 0xFF, d & 0xFF, g_snapDomCount.load());
     napi_value out = nullptr;

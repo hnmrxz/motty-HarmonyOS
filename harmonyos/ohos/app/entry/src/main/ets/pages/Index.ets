@@ -163,6 +163,8 @@ struct Index {
   @State rdpSrvStatus: string = '';
   @State rdpSrvPort: number = 13389;
   private rdpTickId: number = -1;
+  @State rdpTickCount: number = 0;
+  @State rdpTickDrawn: number = -1;
   @State rdpSnapDrawn: number = 0;
   @State rdpSnapColors: number = 0;
   @State rdpSnapInfo: string = 'rdp-canvas: (empty)';
@@ -722,8 +724,17 @@ struct Index {
     this.rdpSrvStatus = 'rdp-server: start rc=' + rc + ' ' + mottynapi.rdpServerStatus();
     if (rc === 0 && this.rdpTickId === -1) {
       // 用 JS 定时器驱动出帧（不走 std::thread：实测在 shadow 上下文线程不被调度）
+      // 先同步调用一次：若这次也没出帧，说明是 NAPI 函数本身有问题，而不是定时器。
+      const d0: number = mottynapi.rdpServerTick();
+      this.rdpTickDrawn = d0;
+      this.rdpTickCount = 1;
       this.rdpTickId = setInterval(() => {
-        mottynapi.rdpServerTick();
+        this.rdpTickDrawn = mottynapi.rdpServerTick();
+        this.rdpTickCount = this.rdpTickCount + 1;
+        // 每 5 个 tick 刷新一次状态串（避免读到的永远是启动瞬间的快照）
+        if (this.rdpTickCount % 5 === 0) {
+          this.rdpSrvStatus = 'rdp-server: ' + mottynapi.rdpServerStatus();
+        }
       }, 200);
     }
   }
@@ -1973,6 +1984,7 @@ struct Index {
         .id('rdp/experimental').fontSize(10).fontColor('#C62828').width('100%')
       Text(this.rdpResult.length > 0 ? this.rdpResult : 'rdp: (not probed)')
         .id('rdp/result').fontSize(11).fontFamily('monospace').fontColor('#37474F').width('100%')
+      Text('ticks=' + this.rdpTickCount + ' drawn=' + this.rdpTickDrawn).id('rdp/ticks').fontSize(11).fontColor('#0A6C00')
       Text(this.rdpSnapInfo)
         .id('rdp/canvas-info').fontSize(11).fontFamily('monospace').fontColor('#0A6C00')
       Canvas(this.rdpCanvasCtx)

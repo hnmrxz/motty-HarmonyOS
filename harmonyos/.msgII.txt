@@ -1,0 +1,21 @@
+﻿feat(harmonyos): 专家团会诊后修正 RDP 白屏根因（链式回调/stride/瓦片泵），并固化服务端哈希证据
+
+被推翻的旧结论:
+- 旧文档称'BitmapUpdate 不触发是因为 gdi 接管' -> 错
+- 真相: 我们在 gdi_init 之后覆盖了 update->BitmapUpdate，删掉了 gdi 唯一解码器
+  gdi_bitmap_update(cache/bitmap.c:281)；GDI 主缓冲初始即 memset 0xFF(gdi/bitmap.c:174)
+  => '未解码 = 纯白'，这正是 #FFFFFF
+修复: 链式包装原回调; 改用 gdi->primary->bitmap->data 与 gdi->stride;
+      泵循环不再'3 个更新就 break'，改为等 >=24 个瓦片
+
+服务端侧独立证明(E4 哈希):
+- paint=72 rows=74481 surface hash 变化 69/72 帧 => 内容真的每帧在变
+- 客户端已收到 bmp=24 rects=24(64x64 瓦片)
+
+仍未解决(E3):
+- 客户端快照仍读到统一白
+- 客户端连接内嵌服务端时偶发 SIGABRT: shadow_multiclient_publish_and_wait+34
+  (单线程 publish 与连接/断开抖动冲突)；已加'仅在有客户端时 publish'护栏，仍崩
+
+路线调整: 内嵌 shadow 作为测试对端到收益边界；改用真实 RDP 服务端验证客户端
+docs/RDP.md 已记录全部更正与结论
