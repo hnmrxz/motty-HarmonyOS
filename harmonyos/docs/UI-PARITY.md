@@ -1141,3 +1141,28 @@ runner 新增动作 **`key`**（`uitest uiInput keyEvent <code>`，`code` 已进
 | `System` | ⏸ 不做（上游无写入点，属遗留字段） |
 | `savedTransport` 细项 | ⚠️ 我们用 `proto` 三选一覆盖主要场景，细项暂不做 |
 
+---
+
+## Round 70 追加：主机列表显示「最近连接」
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 数据 | 启动/刷新时把 `session_logs` 按 `started_at desc` 扫一遍，取每个 `address|proto` 的**最新**时间到 `lastUsedMap` |
+| 文案 | `lastUsedText(h)`：有记录 → `最近连接 HH:MM`；无 → `未连接`（英文 `last used / never connected`） |
+| 位置 | 放在名称列的**第二行**（不占额外行宽） |
+| 刷新 | `recordSession()` 写日志后立刻 `await this.reload()`，连接一建立列表就更新 |
+
+### 用例
+`host.lastused` **PASS**：新建主机 → 显示「未连接」→ 连接一次（trust 主机）→ 回列表 → 出现「最近连接 HH:MM」。
+
+### 回归
+`pages.logs-vault / host.manage / ssh.connect-from-list / hosts.search => 4/4 PASS`
+
+### 本轮踩的坑：**行宽被挤爆**
+第一版把「最近连接」作为**新的兄弟节点**放在列表行里（宽度 120），
+结果整行宽度超限：名称列被压成 0 宽，`host-name/<i>` 从 dump 里消失，
+`pages.logs-vault`（点主机名）与 `host.manage`（断言名称）直接失败。
+⇒ 修法：把新文本放进**已有的名称列**（纵向堆叠），不增加行宽。
+**教训：在定宽 Row 里加东西先算宽度；优先往已有列的纵向空间里塞，而不是横向加兄弟节点。**
+

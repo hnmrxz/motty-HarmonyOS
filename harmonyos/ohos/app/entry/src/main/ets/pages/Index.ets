@@ -224,6 +224,7 @@ struct Index {
   @State formTags: string = '';
   @State formColor: string = '';
   @State formIcon: string = '';
+  private lastUsedMap: Map<string, number> = new Map<string, number>();
   @State probeText: string = '(not probed)';
   @State keyDialog: boolean = false;
   @State changedDialog: boolean = false;
@@ -423,6 +424,22 @@ struct Index {
     }
     rs.close();
     this.hosts = out;
+    // 最近连接：session_logs 里每个 (address|proto) 的最新时间（只用于列表展示）
+    try {
+      this.lastUsedMap.clear();
+      const lp = new relationalStore.RdbPredicates('session_logs');
+      lp.orderByDesc('started_at');
+      const lrs = await this.store.query(lp, ['address', 'proto', 'started_at']);
+      while (lrs.goToNextRow()) {
+        const k: string = lrs.getString(0) + '|' + lrs.getString(1);
+        if (!this.lastUsedMap.has(k)) {
+          this.lastUsedMap.set(k, lrs.getLong(2));
+        }
+      }
+      lrs.close();
+    } catch (e) {
+      hilog.error(DOMAIN, TAG, 'lastUsed query failed: %{public}s', JSON.stringify(e));
+    }
     hilog.info(DOMAIN, TAG, 'reload count=%{public}d first=%{public}s', out.length, out.length > 0 ? out[0].label : '<none>');
     // 从保险库预热：进程重启后凭据仍然可用，这是"落盘"与"只在内存"的分界
     for (let i = 0; i < out.length; i++) {
@@ -1670,6 +1687,18 @@ struct Index {
   }
 
 
+
+  private lastUsedText(h: HostItem): string {
+    const at: number | undefined = this.lastUsedMap.get(h.address + '|' + h.proto);
+    if (at === undefined) {
+      return this.lang === 'zh' ? '未连接' : 'never connected';
+    }
+    const d = new Date(at);
+    const hh: string = d.getHours() < 10 ? '0' + d.getHours() : String(d.getHours());
+    const mm: string = d.getMinutes() < 10 ? '0' + d.getMinutes() : String(d.getMinutes());
+    return (this.lang === 'zh' ? '最近连接 ' : 'last used ') + hh + ':' + mm;
+  }
+
   private iconGlyph(name: string): string {
     if (name === 'star') { return '★'; }
     if (name === 'server') { return '▤'; }
@@ -2631,6 +2660,8 @@ struct Index {
                     Text(this.iconGlyph(h.icon)).id('host-icon/' + h.id).fontSize(13).fontColor('#E0A458')
                     Text(h.label).fontSize(15).fontColor('#E8EAED').fontWeight(FontWeight.Medium)
                       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).width('100%')
+                    Text(this.lastUsedText(h)).id('host-lastused/' + h.id).fontSize(10)
+                      .fontColor('#6B7078').maxLines(1)
                     Text(h.user.length > 0 ? h.user : '-').fontSize(12).fontColor('#8A8F98')
                   }
                   .id('host-name/' + index)
@@ -3511,6 +3542,8 @@ struct Index {
     };
     try {
       await this.store.insert('session_logs', bucket);
+      // 立刻刷新列表里的"最近连接"（不刷新的话要等下一次 reload 才更新）
+      await this.reload();
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'recordSession failed: %{public}s', JSON.stringify(e));
     }

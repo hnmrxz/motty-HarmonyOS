@@ -1,0 +1,87 @@
+schema: 1
+id: host.lastused
+title: 主机列表显示"最近连接"：从未连接显示未连接，连过一次后显示时间
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+fixture:
+  vncAuth: false
+  vncResize: false
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: lastused-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1000
+    expect:
+      kind: screenRegex
+      regex: "未连接|never connected"
+      withinMs: 8000
+  # 连一次（会写 session_logs）
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "信任此主机|Trust this host|Unknown host key"
+      withinMs: 12000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2500
+  # 回主机列表：应出现"最近连接 HH:MM"
+  - action: click
+    target: id:nav/hosts
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "最近连接|last used"
+      withinMs: 10000
+asserts:
+  - kind: screenRegex
+    regex: "最近连接|last used"
+    withinMs: 8000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：新建主机显示"未连接"；连接一次后列表显示"最近连接 HH:MM"。
+    **不覆盖**：跨重启保持（session_logs 是持久表，但本用例没重启验证）、多台主机的排序、
+    时区/日期跨天显示（只显示 HH:MM）。
+deviations:
+  - 依赖 ssh 夹具（127.0.0.1:2222，hostkey 已预置），spec 声明 fixture 但不改 VNC 参数。
+notes: >-
+  对应上游主机的"最近使用"信息；数据来源是本地的 session_logs 表，不联网。
