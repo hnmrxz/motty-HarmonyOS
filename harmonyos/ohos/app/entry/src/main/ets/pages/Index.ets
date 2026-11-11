@@ -286,6 +286,7 @@ struct Index {
   @State rdpFrameSrc: string = '';
   @State rdpFrameInfo: string = '';
   @State diagTab: string = 'rdp';
+  private rdpProbeToken: number = 0;
   @State rdpFrameWrites: number = 0;
   @State rdpPreviewOn: boolean = false;
   @State rdpFrameSkips: number = 0;
@@ -1516,9 +1517,22 @@ struct Index {
   // ---------------- RDP（FreeRDP 接入，仅连接路径）----------------
   // 说明：本轮只验证"能起、能失败、能报错"，没有画面与输入。
   private rdpProbe(port: number, user: string = 'administrator', password: string = 'wrong-password'): void {
-    this.rdpResult = 'rdp: probing 127.0.0.1:' + port + ' ...';
+    const probing: string = 'rdp: probing 127.0.0.1:' + port + ' ...';
+    this.rdpResult = probing;
+    // 对"端口开放但不是 RDP"的对端（例如 SSH 夹具），握手会一直等、回调不返回。
+    // FreeRDP 的这个构建没有可用的连接超时设置，所以在 UI 层加一个守卫：8 秒没结果就明确说明。
+    const token: number = Date.now();
+    this.rdpProbeToken = token;
+    setTimeout(() => {
+      if (this.rdpProbeToken === token && this.rdpResult === probing) {
+        this.rdpResult = 'rdp: probe timeout (no RDP response within 8s) on 127.0.0.1:' + port;
+        this.probeText = this.rdpResult;
+      }
+    }, 8000);
     mottynapi.rdpProbe('127.0.0.1', port, user, password,
       (result: string) => {
+        if (this.rdpProbeToken !== token) { return; }
+        this.rdpProbeToken = 0;
         this.rdpResult = 'rdp: ' + result;
         this.probeText = 'rdp: ' + result;
       });

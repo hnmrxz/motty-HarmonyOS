@@ -1,0 +1,15 @@
+﻿fix(harmonyos/rdp+spec): rdp.connect 根因查清并修复(UI 8s 探测超时守卫) —— 3 条失败全消
+
+根因: rdp.connect 第二步探测 rdp/probe-ssh(127.0.0.1:2222), 跑批时 SSH 夹具在该端口,
+TCP 能连上但 RDP 握手一直等不到数据 -> NAPI 回调不返回 -> 结果停在 rdp: probing ...
+  断言自然失败; 手工验证"通过"只因当时夹具没起、端口关闭
+
+两处修复:
+1) 产品侧: rdpProbe 加 UI 层 8 秒守卫, 超时显示
+   rdp: probe timeout (no RDP response within 8s) on 127.0.0.1:<port>
+   (FreeRDP 该构建没有可用的连接超时设置)
+2) 用例侧: connect failed 断言放在"探测关闭端口"之后(步骤内 expect), 末尾断言改为 probe timeout
+
+复跑: rdp.connect / ui.i18n.diagnostics / ui.rdp-experimental / rdp.client-render / rdp.preview /
+  rdp.server-peer => 6/6 PASS
+=> full58 的 3 条失败全部消除, 理论上 73/73(需再跑一次全量确认)

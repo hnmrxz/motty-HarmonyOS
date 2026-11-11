@@ -183,7 +183,7 @@ FAIL ui.rdp-experimental    (实验性说明已移到「快照」页，且提示
 2. **文案更新**：`ui.rdp-experimental` 断言的旧说明「画面与输入尚未投递」已被改为
    「画面已能解码并投递到界面」（这是在 RDP 画面真的能显示之后改的），用例同步更新，并先切到快照页。
 
-### 已知自动化问题：`rdp.connect`
+### `rdp.connect` 的根因（Round 60 查清）
 - 手工流程（开面板 → 点 `rdp/probe-closed` → 等 5s）稳定得到
   `rdp: connect failed: The connection transport layer failed.`；
 - 但 `run.py --fresh` 跑这条用例时，断言阶段屏幕里**面板已经不见了**，且**没有崩溃日志**；
@@ -194,4 +194,20 @@ FAIL ui.rdp-experimental    (实验性说明已移到「快照」页，且提示
 ### 当前基线
 真实通过 **70/73**；两条用例已修（`ui.i18n.diagnostics`、`ui.rdp-experimental` 各自单独跑均 PASS），
 `rdp.connect` 仍为红（已知自动化问题）。**不把它算进通过数**。
+
+### Round 60：`rdp.connect` 根因与修复（73/73 可达成）
+**根因**：该用例第二步探测 `rdp/probe-ssh`（127.0.0.1:2222）。跑批时 SSH 夹具在这个端口上，
+TCP 能连上，但 RDP 握手一直等不到数据 → NAPI 回调不返回 → 结果停在 `rdp: probing ...`，
+断言自然失败。手工验证"通过"只是因为当时夹具没起、端口是关闭的。
+
+**两处修复**：
+1. **产品侧**：`rdpProbe` 加 **UI 层 8 秒守卫**——超时未返回就明确显示
+   `rdp: probe timeout (no RDP response within 8s) on 127.0.0.1:<port>`，
+   不再无限停在 `probing ...`（FreeRDP 该构建没有可用的连接超时设置）。
+2. **用例侧**：把 `connect failed` 的断言放在"探测关闭端口"之后（步骤内 expect），
+   末尾断言改为 `probe timeout`（反映最后一次探测的真实结果）。
+
+复跑：`rdp.connect` / `ui.i18n.diagnostics` / `ui.rdp-experimental` /
+`rdp.client-render` / `rdp.preview` / `rdp.server-peer => 6/6 PASS`。
+⇒ full58 的 3 条失败全部消除，理论上 **73/73**（需再跑一次全量确认）。
 

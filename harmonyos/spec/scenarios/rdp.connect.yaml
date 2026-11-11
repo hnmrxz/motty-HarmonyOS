@@ -26,13 +26,21 @@ steps:
       kind: screenRegex
       regex: "connect failed"
       withinMs: 15000
+  # 端口开放但不是 RDP（SSH 夹具）：握手会一直等，UI 层 8 秒守卫必须给出明确超时提示
   - action: click
     target: id:rdp/probe-ssh
   - action: wait
-    ms: 5000
+    ms: 10000
+    expect:
+      kind: screenRegex
+      regex: "probe timeout"
+      withinMs: 20000
 asserts:
   - kind: screenRegex
-    regex: "connect failed"
+    regex: "probe timeout"
+    withinMs: 10000
+  - kind: absent
+    value: "error context"
     withinMs: 15000
   - kind: absent
     value: "connected 127.0.0.1"
