@@ -161,7 +161,7 @@ struct Index {
   @State aiAnswer: string = '';
   @State aiEndpoint: string = 'http://127.0.0.1:2297/v1/ai';
   @State rdpSrvStatus: string = '';
-  @State rdpSrvPort: number = 3389;
+  @State rdpSrvPort: number = 13389;  // 3389 是特权端口，应用绑不上
   @State selText: string = '';
   @State clipText: string = '';
   private touchLastY: number = -1;
@@ -1887,8 +1887,8 @@ struct Index {
           .onClick(() => { this.stopRdpServer(); })
         Button('RDP srv status').id('rdp/srv-status').backgroundColor('#37474F').fontColor(Color.White)
           .onClick(() => { this.refreshRdpServer(); })
-        Button('RDP local :3389').id('rdp/probe-local').backgroundColor('#1A6DD0').fontColor(Color.White)
-          .onClick(() => { this.rdpProbe(3389); })
+        Button('RDP local :13389').id('rdp/probe-local').backgroundColor('#1A6DD0').fontColor(Color.White)
+          .onClick(() => { this.rdpProbe(13389); })
         Button('RDP :3390').id('rdp/probe-closed').backgroundColor('#37474F').fontColor(Color.White)
           .onClick(() => { this.rdpProbe(3390); })
         Button('RDP :2222').id('rdp/probe-ssh').backgroundColor('#37474F').fontColor(Color.White)

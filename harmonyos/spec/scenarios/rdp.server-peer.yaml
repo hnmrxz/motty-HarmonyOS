@@ -10,9 +10,16 @@ capabilities:
 app:
   bundleName: com.motty.harmony
   ability: EntryAbility
-  settleMs: 1800
+  settleMs: 4000
 steps:
   - action: launch
+  # 先等首屏真的起来（清数据后首次启动更慢；之前 1.8s 会在 UI 未就绪时点空）
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "No hosts yet"
+      withinMs: 20000
   - action: click
     target: id:diag/open
   # 启动内嵌 RDP 服务端（FreeRDP shadow server + 自定义 capture 子系统）
@@ -22,7 +29,7 @@ steps:
     ms: 1500
     expect:
       kind: screenRegex
-      regex: "rdp-server: running port=3389"
+      regex: "rdp-server: running port=13389"
       withinMs: 12000
   # 用客户端连它：这是"真实协议、真实对端"的连接
   - action: click
@@ -31,7 +38,7 @@ steps:
     ms: 4000
 asserts:
   - kind: screenRegex
-    regex: "rdp: connected 127.0.0.1:3389"
+    regex: "rdp: connected 127.0.0.1:13389"
     withinMs: 20000
   - kind: absent
     value: "rdp: connect failed"

@@ -1617,3 +1617,41 @@ lint 通过（41 用例 + SBOM 校验）。E1 能力 16。
 1. 解决日志落盘（先确认 `cacheDir` 是否真的传进 native；把 configDir 显示在 `rdp/srv-state` 里）
 2. 逐项排除 `shadow_server_init` 失败点（优先证书生成：makecert + OpenSSL 在 OHOS 上是否可用）
 3. 服务端起来后再跑 `rdp.server-peer`，届时才能谈"客户端连上真实对端"
+---
+
+## Round 56：RDP 服务端终于跑起来了（手动验证），但用例仍有"版本不一致"问题
+
+### 一、修掉的两个**返回值约定**错误（这是关键）
+FreeRDP 的 `shadow_server_init` 与 `shadow_server_start` **成功都返回 0、失败返回 <0**（不是布尔）。
+我先写成 `!shadow_server_init(...)`，后改成 `== 0` 判失败——**两次都把成功当失败**。
+正确写法：`>= 0` / `< 0`。
+
+### 二、手动验证：服务端确实起来了
+在设备上按"force-stop → aa start → 点诊断 → 点 srv-start"操作，状态行显示：
+```
+rdp-server: start rc=0 running port=13389 frames=0
+```
+且 `/proc/net/tcp` 中 `344D`（=13389）状态为 `0A`（**LISTEN**）。这是**手动证据**，不是用例证据。
+
+另外修掉的真问题：
+1. **端口 3389 是特权端口** → 改 **13389**
+2. `ConfigPath` 为空（OHOS 无 XDG 配置目录）→ 传 `cacheDir`；证书已成功生成（`shadow/shadow.crt` 1010 B、`shadow.key` 1705 B）
+3. 凭据顺序（曾 SIGSEGV）、init 失败后解引用（曾 SIGSEGV）
+4. 自检体系：`stage[cert=ok key=ok listener=ok subsystem=ok vssInit=1]`、`start[screen=ok capture=ok]` 全部落进状态行，不需要日志文件
+
+### 三、未解决：用例抓到的仍是旧版行为
+同一个 HAP、同一设备：
+- **手动点击**：新行为（`rc=0 running`）
+- **用 `run.py` 跑用例**：旧行为（`stopped err=shadow_server_init failed`，这是**旧二进制的文案格式**）
+已尝试：`--fresh`/不加 `--fresh`、`uninstall + install`、清 `.hvigor` 全量重建、`settleMs` 4000 + 首屏等待。
+仍未消除。**下一步**：在状态行里输出 native 库的构建指纹（如 `__DATE__ __TIME__`），
+用例与手动各跑一次，直接比对"跑的是不是同一份 .so"，而不是继续猜。
+
+### 四、诚实边界
+- `frames=0`：capture 线程尚未产出帧（`server->surface` 可能为空），**画面/位图未验证**
+- 客户端仍只有连接路径
+- **`rdp.server-peer` 用例当前仍是失败状态**，不能算 E1
+
+### 五、为什么这轮值得记
+两个"把成功当失败"的返回值错误，各花了很久才定位——根因是**没有读 FreeRDP 的返回值约定就照直觉写**。
+自检体系（把每个阶段的结果塞进状态行）是这轮唯一真正有效的排障手段。

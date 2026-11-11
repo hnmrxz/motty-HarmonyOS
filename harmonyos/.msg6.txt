@@ -1,0 +1,19 @@
+﻿fix(harmonyos): RDP 服务端跑通（手动验证）；记录返回值约定错误
+
+关键修复:
+- shadow_server_init / shadow_server_start 都是"成功返回 0、失败 <0"，不是布尔。
+  先写 !init(...)，后改 == 0 判失败，两次都把成功当失败 -> 正确为 >= 0 / < 0
+- 端口 3389 是特权端口 -> 改 13389
+- ConfigPath 为空(OHOS 无 XDG) -> 传 cacheDir；证书生成成功 shadow.crt/shadow.key
+- 凭据顺序(曾 SIGSEGV)、init 失败后解引用(曾 SIGSEGV)
+- 自检体系落进状态行: stage[cert/key/listener/subsystem/vssInit]、start[screen/capture]，
+  不再依赖日志文件
+
+手动验证: rdp-server: start rc=0 running port=13389，/proc/net/tcp 中 344D(13389) 为 LISTEN
+
+未解决:
+- 同一 HAP 下"手动点击"是行为、而 run.py 跑用例抓到旧版行为(旧二进制文案格式)；
+  已试 --fresh/不 fresh、uninstall+install、清 .hvigor 全量重建、延长 settleMs + 首屏等待，均未消除
+  下一步: 在状态行输出 native 构建指纹(__DATE__ __TIME__)直接比对，而不是继续猜
+
+诚实边界: frames=0(capture 尚未出帧，画面/位图未验证)；rdp.server-peer 仍失败，不算 E1

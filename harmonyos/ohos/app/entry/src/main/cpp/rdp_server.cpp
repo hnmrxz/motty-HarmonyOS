@@ -15,6 +15,13 @@
 #include <freerdp/freerdp.h>
 #include <freerdp/server/shadow.h>
 #include <winpr/synch.h>
+#include <winpr/tools/makecert.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <cerrno>
+#include <pthread.h>
 #include <winpr/wlog.h>
 
 #include <atomic>
@@ -23,6 +30,11 @@
 #include <cstring>
 #include <string>
 #include <thread>
+
+extern "C" {
+rdpShadowScreen *shadow_screen_new(rdpShadowServer *server);
+rdpShadowCapture *shadow_capture_new(rdpShadowServer *server);
+}
 
 namespace {
 
@@ -46,6 +58,25 @@ VssSubsystem *g_subsystem = nullptr;
 std::thread g_serverThread;
 std::atomic<bool> g_running{false};
 std::string g_lastError;
+// 我们自己的 ep.Init 是否被调用过：用来把失败点切在 shadow_subsystem_init 的前半段/后半段
+int g_vssInitCalls = 0;
+std::string g_lastConfigDir;
+int g_lastRc = -1;
+
+// 诊断日志：自己 fopen 写文件，不依赖 stderr（OHOS 上 stderr 不进 hilog，
+// freopen 也可能失败）。文件名固定，方便 hdc file recv 拉回来。
+static FILE *g_diag = nullptr;
+void diagLog(const char *fmt, ...) {
+    if (g_diag == nullptr) {
+        return;
+    }
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(g_diag, fmt, ap);
+    va_end(ap);
+    fputc('\n', g_diag);
+    fflush(g_diag);
+}
 
 void serverLog(const char *fmt, ...) {
     va_list ap;
@@ -129,6 +160,7 @@ UINT32 vss_enum_monitors(MONITOR_DEF *monitors, UINT32 maxMonitors) {
 }
 
 int vss_init(rdpShadowSubsystem *base) {
+    g_vssInitCalls++;
     auto *sub = reinterpret_cast<VssSubsystem *>(base);
     if (sub == nullptr) {
         return -1;
@@ -230,11 +262,12 @@ napi_value RdpServerStart(napi_env env, napi_callback_info info) {
         napi_throw_type_error(env, nullptr, "rdpServerStart(port, user, password, configDir)");
         return nullptr;
     }
-    int32_t port = 3389;
+    int32_t port = 13389;
     napi_get_value_int32(env, args[0], &port);
     const std::string user = getStringArg(env, args[1]);
     const std::string password = getStringArg(env, args[2]);
     const std::string configDir = getStringArg(env, args[3]);
+    g_lastConfigDir = configDir;
 
     int32_t rc = 0;
     if (g_running.load()) {
@@ -254,16 +287,83 @@ napi_value RdpServerStart(napi_env env, napi_callback_info info) {
                 // 把 stderr 重定向到应用目录：FreeRDP 的 WLog 默认写 stderr，
                 // 而 OHOS 上 stderr 不进 hilog，导致失败时"什么都看不到"。
                 const std::string logPath = configDir + "/motty-rdp-server.log";
-                (void)freopen(logPath.c_str(), "a", stderr);
-                setvbuf(stderr, nullptr, _IONBF, 0);
+                g_diag = fopen("/data/storage/el2/base/cache/motty-rdp-server.log", "w");
+                if (g_diag == nullptr) {
+                    g_diag = fopen(logPath.c_str(), "w");
+                }
+                diagLog("=== rdp server start port=%d configDir=%s diagOpen=%d", port,
+                        configDir.c_str(), g_diag != nullptr ? 1 : 0);
+                {
+                    // 目录可写性自检：shadow_server_init 会在该目录下建 shadow/ 子目录
+                    const std::string probe = configDir + "/rdp-write-probe";
+                    FILE *fp = fopen(probe.c_str(), "w");
+                    diagLog("write probe: %s", fp != nullptr ? "ok" : "FAILED");
+                    if (fp != nullptr) {
+                        fclose(fp);
+                        remove(probe.c_str());
+                    }
+                }
                 serverLog("=== rdp server start port=%d configDir=%s", port, configDir.c_str());
                 g_server->ConfigPath = _strdup(configDir.c_str());
                 serverLog("config path: %s", configDir.c_str());
             }
             // subsystem 在 shadow_server_init 里才由 entry points 创建；
             // 凭据用文件级静态量传递（顺序坑：之前在这里取 g_server->subsystem 是空的）
-            if (!shadow_server_init(g_server)) {
-                g_lastError = "shadow_server_init failed";
+            // FreeRDP 约定：shadow_server_init 成功返回 0，失败返回 <0（不是布尔！）
+            const bool initOk = shadow_server_init(g_server) >= 0;
+            diagLog("shadow_server_init -> %s", initOk ? "ok" : "FAILED");
+            if (!initOk) {
+                // 分阶段自检：证书/私钥/监听器/子系统，结果拼进状态行（不依赖日志文件）
+                std::string stageTrace = "stage[";
+                if (g_server->CertificateFile != nullptr) {
+                    rdpCertificate *c = freerdp_certificate_new_from_file(g_server->CertificateFile);
+                    stageTrace += std::string("cert=") + (c != nullptr ? "ok" : "FAIL");
+                    if (c != nullptr) {
+                        freerdp_certificate_free(c);
+                    }
+                } else {
+                    stageTrace += "cert=unset";
+                }
+                if (g_server->PrivateKeyFile != nullptr) {
+                    rdpPrivateKey *k = freerdp_key_new_from_file(g_server->PrivateKeyFile);
+                    stageTrace += std::string(" key=") + (k != nullptr ? "ok" : "FAIL");
+                    if (k != nullptr) {
+                        freerdp_key_free(k);
+                    }
+                } else {
+                    stageTrace += " key=unset";
+                }
+                {
+                    freerdp_listener *l = freerdp_listener_new();
+                    stageTrace += std::string(" listener=") + (l != nullptr ? "ok" : "FAIL");
+                    if (l != nullptr) {
+                        freerdp_listener_free(l);
+                    }
+                }
+                {
+                    // shadow_subsystem_new/free 是内部函数（不在公开头里）；
+                    // 这里直接调用我们自己注册的 entry 的 New/Free 验证子系统本身可用
+                    RDP_SHADOW_ENTRY_POINTS ep{};
+                    const int epOk = vss_entry_points(&ep);
+                    rdpShadowSubsystem *ss = (epOk == 1 && ep.New != nullptr) ? ep.New() : nullptr;
+                    stageTrace += std::string(" subsystem=") + (ss != nullptr ? "ok" : "FAIL");
+                    if (ss != nullptr && ep.Free != nullptr) {
+                        ep.Free(ss);
+                    }
+                }
+                stageTrace += std::string(" vssInit=") + std::to_string(g_vssInitCalls) + "]";
+                g_lastError = "shadow_server_init failed " + stageTrace;
+                // 单测 makecert：自签证书是 init 里最容易在 OHOS 上失败的环节
+                MAKECERT_CONTEXT *mc = makecert_context_new();
+                diagLog("makecert_context_new -> %s", mc != nullptr ? "ok" : "NULL");
+                if (mc != nullptr) {
+                    char *argv[6] = {const_cast<char *>("makecert"), const_cast<char *>("-rdp"),
+                                     const_cast<char *>("-live"), const_cast<char *>("-silent"),
+                                     const_cast<char *>("-y"), const_cast<char *>("5")};
+                    const int prc = makecert_context_process(mc, 6, argv);
+                    diagLog("makecert_context_process -> %d", prc);
+                    makecert_context_free(mc);
+                }
                 shadow_server_free(g_server);
                 g_server = nullptr;
                 rc = 4;
@@ -275,8 +375,57 @@ napi_value RdpServerStart(napi_env env, napi_callback_info info) {
                 } else {
                     serverLog("warning: server->subsystem is null after init");
                 }
-                if (!shadow_server_start(g_server)) {
-                    g_lastError = "shadow_server_start failed";
+                // shadow_server_start 同样是"成功返回 0、失败 <0"（见 shadow_server.c 的 return 0）
+                if (shadow_server_start(g_server) < 0) {
+                    {
+                    // 分阶段：start 内部会自己建 screen/capture，先把它们单独测一遍，
+                    // 剩下唯一可能就是监听器绑定（端口/权限）
+                    std::string t2 = " start[";
+                    rdpShadowScreen *sc = shadow_screen_new(g_server);
+                    t2 += std::string("screen=") + (sc != nullptr ? "ok" : "FAIL");
+                    rdpShadowCapture *cap = shadow_capture_new(g_server);
+                    t2 += std::string(" capture=") + (cap != nullptr ? "ok" : "FAIL");
+                    t2 += "]";
+                    // 直接测"应用能不能监听这个端口"：OHOS 对 listen 是否有额外限制
+                    {
+                        int fd = socket(AF_INET, SOCK_STREAM, 0);
+                        int bindProbe = -1;
+                        if (fd >= 0) {
+                            struct sockaddr_in addr{};
+                            addr.sin_family = AF_INET;
+                            addr.sin_addr.s_addr = htonl(INADDR_ANY);
+                            addr.sin_port = htons(static_cast<uint16_t>(port));
+                            bindProbe = bind(fd, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr));
+                            if (bindProbe == 0) {
+                                bindProbe = listen(fd, 4);
+                            }
+                            const int err = errno;
+                            t2 += std::string(" bindProbe=") + (bindProbe == 0 ? "ok" : "FAIL") +
+                                  "(errno=" + std::to_string(err) + ")";
+                            close(fd);
+                        } else {
+                            t2 += " bindProbe=socketFAIL";
+                        }
+                    }
+                    // 端口已被占用说明 open_port 成功 -> 失败在 CreateThread；单独测一下
+                    {
+                        pthread_t th{};
+                        const int trc = pthread_create(&th, nullptr, [](void *) -> void * {
+                            return nullptr;
+                        }, nullptr);
+                        t2 += std::string(" threadProbe=") + (trc == 0 ? "ok" : "FAIL(" + std::to_string(trc) + ")");
+                        if (trc == 0) {
+                            pthread_join(th, nullptr);
+                        }
+                        HANDLE h = CreateThread(nullptr, 0, [](void *) -> DWORD { return 0; }, nullptr, 0, nullptr);
+                        t2 += std::string(" winprThread=") + (h != nullptr ? "ok" : "FAIL");
+                        if (h != nullptr) {
+                            (void)WaitForSingleObject(h, 1000);
+                            CloseHandle(h);
+                        }
+                    }
+                    g_lastError = "shadow_server_start failed" + t2;
+                }
                     shadow_server_uninit(g_server);
                     shadow_server_free(g_server);
                     g_server = nullptr;
@@ -288,6 +437,7 @@ napi_value RdpServerStart(napi_env env, napi_callback_info info) {
             }
     }
     }
+    g_lastRc = rc;
     napi_value out = nullptr;
     napi_create_int32(env, rc, &out);
     return out;
@@ -310,7 +460,9 @@ napi_value RdpServerStatus(napi_env env, napi_callback_info info) {
         text = "running port=" + std::to_string(static_cast<unsigned>(g_server->port)) +
                " frames=" + std::to_string(frames);
     } else {
-        text = g_lastError.empty() ? "stopped" : ("stopped err=" + g_lastError);
+        text = "stopped rc=" + std::to_string(g_lastRc) + " dir=" +
+               (g_lastConfigDir.empty() ? "(empty)" : g_lastConfigDir) +
+               (g_lastError.empty() ? "" : (" err=" + g_lastError));
     }
     napi_value out = nullptr;
     napi_create_string_utf8(env, text.c_str(), text.size(), &out);
