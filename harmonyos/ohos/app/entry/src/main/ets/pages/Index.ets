@@ -696,6 +696,14 @@ struct Index {
     this.rdpSnapInfo = 'rdp-canvas: drawn=' + drawn + ' colors=' + this.rdpSnapColors + ' | cpp ' + (mottynapi.rdpSnapStats() as string);
   }
 
+  // 输入回传探测：连接后发键鼠，看服务端收到多少
+  private probeRdpInput(): void {
+    this.rdpResult = 'rdp-input: connecting...';
+    mottynapi.rdpInputProbe('127.0.0.1', this.rdpSrvPort, 'tester', 'secret', (result: string) => {
+      this.rdpResult = 'rdp-input: ' + result;
+    });
+  }
+
   // 客户端渲染管线（最小）：连接后泵事件，把收到的位图更新统计回来
   private startRdpRender(): void {
     this.rdpResult = 'rdp-render: connecting...';
@@ -1940,6 +1948,8 @@ struct Index {
           .onClick(() => { this.rdpProbe(13389, 'tester', 'secret'); })
         Button('RDP render').id('rdp/render').backgroundColor('#1A6DD0').fontColor(Color.White)
           .onClick(() => { this.startRdpRender(); })
+        Button('RDP input').id('rdp/input').backgroundColor('#1A6DD0').fontColor(Color.White)
+          .onClick(() => { this.probeRdpInput(); })
         Button('RDP :3390').id('rdp/probe-closed').backgroundColor('#37474F').fontColor(Color.White)
           .onClick(() => { this.rdpProbe(3390); })
         Button('RDP :2222').id('rdp/probe-ssh').backgroundColor('#37474F').fontColor(Color.White)

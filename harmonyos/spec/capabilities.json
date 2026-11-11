@@ -1154,6 +1154,7 @@
       "evidence": "E1",
       "proof": [
         "spec/scenarios/rdp.client-connect.yaml",
+        "spec/scenarios/rdp.client-input.yaml",
         "spec/scenarios/rdp.client-render.yaml",
         "spec/scenarios/rdp.connect.yaml",
         "spec/scenarios/rdp.server-peer.yaml",
@@ -1167,7 +1168,7 @@
         "deps": "R12",
         "acceptance": "`rdp_e2e`、`rdp_files_e2e`"
       },
-      "partialCoverage": "客户端与服务端**双向打通**：协商+TLS+connected、**收到并解码桌面更新（EndPaint/GDI 统计 1024×768=786432）**、服务端监听并出帧、失败语义，均已双画像实测；把像素画到 Canvas、输入回传、NLA/CredSSP、真实 Windows 服务端互通未做。"
+      "partialCoverage": "客户端与服务端**双向打通**：协商+TLS+connected、收到并解码桌面更新（1024×768=786432）、**输入回传（键盘/鼠标事件到达服务端并计数）**、服务端监听出帧、失败语义，均已双画像实测；**画面内容仍为白色（E3）**、真实 Windows 服务端互通、NLA/CredSSP 未做。"
     },
     {
       "id": "E05",

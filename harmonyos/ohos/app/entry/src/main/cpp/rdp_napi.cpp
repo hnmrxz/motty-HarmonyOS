@@ -307,6 +307,77 @@ std::string rdpTryConnect(const RdpJob &job) {
     return result;
 }
 
+// 服务端侧计数（定义在 rdp_server.cpp），用于证明"输入真的到达服务端"
+extern "C" void MottyRdpInputStats(int *keys, int *mouse, int *sync);
+
+// rdpInputProbe(host, port, user, password, cb)：连接 → 发键鼠 → 回报服务端收到多少
+void inputProbeWorker(RdpJob *job) {
+    std::string result;
+    RDP_CLIENT_ENTRY_POINTS entryPoints = {0};
+    RdpClientEntry(&entryPoints);
+    rdpContext *context = freerdp_client_context_new(&entryPoints);
+    freerdp *instance = context != nullptr ? context->instance : nullptr;
+    if (instance == nullptr) {
+        result = "input: error context";
+    } else {
+        rdpSettings *settings = context->settings;
+        freerdp_settings_set_string(settings, FreeRDP_ServerHostname, job->host.c_str());
+        freerdp_settings_set_uint32(settings, FreeRDP_ServerPort, static_cast<uint32_t>(job->port));
+        freerdp_settings_set_string(settings, FreeRDP_Username, job->user.c_str());
+        freerdp_settings_set_string(settings, FreeRDP_Password, job->password.c_str());
+        instance->VerifyCertificateEx = VerifyCertEx;
+        freerdp_settings_set_bool(settings, FreeRDP_NlaSecurity, FALSE);
+        freerdp_settings_set_bool(settings, FreeRDP_TlsSecurity, TRUE);
+        instance->PostConnect = OnPostConnect;
+        instance->PostDisconnect = OnPostDisconnect;
+        if (!freerdp_connect(instance)) {
+            result = std::string("input: connect failed: ") +
+                     freerdp_get_last_error_string(freerdp_get_last_error(context));
+        } else {
+            int keyBefore = 0, mouseBefore = 0, syncBefore = 0;
+            MottyRdpInputStats(&keyBefore, &mouseBefore, &syncBefore);
+            for (int i = 0; i < 40; i++) {   // ~2s 抖动，让连接稳定
+                if (!freerdp_check_fds(instance)) {
+                    break;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+            if (context->input != nullptr) {
+                // 'A' = 0x1E（RDP scancode），按下 + 抬起
+                freerdp_input_send_keyboard_event(context->input, 0, 0x1E);
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                freerdp_input_send_keyboard_event(context->input, 0x8000, 0x1E);
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                freerdp_input_send_mouse_event(context->input, PTR_FLAGS_MOVE, 33, 44);
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                freerdp_input_send_mouse_event(context->input,
+                                               PTR_FLAGS_BUTTON1 | PTR_FLAGS_DOWN, 33, 44);
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                freerdp_input_send_mouse_event(context->input, PTR_FLAGS_BUTTON1, 33, 44);
+            }
+            for (int i = 0; i < 60; i++) {   // 再泵一会儿，等输入送达
+                if (!freerdp_check_fds(instance)) {
+                    break;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+            int keyAfter = 0, mouseAfter = 0, syncAfter = 0;
+            MottyRdpInputStats(&keyAfter, &mouseAfter, &syncAfter);
+            char buf[256];
+            snprintf(buf, sizeof(buf),
+                     "input: sent key+mouse; serverSaw keys=%d mouse=%d sync=%d (before %d/%d/%d)",
+                     keyAfter, mouseAfter, syncAfter, keyBefore, mouseBefore, syncBefore);
+            result = buf;
+            freerdp_disconnect(instance);
+        }
+        freerdp_client_context_free(context);
+    }
+    auto *payload = new std::string(result);
+    napi_call_threadsafe_function(job->cb, payload, napi_tsfn_blocking);
+    napi_release_threadsafe_function(job->cb, napi_tsfn_release);
+    delete job;
+}
+
 // rdpRender(host, port, user, password, cb)：连接 → 泵事件若干秒 → 回调画面上传统计
 void renderWorker(RdpJob *job) {
     std::string result;
@@ -539,11 +610,39 @@ napi_value RdpSnapStats(napi_env env, napi_callback_info info) {
     return out;
 }
 
+napi_value RdpInputProbe(napi_env env, napi_callback_info info) {
+    size_t argc = 5;
+    napi_value args[5] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 5) {
+        napi_throw_type_error(env, nullptr, "rdpInputProbe(host, port, user, password, cb)");
+        return nullptr;
+    }
+    auto *job = new RdpJob();
+    job->host = getString(env, args[0]);
+    int32_t port = 3389;
+    napi_get_value_int32(env, args[1], &port);
+    job->port = port;
+    job->user = getString(env, args[2]);
+    job->password = getString(env, args[3]);
+    napi_value name = nullptr;
+    napi_create_string_utf8(env, "motty.rdp.input", NAPI_AUTO_LENGTH, &name);
+    if (napi_create_threadsafe_function(env, args[4], nullptr, name, 0, 1, nullptr, nullptr, nullptr,
+                                        callJs, &job->cb) != napi_ok) {
+        delete job;
+        napi_throw_error(env, nullptr, "tsfn failed");
+        return nullptr;
+    }
+    std::thread(inputProbeWorker, job).detach();
+    return nullptr;
+}
+
 void RegisterRdpFunctions(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
         {"rdpProbe", nullptr, RdpProbe, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpRender", nullptr, RdpRender, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpSnapshot", nullptr, RdpSnapshot, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"rdpInputProbe", nullptr, RdpInputProbe, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpSnapStats", nullptr, RdpSnapStats, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);

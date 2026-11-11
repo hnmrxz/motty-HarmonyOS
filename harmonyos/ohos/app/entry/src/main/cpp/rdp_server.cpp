@@ -84,6 +84,10 @@ int g_lobbyKick = 0;
 int g_cliNull = 0;
 int g_cliSeen = 0;
 int g_paintRows = 0;
+int g_srvW = 0;
+int g_srvH = 0;
+int g_srvStride = 0;
+int g_srvSkipReason = 0;
 int g_capStarted = -1;
 int g_afterSleep = 0;
 int g_frameAdds = 0;
@@ -126,6 +130,7 @@ void serverLog(const char *fmt, ...) {
 void paintSurface(rdpShadowSurface *surface, uint32_t frame) {
     if (surface == nullptr || surface->data == nullptr) {
         g_paintSkipped++;
+        g_srvSkipReason = 1;
         return;
     }
     // 护栏：surface 的宽高来自 shadow 内部，实测可能读到脏值；
@@ -133,6 +138,10 @@ void paintSurface(rdpShadowSurface *surface, uint32_t frame) {
     if (surface->width == 0 || surface->height == 0 || surface->width > 8192 ||
         surface->height > 8192 || surface->scanline < surface->width * 4) {
         g_paintSkipped++;
+        g_srvSkipReason = 2;
+        g_srvW = static_cast<int>(surface->width);
+        g_srvH = static_cast<int>(surface->height);
+        g_srvStride = static_cast<int>(surface->scanline);
         return;
     }
     const UINT32 w = surface->width;
@@ -153,6 +162,9 @@ void paintSurface(rdpShadowSurface *surface, uint32_t frame) {
         }
         g_paintRows++;
     }
+    g_srvW = static_cast<int>(w);
+    g_srvH = static_cast<int>(h);
+    g_srvStride = static_cast<int>(surface->scanline);
 }
 
 void captureThread(VssSubsystem *sub) {
@@ -219,12 +231,63 @@ UINT32 vss_enum_monitors(MONITOR_DEF *monitors, UINT32 maxMonitors) {
     return 1;
 }
 
+// ---- 输入回传：客户端 → 服务端（到达即计数，用于证明输入链路成立）----
+int g_inKeys = 0;
+int g_inKeysUp = 0;
+int g_inMouse = 0;
+int g_inSync = 0;
+int g_inLastKey = -1;
+int g_inLastX = -1;
+int g_inLastY = -1;
+
+BOOL VssKeyboardEvent(rdpShadowSubsystem *subsystem, rdpShadowClient *client, UINT16 flags, UINT8 code) {
+    (void)subsystem;
+    (void)client;
+    if ((flags & 0x8000U) == 0) {
+        g_inKeysUp++;
+    } else {
+        g_inKeys++;
+    }
+    g_inLastKey = static_cast<int>(code);
+    return TRUE;
+}
+
+BOOL VssUnicodeKeyboardEvent(rdpShadowSubsystem *subsystem, rdpShadowClient *client, UINT16 flags,
+                             UINT16 code) {
+    (void)code;
+    return VssKeyboardEvent(subsystem, client, flags, 0);
+}
+
+BOOL VssMouseEvent(rdpShadowSubsystem *subsystem, rdpShadowClient *client, UINT16 flags, UINT16 x,
+                   UINT16 y) {
+    (void)subsystem;
+    (void)client;
+    (void)flags;
+    g_inMouse++;
+    g_inLastX = static_cast<int>(x);
+    g_inLastY = static_cast<int>(y);
+    return TRUE;
+}
+
+BOOL VssSynchronizeEvent(rdpShadowSubsystem *subsystem, rdpShadowClient *client, UINT32 flags) {
+    (void)subsystem;
+    (void)client;
+    (void)flags;
+    g_inSync++;
+    return TRUE;
+}
+
 int vss_init(rdpShadowSubsystem *base) {
     g_vssInitCalls++;
     auto *sub = reinterpret_cast<VssSubsystem *>(base);
     if (sub == nullptr) {
         return -1;
     }
+    // 输入回调挂在子系统上：client 的 KeyboardEvent/MouseEvent 会转到这些函数
+    sub->common.KeyboardEvent = VssKeyboardEvent;
+    sub->common.UnicodeKeyboardEvent = VssUnicodeKeyboardEvent;
+    sub->common.MouseEvent = VssMouseEvent;
+    sub->common.SynchronizeEvent = VssSynchronizeEvent;
     sub->common.numMonitors = vss_enum_monitors(sub->common.monitors, 16);
     sub->common.virtualScreen = sub->common.monitors[0];
     serverLog("subsystem init: %ux%u fps=%u", kVssWidth, kVssHeight, kVssFps);
@@ -637,7 +700,9 @@ napi_value RdpServerStatus(napi_env env, napi_callback_info info) {
                " sh=" + std::to_string(g_surfH) + " stride=" + std::to_string(g_surfStride) +
                " dnull=" + std::to_string(g_surfDataNull) + " skip=" + std::to_string(g_paintSkipped) + " cap=" + std::to_string(g_capStarted) + " tsp=" + std::to_string(g_threadSubPtr) +
                " gsp=" + std::to_string(g_subPtr) + " slp=" + std::to_string(g_afterSleep) +
-               " fadd=" + std::to_string(g_frameAdds) + " rows=" + std::to_string(g_paintRows) +
+               " fadd=" + std::to_string(g_frameAdds) + " rows=" + std::to_string(g_paintRows) + " inK=" + std::to_string(g_inKeys) +
+               " inM=" + std::to_string(g_inMouse) + " inSync=" + std::to_string(g_inSync) + " srv=" + std::to_string(g_srvW) + "x" +
+               std::to_string(g_srvH) + "/" + std::to_string(g_srvStride) + " skipR=" + std::to_string(g_srvSkipReason) +
                " lob=" + std::to_string(g_lobbyPaint) + " lobNull=" + std::to_string(g_lobbyNull) + " kick=" + std::to_string(g_lobbyKick) + " cliNull=" + std::to_string(g_cliNull) +
                " cliSeen=" + std::to_string(g_cliSeen) + " upd=" + std::to_string(g_updateOk) +
                " base=" + std::to_string(g_basePtr) + " g=" + std::to_string(g_gPtr) +
@@ -662,4 +727,17 @@ void RegisterRdpServerFunctions(napi_env env, napi_value exports) {
         {"rdpServerStatus", nullptr, RdpServerStatus, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
+}
+
+// 供 rdp_napi.cpp 读取输入计数（全局变量在匿名 namespace 内，需要显式导出）
+extern "C" void MottyRdpInputStats(int *keys, int *mouse, int *sync) {
+    if (keys != nullptr) {
+        *keys = g_inKeys;
+    }
+    if (mouse != nullptr) {
+        *mouse = g_inMouse;
+    }
+    if (sync != nullptr) {
+        *sync = g_inSync;
+    }
 }

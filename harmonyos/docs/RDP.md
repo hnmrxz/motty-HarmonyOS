@@ -182,3 +182,24 @@ static UINT32 vss_enum_monitors(MONITOR_DEF*, UINT32);
 - 客户端目前只有连接路径：即使服务端能跑，`rdpProbe` 也只能断言"连上了"，
   **没有**画面、没有输入、没有通道
 - NLA/CredSSP、证书 pin、多显示器、RDPGFX 动态通道都未验证
+
+---
+
+## 已打通：输入回传（Round 92，E1）
+
+客户端 → 服务端的事件链已成立并有双画像用例（`spec/scenarios/rdp.client-input.yaml`）：
+
+| 侧 | 实现 |
+|---|---|
+| 客户端 | `rdpInputProbe`：连接后 `freerdp_input_send_keyboard_event(0,0x1E)`（A 按下/抬起）+ 鼠标移动/按下/抬起 |
+| 服务端 | `VssKeyboardEvent` / `VssUnicodeKeyboardEvent` / `VssMouseEvent` / `VssSynchronizeEvent`（挂在 `rdpShadowSubsystem` 上） |
+
+实测（2in1 与 tablet 均 PASS）：
+```
+rdp-input: input: sent key+mouse; serverSaw keys=1 mouse=3 sync=0 (before 0/0/0)
+```
+`before 0/0/0` 是关键：它排除了"计数非零来自历史事件"。
+
+**边界**：这只证明输入**到达服务端子系统**；是否被真实桌面消费、修饰键/Unicode、坐标映射、
+丢事件与延迟都未验证。对真实 Windows 服务端的输入仍属 E3。
+

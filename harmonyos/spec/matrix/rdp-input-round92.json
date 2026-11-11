@@ -1,0 +1,20 @@
+{
+  "round": 92,
+  "date": "2026-11-11",
+  "kind": "new capability evidence (RDP input path)",
+  "specs": [
+    "rdp.client-input"
+  ],
+  "profiles": {
+    "2in1": {
+      "passed": 1,
+      "total": 1
+    },
+    "tablet": {
+      "passed": 1,
+      "total": 1
+    }
+  },
+  "measured": "serverSaw keys=1 mouse=3 (before 0/0/0)",
+  "note": "客户端发送键盘 A（scancode 0x1E）与鼠标移动/按下/抬起；服务端子系统回调 VssKeyboardEvent/VssMouseEvent 计数从 0 变为 1/3，证明输入链路成立。不覆盖：事件被真实桌面消费、修饰键/Unicode、坐标映射、丢事件。"
+}

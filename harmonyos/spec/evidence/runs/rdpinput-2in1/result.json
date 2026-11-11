@@ -1,0 +1,100 @@
+{
+  "spec": "rdp.client-input",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：客户端键盘/鼠标事件编码与发送、服务端子系统回调收到事件 （KeyboardEvent/MouseEvent）、计数从 0 变为非 0。 **不覆盖**：事件是否被真实桌面消费（服务端是测试对端）、修饰键/Unicode 输入、指针坐标映射、 输入延迟与丢事件、真实 Windows 服务端互通。"
+  },
+  "passed": true
+}

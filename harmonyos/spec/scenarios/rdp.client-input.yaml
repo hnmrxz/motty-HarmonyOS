@@ -1,0 +1,70 @@
+schema: 1
+id: rdp.client-input
+title: RDP 输入回传：客户端发的键鼠能被服务端收到
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - E04
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "New Host|新建主机"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:rdp/srv-start
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "running port=13389"
+      withinMs: 15000
+  # 连接后发一次键 + 一次鼠标移动/点击，回报服务端计数
+  - action: click
+    target: id:rdp/input
+  - action: wait
+    ms: 16000
+asserts:
+  # 服务端确实收到了按键（A 的 scancode 0x1E 按下一次）
+  - kind: screenRegex
+    regex: "serverSaw keys=[1-9][0-9]*"
+    withinMs: 30000
+  # 鼠标事件（移动+按下+抬起 = 3）
+  - kind: screenRegex
+    regex: "mouse=[1-9][0-9]*"
+    withinMs: 8000
+  # 起点必须是 0，否则"计数非零"可能来自之前的事件
+  - kind: screenRegex
+    regex: "before 0/0/0"
+    withinMs: 6000
+  - kind: absent
+    value: "input: connect failed"
+    withinMs: 2000
+  - kind: absent
+    value: "input: error context"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：客户端键盘/鼠标事件编码与发送、服务端子系统回调收到事件
+    （KeyboardEvent/MouseEvent）、计数从 0 变为非 0。
+    **不覆盖**：事件是否被真实桌面消费（服务端是测试对端）、修饰键/Unicode 输入、指针坐标映射、
+    输入延迟与丢事件、真实 Windows 服务端互通。
+deviations:
+  - 服务端为内嵌 FreeRDP shadow；输入由我们的 VssKeyboardEvent/VssMouseEvent 计数证明到达
+notes: >-
+  断言 "before 0/0/0" 才能排除"计数非零来自之前的事件"；
+  只断言 keys>0 不够，因为无法区分是不是本次发送造成的。
