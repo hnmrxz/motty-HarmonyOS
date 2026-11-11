@@ -2311,3 +2311,26 @@ Round 61–81 动过 VNC 面板按钮顺序、转发面板滚动容器、诊断�
 
 ### 四、状态
 用例 55 → **56**；E1 能力 16；C01 的覆盖率补上"下载回读内容正确"。
+---
+
+## Round 85：补齐 `vnc.auth-hextile` / `vnc.negative`（换夹具模式）双画像通过
+
+这两条一直欠着，因为需要**不同的夹具启动参数**（`-vnc-auth secret`）。
+
+### 一、本轮做法
+重启夹具为 `-vnc-auth secret` 模式，重建设备侧 `rport tcp:5901 tcp:5901`，然后双画像各跑一遍：
+
+| 用例 | 2in1 | tablet |
+|---|---|---|
+| `vnc.auth-hextile` | PASS | PASS |
+| `vnc.negative` | PASS | PASS |
+
+记录：`spec/matrix/regression-round85.json`。
+
+### 二、为什么必须换模式
+- 默认夹具是 `None` 认证：`vnc.session` / `vnc.key` 走的就是它
+- `vnc.auth-hextile`/`vnc.negative` 走的是 **DES 认证（VNC Auth）**，夹具必须用 `-vnc-auth secret`
+- 两种模式**不能混跑**，这也是之前覆盖表里一直标注"未覆盖"的原因
+
+### 三、状态
+用例仍 56 条（这两条本就存在，只是此前未在此模式验证）；E1 能力 16。

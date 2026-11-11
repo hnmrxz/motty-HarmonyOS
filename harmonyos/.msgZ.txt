@@ -1,0 +1,12 @@
+﻿test(harmonyos): 补齐 vnc.auth-hextile / vnc.negative（-vnc-auth secret 模式）双画像通过
+
+这两条一直欠着，因为需要不同夹具启动参数(-vnc-auth secret):
+- 默认夹具是 None 认证(vnc.session/vnc.key 走它)
+- 这两条走 DES 认证(VNC Auth)，必须 -vnc-auth secret，两种模式不能混跑
+
+本轮: 重启夹具为 -vnc-auth secret + 重建 rport 5901，双画像各跑一遍
+  vnc.auth-hextile  2in1 PASS / tablet PASS
+  vnc.negative      2in1 PASS / tablet PASS
+记录: spec/matrix/regression-round85.json
+
+用例仍 56 条(这两条本就存在，只是此前未在此模式验证)；E1 能力 16

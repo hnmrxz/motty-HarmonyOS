@@ -1,0 +1,21 @@
+{
+  "round": 85,
+  "date": "2026-11-11",
+  "kind": "alternative fixture mode coverage (VNC auth)",
+  "fixture": "sshfixture -vnc-auth secret（VNC 需要 DES 认证）",
+  "profiles": {
+    "2in1": {
+      "passed": 2,
+      "total": 2
+    },
+    "tablet": {
+      "passed": 2,
+      "total": 2
+    }
+  },
+  "specs": [
+    "vnc.auth-hextile",
+    "vnc.negative"
+  ],
+  "note": "补齐此前因夹具模式不同而未覆盖的两条：VNC 认证（DES/CoreQA 校验）与认证失败负向。注意：这两条必须在 -vnc-auth secret 模式下跑；默认模式（None）下它们不成立。"
+}
