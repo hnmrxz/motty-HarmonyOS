@@ -60,3 +60,43 @@ SSH 连接与终端、SFTP 文件管理、端口转发（local/SOCKS5/HTTP CONNE
 **目标未完成。** 已交付的是一个能在鸿蒙 PC/平板上跑起来、且有双画像机器判定证据的远程客户端主体；
 距离"1:1 完全复刻"还差 RDP 完整链路、AI 能力、i18n、上架合规与 arm64 真机验证。
 后续工作的顺序建议：RDP 端点与客户端接入 → AI 能力 → i18n/上架材料 → arm64 真机全量回归。
+
+---
+
+## 7. 状态更新（Round 69，替代 §1–§6 中的数字）
+
+### 7.1 当前规模
+| 指标 | 值 |
+|---|---|
+| 用例（机器判定） | **50 条**（`harmonyos/spec/scenarios/*.yaml`） |
+| E1 能力（双画像实测） | **16 条**（能力表共 83 项，其余为上游功能，多数未实现） |
+| 第三方组件（SBOM） | 16 组件 / 36 份产物，`tools/gen-sbom.py --check` 通过 |
+| 模拟器 | `motty_pc`（2in1, 3120×2080）、`motty_tablet`（tablet, 2880×1920），x86_64 / API 26 |
+
+### 7.2 本轮新增的交付（Round 51–68）
+- **i18n**：中英双语表（49 键）+ 语言切换；覆盖顶栏、主机区、SFTP 面板、转发面板/VNC 标题与按钮；
+  两条用例（`ui.i18n`、`ui.i18n.panels`、`ui.i18n.diag`）双画像通过，含**缺键反向断言**
+- **AI 通路**：本地 stub 端点（`tools/design/sshfixture/ai_fixture.go`）+ `ai/ask`；
+  用例 `ai.request` 双画像通过（验证的是通路，不是模型质量）
+- **SBOM/上架**：`tools/gen-sbom.py` + `SBOM.json` + `STORE-READINESS.md`；
+  lint 已接入 SBOM 校验（漏登记三方库直接失败）
+- **arm64**：`tools/verify-arm64.ps1` + `ARM64-REAL-DEVICE.md`（含 4 个守卫的负向验证）；真机仍未执行
+- **RDP**：FreeRDP server 组件双 ABI 编成（E2）；内嵌服务端**能监听**（脚本化机器判定通过），
+  **不能产帧**（采集线程在 shadow 上下文不可靠，已放弃并如实记录）
+- **新增边界用例**：`terminal.resize`、`vnc.key`、`sftp.unicode`、`sftp.missing`、`forward.stop`、
+  `forward.double-start`（均双画像通过）
+
+### 7.3 修掉的真实产品缺陷（不是测试问题）
+1. VNC 面板 `Text.width('100%')` 把按钮挤出面板（2in1 上 `vnc/key` 根本不渲染）
+2. 转发面板无滚动容器，2in1 上 `fwd/start`/`fwd/stop` 不在 UI 树里
+3. `startForward` 重置事件文本，把 "stopped" 抹掉（用户看不到"刚才停过"）
+4. 上传文件名默认值导致输入被**追加**成 `uploaded.txt中文文件.txt`
+5. `stopForward` 无状态回报（分不清"停了"与"没起来"）
+
+### 7.4 仍然缺的（结论不变）
+1. **RDP 完整链路**：产帧、成功连接真实服务端、TLS/证书 pin、NLA/CredSSP、能力协商、位图、输入、通道
+2. **AI**：真实模型服务、鉴权、流式、多轮
+3. **arm64 真机**：全部 E1 仍来自 x86_64 模拟器
+4. **i18n 剩余**：VNC/诊断面板逐条、第三种语言、系统语言跟随
+5. **上架**：release 证书、隐私政策 URL、渗透测试
+
