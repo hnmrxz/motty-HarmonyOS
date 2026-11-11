@@ -905,3 +905,17 @@ runner 新增两个宿主侧/触控原语：
 5. **系统对话框**（"是否将应用自动添加至桌面？"）会遮挡首屏：runner 会识别并报为环境错误，
    手动点"不添加"（约 (1377,1160)）后重跑。
 
+## §36 RDP 现状自检（Round 79）
+
+```powershell
+python harmonyos\tools\rdp-selfcheck.py --serial 127.0.0.1:10100 --profile 2in1 [--fresh]
+```
+
+一次跑完 `rdp.client-connect` / `rdp.client-render` / `ui.rdp-experimental` 并汇总，
+退出码 0=全通过、1=有失败、2=环境问题。
+
+用途：
+1. 换设备/换构建后判断 RDP 是否退化
+2. 真机验证时先跑它，区分"arm64 特有问题"与"功能本来只到这一步"
+3. 它**不**证明画面内容正确、也不证明输入可用（这两项是 E3，脚本会打印提醒）
+

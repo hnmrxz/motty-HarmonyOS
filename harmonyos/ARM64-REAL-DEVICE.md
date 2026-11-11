@@ -93,3 +93,27 @@ CPU/ABI：arm64-v8a
 - `spec/run.py` 新增 `--profile device`（真机画像）：接受任意声明了模拟器画像的用例，结果单独落盘，**不混淆模拟器与真机证据**
 - `tools/verify-arm64.ps1`：检测设备、建 rport、起夹具、逐条跑、出矩阵；设备不存在时**明确报错退出**（不假装通过）
 - SBOM/许可/上架材料：见 `SBOM.json`、`LICENSING.md`、`STORE-READINESS.md`
+
+---
+
+## 附录 B：真机上先跑 RDP 现状自检（Round 79 新增）
+
+在真机上**先跑这一条**，能立刻分辨"是 arm64 特有的问题"还是"功能本来就只到这一步"：
+
+```powershell
+C:\Python315\python.exe harmonyos\tools\rdp-selfcheck.py --serial <真机序列号> --profile device --fresh
+```
+
+它会依次跑三条机器判定用例并汇总：
+
+| 用例 | 验证什么 |
+|---|---|
+| `rdp.client-connect` | 客户端与服务端完成协商并 connected |
+| `rdp.client-render` | 客户端收到并解码桌面更新（尺寸/像素数） |
+| `ui.rdp-experimental` | 界面诚实标注 RDP 为实验性 |
+
+退出码：`0` 全通过 / `1` 有失败 / `2` 环境或参数问题。
+
+**边界**：这三条只证明"能连接 / 能解码 / 界面诚实"。
+**画面内容正确与输入回传仍属 E3**，脚本输出里也会打印这句提醒，避免被当成"RDP 可用"。
+

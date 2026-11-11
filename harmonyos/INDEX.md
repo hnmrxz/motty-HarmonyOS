@@ -2155,3 +2155,34 @@ RDP 内容仍 **E3**；用例数保持 52（不加无法证明内容的用例）
 
 ### 四、状态
 用例 52 → **53**；E1 能力 16。
+---
+
+## Round 79：`tools/rdp-selfcheck.py` —— 一条命令判断 RDP 现状（真机可用）
+
+### 一、做什么
+把三条 RDP 相关用例串起来跑并汇总：
+| 用例 | 验证 |
+|---|---|
+| `rdp.client-connect` | 协商 + TLS + connected |
+| `rdp.client-render` | 收到并解码桌面更新（尺寸/像素数） |
+| `ui.rdp-experimental` | 界面诚实标注"实验性" |
+
+退出码：`0` 全通过 / `1` 有失败 / `2` 环境问题。
+
+### 二、实测
+```
+=== RDP 现状自检 ===
+设备 127.0.0.1:10100 / 画像 2in1
+  rdp.client-connect   PASS    客户端与服务端完成协商并 connected
+  rdp.client-render    PASS    客户端收到并解码桌面更新（尺寸/像素数）
+  ui.rdp-experimental  PASS    界面诚实标注 RDP 为实验性
+结果：3/3 全部通过
+边界：画面内容正确与输入回传仍属 E3（未验证）。
+```
+
+### 三、为什么有用
+1. 换设备/换构建后**一条命令**判断 RDP 有没有退化
+2. 真机验证时先跑它，能区分"arm64 特有问题"与"功能本来只到这一步"
+3. 脚本自己会打印边界，防止被当成"RDP 可用"
+
+已写进 `ARM64-REAL-DEVICE.md` 附录 B 与 `spec/RUNBOOK.md` §36。
