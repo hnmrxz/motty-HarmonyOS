@@ -71,6 +71,27 @@ for i, sp in enumerate(specs):
             res = None
     passed = bool(res and res.get("passed"))
     err = (res or {}).get("error", "")
+    # 仅对"第 1 步就失败"的基础设施抖动重跑一次：批量里偶发首启空屏（应用还没画出来），
+    # 这不是产品失败；其它步骤的失败一律不重试，避免掩盖真实回归。
+    if not passed and re.search(r"step 1 \(", str(err)):
+        print(f"     [retry] {sp.stem} 首步失败，重跑一次：{str(err)[:80]}", flush=True)
+        subprocess.run([HDC, "-t", serial, "shell", "aa force-stop com.motty.harmony"], capture_output=True, text=True)
+        time.sleep(2.0)
+        t1 = time.time()
+        out2 = outdir / (sp.stem + "-retry")
+        subprocess.run([py, str(runner), str(sp), "--serial", serial, "--profile", "2in1",
+                        "--fresh", "--out", str(out2)], capture_output=True, text=True)
+        rp2 = out2 / "result.json"
+        if rp2.exists():
+            try:
+                res2 = json.loads(rp2.read_text(encoding="utf-8"))
+            except Exception:
+                res2 = None
+            if res2 and res2.get("passed"):
+                passed = True
+                dt = round(dt + (time.time() - t1), 1)
+                err = ""
+                print(f"     [retry] {sp.stem} 重跑通过（retry 结果在 {out2.name}）", flush=True)
     results.append({"spec": sp.stem, "passed": passed, "seconds": dt, "error": str(err)[:200]})
     print(f"[{i+1}/{len(specs)}] {'PASS' if passed else 'FAIL'} {sp.stem} ({dt}s)", flush=True)
 

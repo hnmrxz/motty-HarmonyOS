@@ -1,0 +1,140 @@
+{
+  "spec": "infra.host-create-by-id",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 11,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 12,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 13,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 14,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 15,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 16,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "text",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "text",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "kind": "layout",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器 2in1（x86_64, API 26）。未在 arm64 真机执行；不覆盖真实触控手势与磁吸键盘； 截图仅证明当时界面状态，不构成性能证据。"
+  },
+  "passed": true
+}
