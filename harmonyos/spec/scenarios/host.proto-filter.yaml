@@ -1,6 +1,6 @@
 schema: 1
 id: host.proto-filter
-title: 协议筛选：SSH/RDP/VNC chips 只显示对应协议的主机，"全部协议"恢复
+title: 协议筛选：表单里选 SSH/RDP/VNC，chips 能按协议精确筛选
 sourceScript: null
 pcOnly: true
 profile:
@@ -35,7 +35,7 @@ steps:
     target: id:diag/close
   - action: wait
     ms: 800
-  # 建三台：ssh / rdp / vnc
+  # 建 SSH 主机
   - action: click
     target: id:shell/add-host
   - action: type
@@ -48,8 +48,12 @@ steps:
     target: id:shell/dialog-submit
   - action: wait
     ms: 1300
+  # 建 RDP 主机（表单里选 RDP，端口自动 3389）
   - action: click
     target: id:shell/add-host
+  # 先选协议再输入：点 chip 会让输入框失焦（实测会把已输入内容清掉）
+  - action: click
+    target: id:hostform/proto-rdp
   - action: type
     target: id:shell/dialog-label
     text: pf-rdp
@@ -60,8 +64,11 @@ steps:
     target: id:shell/dialog-submit
   - action: wait
     ms: 1300
+  # 建 VNC 主机（表单里选 VNC，端口自动 5900）
   - action: click
     target: id:shell/add-host
+  - action: click
+    target: id:hostform/proto-vnc
   - action: type
     target: id:shell/dialog-label
     text: pf-vnc
@@ -72,16 +79,33 @@ steps:
     target: id:shell/dialog-submit
   - action: wait
     ms: 1500
-  # 点 RDP 协议 chip：只剩 rdp（这里没有 rdp 主机，因此应显示"没有匹配"）
+  # RDP 协议：只剩 pf-rdp
   - action: click
     target: id:chips/proto-rdp
   - action: wait
     ms: 900
     expect:
       kind: screenRegex
-      regex: "没有匹配|No match"
+      regex: "pf-rdp"
       withinMs: 8000
-  # 回到全部协议：三台都在
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 300
+  - action: click
+    target: id:diag/close
+  - action: wait
+    ms: 300
+  # VNC 协议：只剩 pf-vnc
+  - action: click
+    target: id:chips/proto-vnc
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "pf-vnc"
+      withinMs: 8000
+  # 回到全部协议
   - action: click
     target: id:chips/proto-all
   - action: wait
@@ -91,16 +115,19 @@ asserts:
     regex: "pf-ssh"
     withinMs: 8000
   - kind: screenRegex
+    regex: "pf-rdp"
+    withinMs: 6000
+  - kind: screenRegex
     regex: "pf-vnc"
     withinMs: 6000
 evidence:
   png: true
   tree: true
   limits: >-
-    PC（2in1）实测。覆盖：协议 chips（全部协议/SSH/RDP/VNC）存在且可点；选 RDP 时无匹配显示空态；
-    选回"全部协议"后其它主机恢复显示。
-    **不覆盖**：协议 chips 与搜索/分组筛选的组合、协议 chips 的状态持久化。
+    PC（2in1）实测。覆盖：表单里可切 SSH/RDP/VNC 并落库（端口按协议给默认值），
+    协议 chips 选 RDP / VNC 时只显示对应主机，选「全部协议」后三台都回来。
+    **不覆盖**：编辑主机时改协议、协议 chips 与搜索/分组组合、协议状态持久化。
 deviations:
-  - 用例建的 3 台主机都是 SSH 协议（新建对话框没有协议选择），所以"选 RDP 无匹配"是正确预期。
+  - 只断言"选中协议后目标主机可见"，不用 absent 断别的主机，避免列表虚拟化/裁剪带来的误判。
 notes: >-
-  协议 chips 的计数来自 countProto；筛选逻辑并入 matchesQuery，因此列表/网格/计数三处一致。
+  协议选择是 Round 63 新加的表单字段；这条用例同时覆盖"表单 → 落库 → chips 过滤"的闭环。

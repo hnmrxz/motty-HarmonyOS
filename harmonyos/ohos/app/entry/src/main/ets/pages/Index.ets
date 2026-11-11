@@ -218,6 +218,7 @@ struct Index {
   @State formUser: string = '';
   @State formPort: string = '';
   @State formPassword: string = '';
+  @State formProto: string = 'ssh';
   @State formGroup: string = '';
   @State formTags: string = '';
   @State formColor: string = '';
@@ -496,6 +497,7 @@ struct Index {
     this.formUser = '';
     this.formPort = '';
     this.formPassword = '';
+    this.formProto = 'ssh';
     this.formGroup = '';
     this.formTags = '';
     this.formColor = '';
@@ -520,6 +522,7 @@ struct Index {
     this.formUser = h.user;
     this.formPort = h.port;
     this.formPassword = '';
+    this.formProto = h.proto.length > 0 ? h.proto : 'ssh';
     this.formGroup = h.group;
     this.formTags = h.tags;
     this.formColor = h.color;
@@ -590,7 +593,8 @@ struct Index {
     if (label.length === 0 || address.length === 0 || this.store === null) {
       return;
     }
-    const port = this.formPort.trim().length > 0 ? this.formPort.trim() : '22';
+    const defaultPort: string = this.formProto === 'rdp' ? '3389' : (this.formProto === 'vnc' ? '5900' : '22');
+    const port = this.formPort.trim().length > 0 ? this.formPort.trim() : defaultPort;
     this.formError = '';
     // 官方校验：颜色必须是 #RRGGBB 或留空（ErrHostColorInvalid）
     const color: string = this.formColor.trim();
@@ -645,7 +649,7 @@ struct Index {
       'address': address,
       'usr': this.formUser.trim(),
       'port': port,
-      'proto': 'ssh',
+      'proto': this.formProto,
       'grp': this.formGroup.trim(),
       'tags': this.formTags.trim(),
       'color': this.formColor.trim()
@@ -1873,7 +1877,25 @@ struct Index {
       Row({ space: 10 }) {
         Column({ space: 4 }) {
           Text('分组').fontSize(12).fontColor('#8A8F98').width('100%')
-          TextInput({ placeholder: '选择或创建分组', text: this.formGroup }).id('shell/dialog-group').width('100%')
+          Row({ space: 8 }) {
+          Text('协议').fontSize(12).fontColor('#8A8F98')
+          Text('SSH').id('hostform/proto-ssh').fontSize(12)
+            .fontColor(this.formProto === 'ssh' ? '#12141A' : '#C7CBD1')
+            .backgroundColor(this.formProto === 'ssh' ? '#E8EAED' : '#1E2127')
+            .padding({ left: 10, right: 10, top: 4, bottom: 4 }).borderRadius(12)
+            .onClick(() => { this.formProto = 'ssh'; })
+          Text('RDP').id('hostform/proto-rdp').fontSize(12)
+            .fontColor(this.formProto === 'rdp' ? '#12141A' : '#C7CBD1')
+            .backgroundColor(this.formProto === 'rdp' ? '#E8EAED' : '#1E2127')
+            .padding({ left: 10, right: 10, top: 4, bottom: 4 }).borderRadius(12)
+            .onClick(() => { this.formProto = 'rdp'; })
+          Text('VNC').id('hostform/proto-vnc').fontSize(12)
+            .fontColor(this.formProto === 'vnc' ? '#12141A' : '#C7CBD1')
+            .backgroundColor(this.formProto === 'vnc' ? '#E8EAED' : '#1E2127')
+            .padding({ left: 10, right: 10, top: 4, bottom: 4 }).borderRadius(12)
+            .onClick(() => { this.formProto = 'vnc'; })
+        }.width('100%').justifyContent(FlexAlign.Start)
+        TextInput({ placeholder: '选择或创建分组', text: this.formGroup }).id('shell/dialog-group').width('100%')
             .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
             .onChange((v: string) => { this.formGroup = v; })
         }.layoutWeight(1)

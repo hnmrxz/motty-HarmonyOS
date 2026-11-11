@@ -1025,3 +1025,30 @@ runner 新增动作 **`key`**（`uitest uiInput keyEvent <code>`，`code` 已进
 新建主机对话框目前没有"协议"选择，所以协议筛选暂时只能筛到"通过其它路径创建成 rdp/vnc 的主机"。
 下一轮如果需要，应把协议选择加进新建/编辑表单（属于 UI 1:1 的一部分）。
 
+---
+
+## Round 63 追加：新建/编辑表单支持**协议选择**（SSH / RDP / VNC）
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 表单控件 | `hostform/proto-ssh|rdp|vnc` 三个 chip，位于标签与分组之间 |
+| 状态 | `@State formProto`，新建默认 `ssh`；编辑时按已有 `proto` 回填 |
+| 落库 | 新建插入桶与编辑 update 都写入 `proto`（**第一次改错了插入桶的位置**，见下） |
+| 端口默认值 | 按协议给默认端口：SSH 22 / RDP 3389 / VNC 5900（用户填了端口则用用户的） |
+
+### 两个真实踩坑
+1. **改错了位置**：用字符串替换 `'proto': 'ssh',` 时匹配到了别处，插入桶仍是硬编码 `ssh` ——
+   表现为"选了 RDP，筛 RDP 却是 0 台，SSH 计数却 +1"。改用**行号定点替换**后正常。
+   教训：这种"同类字面量出现多次"的替换，必须按行号/上下文定位，替换后要验证语义而不只是编译通过。
+2. **点 chip 会让输入框失焦**：先输入 label/address 再点协议 chip，已输入内容会被清掉，
+   提交时 label 为空 → 静默失败（`submit()` 在 label 为空时直接 return）。
+   用例改成**先选协议、再输入**，并把这个顺序写进注释。
+
+### 用例
+`host.proto-filter` **PASS**：建 SSH / RDP / VNC 三台（表单里选协议、端口自动）→ 点 RDP chip 只剩 pf-rdp →
+点 VNC chip 只剩 pf-vnc → 点「全部协议」三台都回来。
+
+### 回归
+`host.manage / host.form-chips / host.form-validation / hosts.search => 4/4 PASS`
+
