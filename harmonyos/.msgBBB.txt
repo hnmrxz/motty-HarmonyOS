@@ -1,0 +1,19 @@
+﻿investigate(harmonyos/rdp): 确认位图是压缩的("PDU有颜色"是假信号) + 两次失败尝试已回退
+
+关键结论: 163 块位图全部 compressed=1 (comp=163 skip=0 gfx=0 gfxBytes=0)
+- 每块位图都压缩; 没走 GFX/SurfaceBits; 纯 GDI 位图路径
+- 上一轮"颜色桶8个都有值"不能证明数据被解码 —— 那些桶是直接读 bitmapDataStream 原始字节, 压缩流当然有变化
+=> 白屏真正含义: 压缩位图到了客户端, 但 GDI 没把解压结果写进主缓冲
+
+两次尝试都失败(都 SIGSEGV 在 FreeRDP 日志实现 WLog_PrintMessageVA -> strchr):
+1. 链住 update->SurfaceBits 统计 GFX 字节
+2. 服务端设置 CompressionEnabled=FALSE / RemoteFxCodec=FALSE / NSCodec=FALSE / FastPathOutput=FALSE
+=> 在 shadow 初始化前后动这些设置会踩预编译库内部未初始化状态; 两处改动已全部回退
+
+现状: rdp.server-peer / rdp.client-render / rdp.client-input => 3/3 PASS(无回退)
+诊断字段保留: depth= dst= at=x,y comp= skip= gfx= ; 白屏问题明确未解决
+
+下一步三个方向:
+1. 客户端侧关压缩偏好(CompressionEnabled/FastPathOutput), 在 freerdp_connect 之前设; 上次崩在服务端路径, 客户端侧要单独验证
+2. 查 GDI 是否因 ColorDepth 与 dstFormat 不一致跳过解压
+3. 若都不通, 改用 update->BitmapUpdate 里解压后的数据自己拼整屏, 绕开 GDI 主缓冲

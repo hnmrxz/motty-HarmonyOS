@@ -522,3 +522,39 @@ rdp-canvas: colors=1 dominant=#FFFFFF (3072 px)
    那"桶里有颜色"就**不能**证明数据被解码；
 2. 若确实走 GFX（RDPGFX）通道而不是 GDI 位图通道，需要接 `Update->SurfaceBits` 而不是 `BitmapUpdate`。
 
+---
+
+## Round 42：确认位图是**压缩**的（"PDU 有颜色"是假信号）+ 两次失败尝试
+
+### 关键结论：163 块位图全部 `compressed=1`
+在 `OnBitmapUpdate` 里统计：
+```
+comp=163 skip=0 gfx=0 gfxBytes=0
+```
+- `comp=163`：**每一块位图都是压缩的**；
+- `gfx=0`：没有走 GFX/SurfaceBits 通道（纯 GDI 位图路径）;
+- 因此上一轮"颜色桶里 8 个桶都有值"**不能**证明数据被正确解码——
+  那些桶是我直接读 `bitmapDataStream` 原始字节得到的，压缩流当然"有变化"。
+
+⇒ 白屏的真正含义是：**压缩位图到了客户端，但 GDI 没把解压结果写进主缓冲**。
+
+### 两次尝试都失败（都触发 SIGSEGV，已全部回退）
+| 尝试 | 结果 |
+|---|---|
+| 链住 `update->SurfaceBits` 统计 GFX 字节 | 崩溃：`WLog_PrintMessageVA` → `strchr` 空指针 |
+| 服务端设置 `CompressionEnabled=FALSE / RemoteFxCodec=FALSE / NSCodec=FALSE / FastPathOutput=FALSE` | 同样崩在同一条日志路径 |
+
+两次都崩在 FreeRDP 的**日志实现**里（不是我们自己的代码行），说明在 shadow 初始化前后动这些设置会踩到
+预编译库内部的未初始化状态。**没有继续硬改**，已把两处改动全部回退。
+
+### 现在的状态
+`rdp.server-peer / rdp.client-render / rdp.client-input => 3/3 PASS`（无回退），
+诊断字段保留：`depth= dst= at=x,y comp= skip= gfx=`，白屏问题**明确未解决**。
+
+### 下一步（可执行的三个方向）
+1. **客户端侧**关掉压缩偏好（`settings->CompressionEnabled=FALSE`、`FreeRDP_BitmapCacheEnabled=FALSE`），
+   在 `freerdp_connect` 之前设置——注意上次崩在服务端设置路径，客户端侧要单独验证；
+2. 查 GDI 是否因为 `settings->ColorDepth` 与 `gdi->dstFormat` 不一致而跳过解压（`dstFormat` 目前只打印了枚举值）；
+3. 若以上都不通，改为不依赖 GDI：用 `update->BitmapUpdate` 里**解压后**的 `bitmapData` 自己拼整屏，
+   绕开 GDI 主缓冲。
+

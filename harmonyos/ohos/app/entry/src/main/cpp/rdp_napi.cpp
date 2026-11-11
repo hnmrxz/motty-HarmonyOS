@@ -58,6 +58,11 @@ static int g_bmpRects = 0;
 static int g_bmpLastW = 0;
 static int g_bmpLastH = 0;
 static int g_bmpLastX = 0;
+static int g_bmpCompressed = 0;
+static int g_bmpSkipComp = 0;
+static int g_surfaceBits = 0;
+static int g_surfaceBitsBytes = 0;
+static pSurfaceBits g_origSurfaceBits = nullptr;
 static int g_bmpLastY = 0;
 static pEndPaint g_origEndPaint = nullptr;
 
@@ -78,6 +83,7 @@ static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
         const int px = static_cast<int>(d.width) * static_cast<int>(d.height);
         g_stats.pixels += px;
         // 采样 bitmapData 里的字节做粗聚类（BGRA）
+        if (d.compressed) g_bmpCompressed++;
         if (d.bitmapDataStream != nullptr && d.bitmapLength >= 4) {
             const int step = (static_cast<int>(d.bitmapLength) / 4) / 64 + 1;
             for (UINT32 off = 0; off + 3 < d.bitmapLength; off += 4 * step) {
@@ -91,6 +97,7 @@ static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
         }
     }
     // 记录 PDU 级别的信息：rect 数与最后一块尺寸，用来区分"没收到"与"收到但没写进缓冲"
+    if (bitmap->skipCompression) g_bmpSkipComp++;
     g_bmpUpdates++;
     g_bmpRects += static_cast<int>(bitmap->number);
     if (bitmap->number > 0) {
@@ -104,6 +111,8 @@ static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
     }
     return TRUE;
 }
+
+
 
 struct RdpJob {
     bool useNla = false;
@@ -552,10 +561,10 @@ void renderWorker(RdpJob *job) {
                 ? static_cast<int>(freerdp_settings_get_uint32(instance->context->settings, FreeRDP_ColorDepth)) : -1;
             const int dstFmt = (instance->context->gdi != nullptr) ? static_cast<int>(instance->context->gdi->dstFormat) : -1;
             snprintf(buf, sizeof(buf),
-                     "frames=%d paints=%d size=%dx%d pixels=%d depth=%d dst=%d colors=%d/%d/%d/%d/%d/%d/%d/%d at=%d,%d",
+                     "frames=%d paints=%d size=%dx%d pixels=%d depth=%d dst=%d colors=%d/%d/%d/%d/%d/%d/%d/%d at=%d,%d gfx=%d gfxBytes=%d comp=%d skip=%d",
                      st2.updates, g_paints.load(), st2.width, st2.height, st2.pixels, depth, dstFmt,
                      st2.buckets[0], st2.buckets[1], st2.buckets[2], st2.buckets[3],
-                     st2.buckets[4], st2.buckets[5], st2.buckets[6], st2.buckets[7], g_bmpLastX, g_bmpLastY);
+                     st2.buckets[4], st2.buckets[5], st2.buckets[6], st2.buckets[7], g_bmpLastX, g_bmpLastY, g_surfaceBits, g_surfaceBitsBytes, g_bmpCompressed, g_bmpSkipComp);
             result = buf;
             freerdp_disconnect(instance);
         }
