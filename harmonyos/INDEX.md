@@ -1763,3 +1763,34 @@ PASS 服务端处于 running / PASS 端口匹配 / PASS 二进制含构建指纹
 ### 四、诚实边界
 `rdp.server-peer`（spec）仍失败；RDP 客户端仍只有连接路径；
 "服务端能启动"≠"RDP 可用"。
+---
+
+## Round 60：采集线程的两步定位（卡在 paintSurface；读 surface 有竞态）
+
+### 一、修掉的
+`vss_start` 里创建 `std::thread` 会**卡住不返回**（实测 stage 停在 5、无异常）。
+处置：`vss_start` 只确认就绪并 return 0；采集线程改到 `shadow_server_start` 成功之后创建（**全进程唯一位置**）。
+
+### 二、实测现象（非确定性）
+| 观察 | 含义 |
+|---|---|
+| `stage=6` | `vss_start` 正常返回（不再卡住） |
+| 有时 `loops=1 surface=ok lock=1 paint=0` | 线程跑了一轮，拿到 surface、进了临界区，**卡在 `paintSurface`** |
+| 有时 `loops=0 surface=null` | 线程根本没跑（同代码、不同次启动） |
+
+`paintSurface` 只有 640×480 的双层循环 + 写 `surface->data`。卡在这里最可能是
+**`surface->width/height/scanline` 是脏值**（例如 width 极大导致"看起来像死循环"），
+或 `surface->data` 指向尚未就绪的缓冲。已加 `sw/sh/stride/dnull` 计数准备取证，
+但同一构建下行为在"跑一轮"与"完全不跑"之间跳，说明**我们自己的线程去读 shadow 的内部表面本身是竞态**。
+
+### 三、结论与下一步（换思路，不再硬试）
+不应该由我们线程直接写 `server->surface`。下一轮改为：
+1. 用 shadow 自己的机制：`SHADOW_MSG_IN_REFRESH_REQUEST` / `subsystem->MsgPipe`（子系统消息循环），
+   在 shadow 期望的时机交付帧，而不是自己起线程抢锁
+2. 或者实现真正的 `shadow_capture` 语义（内部 API），让 shadow 主动拉帧
+3. 若都不行，就明确记录"RDP 服务端只到握手、无画面"，把 RDP 结论收敛为：客户端连接路径已验证、服务端仅监听验证
+
+### 四、诚实边界
+- `frames=0`：**没有画面**
+- `rdp.server-peer`（spec）仍失败
+- 脚本化检查仍通过（`rc=0 running port=13389`、端口匹配、构建指纹），这是"能监听"的证据，不是"能出图"

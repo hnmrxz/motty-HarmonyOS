@@ -1,0 +1,18 @@
+﻿diag(harmonyos): 采集线程定位到 paintSurface 卡住；读 shadow surface 有竞态
+
+修掉:
+- vss_start 里创建 std::thread 会卡住不返回(stage 停 5、无异常)
+  -> vss_start 只 return 0；采集线程改到 shadow_server_start 之后创建(唯一位置)
+
+实测(非确定性):
+- 有时 loops=1 surface=ok lock=1 paint=0 -> 线程跑一轮、进临界区、卡在 paintSurface
+- 有时 loops=0 surface=null -> 线程根本没跑(同代码不同次启动)
+=> 我们自己的线程直接读写 shadow 内部 surface 本身是竞态
+
+下一步(换思路):
+- 用 shadow 自己的机制(SHADOW_MSG_IN_REFRESH_REQUEST / MsgPipe)在期望时机交付帧
+- 或实现 shadow_capture 语义让 shadow 主动拉帧
+- 否则收敛结论: RDP 服务端仅到握手/监听，无画面
+
+诚实边界: frames=0 无画面；rdp.server-peer(spec) 仍失败；
+脚本化检查只证明"能监听"，不证明"能出图"

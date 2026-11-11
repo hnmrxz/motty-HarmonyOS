@@ -68,6 +68,15 @@ int g_vssStartCalls = 0;
 int g_threadEntered = 0;
 int g_threadExited = 0;
 int g_startRc = -2;
+int g_startStage = 0;
+int g_lockOk = 0;
+int g_paintOk = 0;
+int g_updateOk = 0;
+unsigned long long g_surfW = 0, g_surfH = 0, g_surfStride = 0;
+int g_surfDataNull = 1;
+std::string g_threadError;
+unsigned long long g_basePtr = 0;
+unsigned long long g_gPtr = 0;
 std::string g_lastConfigDir;
 int g_lastRc = -1;
 
@@ -133,7 +142,13 @@ void captureThread(VssSubsystem *sub) {
             sub->surfaceSeen.store(1);
             rdpShadowSurface *surface = server->surface;
             EnterCriticalSection(&surface->lock);
+            g_lockOk++;
+            g_surfW = surface->width;
+            g_surfH = surface->height;
+            g_surfStride = surface->scanline;
+            g_surfDataNull = (surface->data == nullptr) ? 1 : 0;
             paintSurface(surface, frame++);
+            g_paintOk++;
             {
                 RECTANGLE_16 rect = {0, 0, static_cast<UINT16>(surface->width - 1),
                                      static_cast<UINT16>(surface->height - 1)};
@@ -142,6 +157,7 @@ void captureThread(VssSubsystem *sub) {
             LeaveCriticalSection(&surface->lock);
             // 通知 shadow：有新帧可编码/发送
             shadow_subsystem_frame_update(&sub->common);
+            g_updateOk++;
             sub->frames.fetch_add(1);
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(1000 / kVssFps));
@@ -193,26 +209,12 @@ int vss_uninit(rdpShadowSubsystem *base) {
 
 int vss_start(rdpShadowSubsystem *base) {
     g_vssStartCalls++;
-    auto *sub = reinterpret_cast<VssSubsystem *>(base);
-    if (sub == nullptr) {
-        return -1;
-    }
-    // 幂等：shadow_server_thread 会调用 ep.Start；重复调用时若线程已在跑就直接返回。
-    // （直接对 joinable 的 std::thread 赋值会抛 std::system_error -> std::terminate）
-    if (sub->worker.joinable()) {
-        serverLog("subsystem start: capture already running");
-        return 0;
-    }
-    sub->stop.store(false);
-    try {
-        sub->worker = std::thread(captureThread, sub);
-        g_startRc = 1;
-    } catch (...) {
-        g_startRc = 0;
-        serverLog("subsystem start: thread creation failed");
-        return -1;
-    }
-    serverLog("subsystem started (capture thread running)");
+    g_startStage = 1;
+    g_basePtr = reinterpret_cast<unsigned long long>(base);
+    // 注意（实测）：在 shadow_server_thread 里构造 std::thread 会**卡住不返回**
+    // （stage 停在 5、无异常、startRc 保持初值）。因此这里只确认子系统就绪，
+    // 采集线程改由 RdpServerStart 在 shadow_server_start 成功之后创建（全进程仅此一处）。
+    g_startStage = 6;
     return 0;
 }
 
@@ -491,6 +493,10 @@ napi_value RdpServerStart(napi_env env, napi_callback_info info) {
                 } else {
                     g_running.store(true);
                     serverLog("server listening on port %d", port);
+                    // 采集线程在这里创建（唯一位置）：vss_start 不再建线程，
+                    // 因为实测在 shadow 线程里构造 std::thread 会卡住。
+                    const int capStarted = startCaptureThread();
+                    serverLog("capture thread started=%d", capStarted);
                 }
             }
     }
@@ -519,7 +525,12 @@ napi_value RdpServerStatus(napi_env env, napi_callback_info info) {
         const int surfaceSeen = g_subsystem != nullptr ? g_subsystem->surfaceSeen.load() : 0;
         text = "running port=" + std::to_string(static_cast<unsigned>(g_server->port)) +
                " frames=" + std::to_string(frames) + " loops=" + std::to_string(loops) +
-               " surface=" + (surfaceSeen != 0 ? "ok" : "null") + " built=" + g_buildStamp;
+               " surface=" + (surfaceSeen != 0 ? "ok" : "null") + " stage=" + std::to_string(g_startStage) + " lock=" + std::to_string(g_lockOk) +
+               " paint=" + std::to_string(g_paintOk) + " sw=" + std::to_string(g_surfW) +
+               " sh=" + std::to_string(g_surfH) + " stride=" + std::to_string(g_surfStride) +
+               " dnull=" + std::to_string(g_surfDataNull) + " upd=" + std::to_string(g_updateOk) +
+               " base=" + std::to_string(g_basePtr) + " g=" + std::to_string(g_gPtr) +
+               (g_threadError.empty() ? "" : (" err=" + g_threadError)) + " built=" + g_buildStamp;
     } else {
         text = "stopped rc=" + std::to_string(g_lastRc) + " built=" + g_buildStamp + " dir=" +
                (g_lastConfigDir.empty() ? "(empty)" : g_lastConfigDir) +
