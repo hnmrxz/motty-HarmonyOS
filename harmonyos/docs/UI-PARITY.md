@@ -962,3 +962,19 @@ runner 新增动作 **`key`**（`uitest uiInput keyEvent <code>`，`code` 已进
 - `cred.cleared`：删除凭据前断言出现 `删除已保存的密码`，点 `vaultdel/confirm`，再连接提示无凭据。
 两者均 **PASS**；回归 `knownhosts.manage / cred.cleared / host.manage / host.batch-delete => 4/4 PASS`。
 
+---
+
+## Round 35 追加：RDP 自连实测（服务端 PASS；客户端仍红）
+
+- 内置 shadow 服务端实测在绘制：`surface=ok paint=618 sw=1024 sh=768 rows=635886`；
+- 客户端连本机服务端能到 `connected 127.0.0.1:13389`，手工一次拿到 `frames=24 paints=24 size=1024x768`；
+- **但客户端连上后发布帧会 SIGABRT**（`shadow_multiclient_publish_and_wait`），这是最硬阻塞；
+- 且解码出来的位图是白的（`colors=1`、`dominant=#FFFFFF`）。
+
+用例处置：
+- `rdp.server-peer` 断言改成**真实状态串**（`running port=13389` / `surface=ok` / `paint>0`）→ **PASS**；
+- `rdp.client-render`、`rdp.client-input` 改成"连本机内置服务端"并填好 host/port（以前从不填，永远连不上），
+  保留为**失败**，`limits` 里写明"不能代表画面可用"。
+
+详见 [RDP.md](RDP.md) 的 Round 35 章节。
+

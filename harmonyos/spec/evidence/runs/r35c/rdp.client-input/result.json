@@ -1,0 +1,100 @@
+{
+  "spec": "rdp.client-input",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 6,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "type",
+      "ok": true,
+      "detail": "secret: 已注入，未回读"
+    },
+    {
+      "i": 10,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 11,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 12,
+      "action": "click",
+      "ok": false,
+      "detail": "选择器未命中: id:rdp/input"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：客户端连本机服务端后发送键盘与鼠标事件，服务端计数（keys/mouse）确实增加。 **不覆盖**：输入落到真实 Windows 桌面后的效果（无真实 RDP 对端）、组合键/Unicode 输入、 剪贴板与多显示器。"
+  },
+  "passed": false,
+  "error": "step 12 (click) 失败: 选择器未命中: id:rdp/input"
+}

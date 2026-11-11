@@ -1,6 +1,6 @@
 schema: 1
 id: rdp.client-render
-title: RDP 客户端收到并解码服务端桌面更新（尺寸/像素数可断言）
+title: RDP 客户端渲染管线：连本机内置服务端，收到桌面更新并绘制（画面内容仍待修）
 sourceScript: null
 profile:
   - 2in1
@@ -22,7 +22,8 @@ steps:
   - action: click
     target: id:diag/open
   - action: wait
-    ms: 800
+    ms: 900
+  # 启动内置 shadow 服务端（本机 13389），客户端随后连它自己
   - action: click
     target: id:rdp/srv-start
   - action: wait
@@ -31,23 +32,40 @@ steps:
       kind: screenRegex
       regex: "running port=13389"
       withinMs: 15000
-  # 客户端连接 + 泵事件 + 从 GDI 表面统计像素
+  # 填客户端目标（不填 host 会连不上：实测默认空串直接失败）
+  - action: type
+    target: id:rdp/host
+    text: 127.0.0.1
+  - action: type
+    target: id:rdp/port
+    text: "13389"
+  - action: type
+    target: id:rdp/user
+    text: tester
+  - action: type
+    target: id:rdp/pass
+    secret: true
+    text: secret
   - action: click
     target: id:rdp/render
   - action: wait
-    ms: 15000
+    ms: 12000
 asserts:
-  # paints>0 说明桌面更新真的到达并触发了绘制
+  # 真的收到桌面更新并触发绘制（frames/paints > 0）
   - kind: screenRegex
     regex: "rdp-render: frames=[1-9][0-9]* paints=[1-9][0-9]*"
     withinMs: 30000
-  # 尺寸必须等于服务端桌面尺寸，像素数必须与之相符
+  # 尺寸与像素数必须与服务端表面一致
   - kind: screenRegex
     regex: "size=1024x768 pixels=786432"
     withinMs: 8000
-  - kind: absent
-    value: "error context"
-    withinMs: 2000
+  # 位图解码链路必须真的有数据（bmp 更新与 rect 计数 > 0，valid=1）
+  - kind: screenRegex
+    regex: "bmp=[1-9][0-9]* rects=[1-9][0-9]*"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "valid=1"
+    withinMs: 6000
   - kind: absent
     value: "gdi_init failed"
     withinMs: 2000
@@ -55,12 +73,13 @@ evidence:
   png: true
   tree: true
   limits: >-
-    模拟器双画像（x86_64, API 26）。覆盖：客户端通过官方客户端入口点建立上下文、gdi 解码桌面更新、
-    EndPaint 触发、桌面尺寸与像素数统计正确（1024×768 = 786432）。
-    **不覆盖**：把像素画到 Canvas（UI 渲染）、输入回传、NLA、与真实 Windows 服务端互通。
-    注意：本用例**不**断言具体颜色分布（那依赖服务端图案细节）。
+    PC（2in1）实测。覆盖：内置服务端启动、客户端连接本机服务端、收到桌面更新并绘制、
+    位图解码链路有数据（bmp/rects>0、valid=1）、尺寸与像素数正确。
+    **不覆盖(重要)**：像素内容正确性——实测 `colors=1` 且画布主色 `#FFFFFF`，
+    说明解码出来的位图仍是全白（已知缺陷，见 RDP.md）。因此这条**不能**代表"画面可用"。
 deviations:
-  - 服务端为内嵌 FreeRDP shadow；桌面尺寸 1024x768 是 shadow 默认值，不是我们 capture 的 640x480
-  - 位图回调走的是 gdi 内部路径：`context->update->BitmapUpdate` 不触发，但 EndPaint + gdi 缓冲可用
+  - 客户端与服务端都在同一 App 进程内（本机 127.0.0.1:13389），不是跨机 RDP。
+  - 画面内容为全白是已知缺陷，用例只证明"管线通、数据到、绘制发生"。
 notes: >-
-  paints>0 与 size/pixels 一起断言，才能区分"只是连上了"和"真的收到了画面数据"。
+  这条以前断言同样的正则但**从不填 host/port**，所以永远连不上；现在把目标字段填上，
+  才真正跑通"客户端 ← 内置服务端"的渲染链路。

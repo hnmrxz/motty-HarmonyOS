@@ -260,3 +260,43 @@ rdp-input: input: sent key+mouse; serverSaw keys=1 mouse=3 sync=0 (before 0/0/0)
 3. 若 TCP 失败：用 `rawTcpProbe` 从应用内重测（需先修面板溢出）。
 4. 只有在能拿到 `connected` 之后，才谈画面与真实输入。
 
+---
+
+## Round 35：本机自连实测（重大进展 + 明确阻塞点）
+
+### 已经能做的事（实测）
+1. **内置 shadow 服务端**启动后状态串：
+   `rdp-server: running port=13389 frames=618 loops=408 surface=ok ... paint=618 sw=1024 sh=768 stride=4096 rows=635886 ...`
+   ⇒ 表面真的在绘制（`paint` 递增），**服务端单独工作没问题**。
+2. **客户端连接本机服务端**：
+   `rdp: connected 127.0.0.1:13389`（`rdp/probe-local`）。
+3. **客户端渲染管线**（手工实测，一次成功）：
+   `rdp-render: frames=24 paints=24 size=1024x768 pixels=786432`
+   `rdp-canvas: drawn=3072 colors=1 | cpp bmp=24 rects=24 last=64x64 colors=1 nonBlack=3072 valid=1 dominant=#FFFFFF`
+   ⇒ 协商、位图更新、绘制**整条链路都通了**。
+4. **输入到达服务端**：服务端状态里出现 `inM=3`（鼠标事件确实进来了）。
+
+### 明确阻塞点（必须写清楚）
+**客户端连上后，下一次帧发布会崩**：
+```
+Reason: Signal:SIGABRT
+#04 libmottynapi.so(shadow_multiclient_publish_and_wait+34)
+```
+时间点与用例里"点 render 之后进程消失"完全吻合（21:00:43 faultlog）。
+⇒ `shadow_subsystem_frame_update` 在有客户端连接时与 shadow 自己的线程冲突，**这是 RDP 目前最硬的阻塞**。
+
+### 因此三条 RDP 用例的最新状态
+| 用例 | 状态 | 说明 |
+|---|---|---|
+| `rdp.server-peer` | ✅ PASS | 断言改为真实状态串：`running port=13389` + `surface=ok` + `paint>0` |
+| `rdp.client-render` | ❌ FAIL | 已改成"连本机内置服务端"，能到 `connected`，但随后的发布崩溃；画面即使成功也是**全白**（`colors=1`、`dominant=#FFFFFF`） |
+| `rdp.client-input` | ❌ FAIL | 同上，客户端连上后崩溃；`inM` 只在我手工那一次成功里看到过 |
+
+### 画面全白的另一个独立缺陷
+即使不崩，`colors=1` / `dominant=#FFFFFF` 说明解码出的位图是白的——
+这与之前定位的 `gdi_bitmap_update` 链式调用问题一致，**仍未修好**。
+
+### 结论
+RDP 现在是"**管线通、内容白、连上就崩**"。三条用例里只有 `server-peer` 能如实通过，
+另两条保持红色，并在 spec 的 `limits` 里写明"不能代表画面可用"。
+
