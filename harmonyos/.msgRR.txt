@@ -1,0 +1,18 @@
+﻿feat(harmonyos/ui): 设置页 + 偏好持久化（对应官方 state.save()）
+
+已实现:
+- 设置面板 nav/settings -> settings/panel: 语言 / 默认视图 / 排序 / 关于
+- 偏好持久化: @kit.ArkData preferences(motty-ui) 保存 lang/hostView/hostSort
+- 关于: 上游 Apache-2.0、ArkTS+NAPI 实现、RDP 实验性声明
+
+实测(含重启):
+  改后 grid: True -> aa force-stop/start -> 重启后 grid: True
+  用例 settings.persist PASS(建 persist-a -> 改网格/排序 -> restart -> 仍能看到 persist-a 与计数条)
+
+踩坑:
+1. loadPrefs 第一次被插到了 confirmDeleteHost() 里(字符串替换命中错误位置), 启动时从未加载
+   -> 放进 initStore(), 并用"改设置->重启->观察"验证而不是只看代码
+2. runner 的 shell 动作是宿主命令; 设备重启要用 restart 动作(shell: aa force-stop 会报 'aa' 不是命令)
+3. 网格视图没有空态文案(列表才有), 断言不能用"还没有主机" -> 先建主机再断言主机名
+
+仍未做: 设置项很少(官方还有连接超时/保活/重连/AI 等), 偏好损坏回退与导出

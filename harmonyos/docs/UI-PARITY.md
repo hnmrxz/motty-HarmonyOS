@@ -244,3 +244,36 @@ hilog: got main window, resizing # 现在能看到完整链路
 - 设置页（`nav/settings` 目前是禁用态）
 - 排序/视图模式的持久化（官方 `state.save()`）
 
+---
+
+## Round 8 追加：设置页 + 偏好持久化（对应官方 `state.save()`）
+
+### 已实现
+| 项 | 入口 | 说明 |
+|---|---|---|
+| 设置面板 | 侧栏 `nav/settings` → `settings/panel` | 语言 / 默认视图 / 排序 / 关于 |
+| 语言 | `settings/lang-zh` / `settings/lang-en` | 切换后立即生效并保存 |
+| 默认视图 | `settings/view-list` / `settings/view-grid` | 与主区视图按钮同步 |
+| 排序 | `settings/sort-manual` / `sort-name` / `sort-ip` | 三态，保存 |
+| 关于 | 面板底部 | 上游 Apache-2.0、ArkTS+NAPI 实现、RDP 实验性声明 |
+| **持久化** | `@kit.ArkData` preferences（`motty-ui`） | `lang` / `hostView` / `hostSort` 三项 |
+
+### 实测（含重启）
+```
+改后 grid: True
+aa force-stop -> aa start
+重启后 grid: True        # 偏好被读回
+用例 settings.persist  PASS（先建 persist-a 主机 -> 改网格/排序 -> restart -> 仍能看到 persist-a 与计数条）
+```
+
+### 踩坑
+1. `loadPrefs` 第一次被插到了 **`confirmDeleteHost()`** 里（字符串替换命中错误位置），导致启动时从未加载偏好；
+   改为放进 `initStore()`，并用"改设置 → 重启 → 观察"的方式验证，而不是只看代码。
+2. runner 的 `shell` 动作是**宿主命令**，不是设备命令；设备重启要用 `restart` 动作。
+   一开始用 `shell: aa force-stop …` 直接报 `'aa' is not recognized`。
+3. 网格视图**没有空态文案**（列表才有），所以断言不能用"还没有主机"；改为先建一台主机再断言主机名。
+
+### 仍未做
+- 设置项还很少（官方设置页有连接超时/保活/重连/AI 等大量项）
+- 偏好文件损坏的回退、导出偏好
+

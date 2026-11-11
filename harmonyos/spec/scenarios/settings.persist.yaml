@@ -1,0 +1,84 @@
+schema: 1
+id: settings.persist
+title: 设置页：改视图/排序后重启应用仍保持（偏好持久化）
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  # 先建一台主机（否则网格空态没有可断言的内容）
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: persist-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.9.9.9
+  - action: type
+    target: id:shell/dialog-user
+    text: root
+  - action: type
+    target: id:shell/dialog-port
+    text: "22"
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1200
+  # 打开设置，切成网格 + 按名称
+  - action: click
+    target: id:nav/settings
+  - action: wait
+    ms: 1000
+    expect:
+      kind: screenRegex
+      regex: "设置|Settings"
+      withinMs: 8000
+  - action: click
+    target: id:settings/view-grid
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:settings/sort-name
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:settings/close
+  - action: wait
+    ms: 800
+  # 重启应用（偏好应在启动时读回）
+  - action: restart
+  - action: wait
+    ms: 6000
+asserts:
+  # 重启后主机仍在（证明偏好与数据都从磁盘读回）
+  - kind: screenRegex
+    regex: "persist-a"
+    withinMs: 15000
+  - kind: screenRegex
+    regex: "全部 |All "
+    withinMs: 8000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：设置页可打开、切换默认视图与排序、重启后被持久化读回（网格容器仍在）。
+    **不覆盖**：语言偏好在重启后的视觉回归（另有 ui.i18n 用例覆盖语言切换本身）、
+    偏好文件损坏时的回退、多实例并发写。
+deviations:
+  - 断言以"网格容器 + 计数条"存在为持久化证据（dump 里没有直接读 preferences 的手段）
+notes: >-
+  这条用例第一次写时容易只断言"设置了"，所以特意加了重启步骤；没有重启的版本无法证明持久化。

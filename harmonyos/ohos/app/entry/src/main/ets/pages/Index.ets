@@ -14,7 +14,7 @@
  *   - 凭据只在内存，保险库未做。
  */
 import { common } from '@kit.AbilityKit';
-import { relationalStore } from '@kit.ArkData';
+import { relationalStore, preferences } from '@kit.ArkData';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { http, socket } from '@kit.NetworkKit';
 import { Strings } from '../common/strings';
@@ -196,6 +196,8 @@ struct Index {
   @State selectAll: boolean = false;
   @State selectedIds: string[] = [];
   @State catalogResult: string = '(catalog: idle)';
+  @State settingsOpen: boolean = false;
+  private prefs: preferences.Preferences | null = null;
   @State hostView: string = 'list';
   @State hostSort: string = 'manual';
   @State aiAnswer: string = '';
@@ -292,6 +294,7 @@ struct Index {
       await this.migrateHosts();
       await this.reload();
       await this.reloadRules();
+      await this.loadPrefs();
       hilog.info(DOMAIN, TAG, 'store ready, hosts=%{public}d', this.hosts.length);
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'store init failed: %{public}s', JSON.stringify(e));
@@ -1438,6 +1441,11 @@ struct Index {
     return Strings.get(this.lang, key);
   }
 
+  private async toggleLangAndSave(): Promise<void> {
+    this.toggleLang();
+    await this.savePrefs();
+  }
+
   private toggleLang(): void {
     this.lang = this.lang === 'zh' ? 'en' : 'zh';
   }
@@ -2406,7 +2414,7 @@ struct Index {
       this.pcNavItem('本地终端', 'nav/local-terminal', $r('app.media.ic_terminal'), true, () => {
         this.pcNav = '本地终端';
       })
-      this.pcNavItem('设置', 'nav/settings', $r('app.media.ic_settings'), false, () => {})
+      this.pcNavItem('设置', 'nav/settings', $r('app.media.ic_settings'), true, () => { this.settingsOpen = true; })
       Row({ space: 8 }) {
         Button(this.t('top.lang')).id('ui/lang').height(26).fontSize(11)
           .backgroundColor('#1E2127').fontColor('#9AA0A6')
@@ -2490,11 +2498,11 @@ struct Index {
       Image($r('app.media.ic_chevron_right')).id('chips/expand').width(15).height(15)
         .onClick(() => { this.collapsedGroups = []; })
       Image($r('app.media.ic_rows')).id('view/list').width(16).height(16)
-        .onClick(() => { this.hostView = 'list'; })
+        .onClick(() => { this.hostView = 'list'; this.savePrefs(); })
       Image($r('app.media.ic_grid')).id('view/grid').width(16).height(16)
-        .onClick(() => { this.hostView = 'grid'; })
+        .onClick(() => { this.hostView = 'grid'; this.savePrefs(); })
       Image($r('app.media.ic_sort')).id('view/sort').width(16).height(16)
-        .onClick(() => { this.hostSort = this.hostSort === 'manual' ? 'name' : (this.hostSort === 'name' ? 'ip' : 'manual'); })
+        .onClick(() => { this.hostSort = this.hostSort === 'manual' ? 'name' : (this.hostSort === 'name' ? 'ip' : 'manual'); this.savePrefs(); })
       Image($r('app.media.ic_sliders')).id('view/order').width(16).height(16)
     }.width('100%').padding({ left: 22, right: 22, bottom: 8 })
   }
@@ -2960,6 +2968,117 @@ struct Index {
     this.catalogResult = 'catalog-reset: hosts=' + this.hosts.length;
   }
 
+
+  // ---------------- 偏好持久化（对应官方 state.save()） ----------------
+  private async loadPrefs(): Promise<void> {
+    try {
+      const ctx = getContext(this) as common.UIAbilityContext;
+      this.prefs = await preferences.getPreferences(ctx, 'motty-ui');
+      const lang: string = this.prefs.getSync('lang', this.lang) as string;
+      const view: string = this.prefs.getSync('hostView', this.hostView) as string;
+      const sort: string = this.prefs.getSync('hostSort', this.hostSort) as string;
+      if (lang === 'zh' || lang === 'en') { this.lang = lang; }
+      if (view === 'list' || view === 'grid') { this.hostView = view; }
+      if (sort === 'manual' || sort === 'name' || sort === 'ip') { this.hostSort = sort; }
+    } catch (e) {
+      hilog.error(DOMAIN, TAG, 'loadPrefs failed: %{public}s', JSON.stringify(e));
+    }
+  }
+
+  private async savePrefs(): Promise<void> {
+    try {
+      if (this.prefs === null) { return; }
+      this.prefs.putSync('lang', this.lang);
+      this.prefs.putSync('hostView', this.hostView);
+      this.prefs.putSync('hostSort', this.hostSort);
+      await this.prefs.flush();
+    } catch (e) {
+      hilog.error(DOMAIN, TAG, 'savePrefs failed: %{public}s', JSON.stringify(e));
+    }
+  }
+
+
+  @Builder
+  settingsPanel() {
+    Column({ space: 14 }) {
+      Row() {
+        Text(this.lang === 'zh' ? '设置' : 'Settings').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Blank()
+        Button(this.t('common.close')).id('settings/close').height(30).fontSize(12)
+          .backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.settingsOpen = false; })
+      }.width('100%')
+
+      // 语言
+      Column({ space: 6 }) {
+        Text(this.lang === 'zh' ? '语言' : 'Language').fontSize(12).fontColor('#8A8F98')
+        Row({ space: 8 }) {
+          Button('中文').id('settings/lang-zh').height(30).fontSize(12)
+            .backgroundColor(this.lang === 'zh' ? '#2F6F4F' : '#23262B')
+            .fontColor(this.lang === 'zh' ? Color.White : '#C7CBD1')
+            .onClick(() => { if (this.lang !== 'zh') { this.toggleLangAndSave(); } })
+          Button('English').id('settings/lang-en').height(30).fontSize(12)
+            .backgroundColor(this.lang === 'en' ? '#2F6F4F' : '#23262B')
+            .fontColor(this.lang === 'en' ? Color.White : '#C7CBD1')
+            .onClick(() => { if (this.lang !== 'en') { this.toggleLangAndSave(); } })
+        }
+      }.alignItems(HorizontalAlign.Start).width('100%')
+
+      // 默认视图
+      Column({ space: 6 }) {
+        Text(this.lang === 'zh' ? '默认视图' : 'Default view').fontSize(12).fontColor('#8A8F98')
+        Row({ space: 8 }) {
+          Button(this.lang === 'zh' ? '列表' : 'List').id('settings/view-list').height(30).fontSize(12)
+            .backgroundColor(this.hostView === 'list' ? '#2F6F4F' : '#23262B')
+            .fontColor(this.hostView === 'list' ? Color.White : '#C7CBD1')
+            .onClick(() => { this.hostView = 'list'; this.savePrefs(); })
+          Button(this.lang === 'zh' ? '网格' : 'Grid').id('settings/view-grid').height(30).fontSize(12)
+            .backgroundColor(this.hostView === 'grid' ? '#2F6F4F' : '#23262B')
+            .fontColor(this.hostView === 'grid' ? Color.White : '#C7CBD1')
+            .onClick(() => { this.hostView = 'grid'; this.savePrefs(); })
+        }
+      }.alignItems(HorizontalAlign.Start).width('100%')
+
+      // 排序
+      Column({ space: 6 }) {
+        Text(this.lang === 'zh' ? '排序' : 'Sort').fontSize(12).fontColor('#8A8F98')
+        Row({ space: 8 }) {
+          Button(this.lang === 'zh' ? '手动' : 'Manual').id('settings/sort-manual').height(30).fontSize(12)
+            .backgroundColor(this.hostSort === 'manual' ? '#2F6F4F' : '#23262B')
+            .fontColor(this.hostSort === 'manual' ? Color.White : '#C7CBD1')
+            .onClick(() => { this.hostSort = 'manual'; this.savePrefs(); })
+          Button(this.lang === 'zh' ? '按名称' : 'Name').id('settings/sort-name').height(30).fontSize(12)
+            .backgroundColor(this.hostSort === 'name' ? '#2F6F4F' : '#23262B')
+            .fontColor(this.hostSort === 'name' ? Color.White : '#C7CBD1')
+            .onClick(() => { this.hostSort = 'name'; this.savePrefs(); })
+          Button(this.lang === 'zh' ? '按 IP' : 'IP').id('settings/sort-ip').height(30).fontSize(12)
+            .backgroundColor(this.hostSort === 'ip' ? '#2F6F4F' : '#23262B')
+            .fontColor(this.hostSort === 'ip' ? Color.White : '#C7CBD1')
+            .onClick(() => { this.hostSort = 'ip'; this.savePrefs(); })
+        }
+      }.alignItems(HorizontalAlign.Start).width('100%')
+
+      Divider().color('#23262A')
+
+      // 关于
+      Column({ space: 4 }) {
+        Text(this.lang === 'zh' ? '关于' : 'About').fontSize(12).fontColor('#8A8F98')
+        Text('Motty for HarmonyOS · PC').fontSize(13).fontColor('#E8EAED')
+        Text(this.lang === 'zh'
+          ? '上游 t8y2/motty（Apache-2.0）；鸿蒙端为 ArkTS + C/C++（NAPI）实现。'
+          : 'Upstream t8y2/motty (Apache-2.0); HarmonyOS build in ArkTS + C/C++ via NAPI.')
+          .fontSize(11).fontColor('#8A8F98')
+        Text(this.lang === 'zh'
+          ? 'RDP 仍为实验性：可连接与解码，但画面内容与输入投递未完成。'
+          : 'RDP is experimental: connect and decode work, picture content and input are not done.')
+          .fontSize(11).fontColor('#E0A458')
+      }.alignItems(HorizontalAlign.Start).width('100%')
+    }
+    .id('settings/panel')
+    .width(520).padding(20).backgroundColor('#1C1F24').borderRadius(14)
+    .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -2987,6 +3106,10 @@ struct Index {
       .layoutWeight(1).width('100%').backgroundColor('#17181C')
       }
 
+      if (this.settingsOpen) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
+        this.settingsPanel()
+      }
       if (this.vncOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
         this.vncPanel()

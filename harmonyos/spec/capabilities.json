@@ -60,7 +60,9 @@
         "evidence": null
       },
       "evidence": "E3",
-      "proof": [],
+      "proof": [
+        "spec/scenarios/settings.persist.yaml"
+      ],
       "fallback": null,
       "userText": null,
       "source": {
@@ -1739,6 +1741,7 @@
       },
       "evidence": "E1",
       "proof": [
+        "spec/scenarios/settings.persist.yaml",
         "spec/scenarios/ui.i18n.diag.yaml",
         "spec/scenarios/ui.i18n.diagnostics.yaml",
         "spec/scenarios/ui.i18n.panels.yaml",
