@@ -14,6 +14,7 @@
 #include <freerdp/freerdp.h>
 #include <freerdp/settings.h>
 #include <freerdp/update.h>
+#include <freerdp/client.h>
 #include <freerdp/primary.h>
 
 #include <atomic>
@@ -107,6 +108,43 @@ static DWORD VerifyCertEx(freerdp *instance, const char *host, UINT16 port, cons
     return 2;
 }
 
+// 官方客户端入口点：只有走这条路，context 才带完整的 update/gdi 管线，
+// 服务端的桌面更新才会被路由到 BitmapUpdate 回调。
+// （之前用 freerdp_new()+freerdp_context_new() 虽然能连上，但收不到位图 —— Round 71 结论）
+namespace {
+// 最小客户端上下文子类：ContextSize 必须非 0，否则 freerdp_context_new_ex 会除零（实测 SIGFPE）
+struct MottyRdpContext {
+    rdpContext common;
+};
+int ClientGlobalInit(void) { return 0; }
+void ClientGlobalUninit(void) { }
+int ClientNew(freerdp *instance, rdpContext *context) {
+    (void)instance;
+    (void)context;
+    return 0;   // 用默认客户端上下文（不需要自定义子类）
+}
+void ClientFree(freerdp *instance, rdpContext *context) { (void)instance; (void)context; }
+int ClientStart(rdpContext *context) { (void)context; return 0; }
+int ClientStop(rdpContext *context) { (void)context; return 0; }
+}  // namespace
+
+int RdpClientEntry(RDP_CLIENT_ENTRY_POINTS *pEntryPoints) {
+    if (pEntryPoints == nullptr) {
+        return -1;
+    }
+    ZeroMemory(pEntryPoints, sizeof(RDP_CLIENT_ENTRY_POINTS));
+    pEntryPoints->Version = RDP_CLIENT_INTERFACE_VERSION;
+    pEntryPoints->Size = sizeof(RDP_CLIENT_ENTRY_POINTS);
+    pEntryPoints->GlobalInit = ClientGlobalInit;
+    pEntryPoints->GlobalUninit = ClientGlobalUninit;
+    pEntryPoints->ContextSize = sizeof(MottyRdpContext);
+    pEntryPoints->ClientNew = ClientNew;
+    pEntryPoints->ClientFree = ClientFree;
+    pEntryPoints->ClientStart = ClientStart;
+    pEntryPoints->ClientStop = ClientStop;
+    return 0;
+}
+
 std::string rdpTryConnect(const RdpJob &job) {
     // 用 freerdp_new + freerdp_context_new：client_context_new 需要注册客户端入口点，
     // 而本工程只链接 libfreerdp（没编 SDL/X11 客户端），传 nullptr 会返回空。
@@ -160,11 +198,13 @@ std::string rdpTryConnect(const RdpJob &job) {
 void renderWorker(RdpJob *job) {
     std::string result;
     // 与 rdpTryConnect 一致：只链 libfreerdp 时用 freerdp_new + freerdp_context_new
-    freerdp *instance = freerdp_new();
-    if (instance == nullptr || !freerdp_context_new(instance)) {
+    RDP_CLIENT_ENTRY_POINTS entryPoints = {0};
+    RdpClientEntry(&entryPoints);
+    rdpContext *context = freerdp_client_context_new(&entryPoints);
+    freerdp *instance = context != nullptr ? context->instance : nullptr;
+    if (instance == nullptr) {
         result = "error context";
     } else {
-        rdpContext *context = instance->context;
         rdpSettings *settings = context->settings;
         freerdp_settings_set_string(settings, FreeRDP_ServerHostname, job->host.c_str());
         freerdp_settings_set_uint32(settings, FreeRDP_ServerPort, static_cast<uint32_t>(job->port));
@@ -212,8 +252,7 @@ void renderWorker(RdpJob *job) {
             result = buf;
             freerdp_disconnect(instance);
         }
-        freerdp_context_free(instance);
-        freerdp_free(instance);
+        freerdp_client_context_free(context);
     }
     auto *payload = new std::string(result);
     napi_call_threadsafe_function(job->cb, payload, napi_tsfn_blocking);

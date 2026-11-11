@@ -2033,3 +2033,26 @@ rdp-render: frames=0 size=0x0 pixels=0 colors=00000000
 
 ### 五、状态
 用例数保持 **51**（没有为失败的功能加用例）；`rdp.render` 属 **E3**。
+---
+
+## Round 72：渲染管线第二次尝试（官方入口点）——仍失败，但修掉一个除零崩溃
+
+### 一、按官方样例改了什么
+1. 实现 `RdpClientEntry(RDP_CLIENT_ENTRY_POINTS*)`（`Version`/`Size`/`ContextSize`/`ClientNew`/`ClientFree`/`ClientStart`/`ClientStop`），
+   用 `freerdp_client_context_new(&entryPoints)` 建上下文 —— 这是让 `context->update` 完整、位图更新能被路由的官方路径。
+2. 修掉一个**真实崩溃**：`ContextSize` 未设置（0）时，`freerdp_context_new_ex` 里整数除零 → **SIGFPE**。
+   已按样例给了一个最小上下文子类 `MottyRdpContext { rdpContext common; }` 并设 `ContextSize = sizeof(...)`。
+
+### 二、结果（仍未达成）
+`rdp-render: error context` —— `freerdp_client_context_new(&entryPoints)` **返回 NULL**。
+已试 `Size = sizeof(RDP_CLIENT_ENTRY_POINTS_V1)` 与 `sizeof(RDP_CLIENT_ENTRY_POINTS)`，都返回 NULL。
+
+### 三、当前定位
+`freerdp_client_context_new` 内部除了 ContextSize 还依赖客户端的 `ClientNew` 真正建立上下文；
+我们的 `ClientNew(instance, context)` 直接 return 0，可能不足以让内部流程通过（样例的 `tf_client_new` 还做了额外初始化）。
+下一步要么照 `tf_client_new` 补全，要么放弃内嵌渲染、改用真实的 Windows RDP 服务端验证。
+
+### 四、诚实边界
+- 崩溃已修（不再 SIGFPE），但**渲染仍 E3**
+- 用例数保持 51，没有为失败功能加用例
+- Round 70 的 `connected` 结论不受影响（那条用的是另一条上下文路径，且双画像通过）
