@@ -2424,3 +2424,46 @@ Round 61–81 动过 VNC 面板按钮顺序、转发面板滚动容器、诊断�
 ### 四、影响
 "RDP 画面内容正确"维持 **E3**。本轮的贡献是**把"为什么做不到"用证据钉死**，
 而不是又一轮空转。
+
+---
+
+## Round 90：阶段收束（本目标轮次用尽，工作未完成）
+
+本会话 90 轮预算用完。**目标保持活跃**，不标记完成——理由是三项证据缺口真实存在（见下）。
+
+### 一、终态数字（本轮实测核对，不是回忆）
+| 指标 | 值 |
+|---|---|
+| 用例 | **56 条**（`spec/lint.py` 全绿） |
+| E1 能力 | **16 条** |
+| 矩阵 | round82 **8/8**、round85 **2/2**、round87 **4/4**（均双画像） |
+| SBOM | 16 组件 / 36 份产物（`--check` 通过） |
+| 工作区 | 干净；`HEAD == origin/main` |
+
+### 二、按目标五项
+| 项 | 结论 | 关键证据 |
+|---|---|---|
+| ① i18n 中英双语与切换 | **E1 完成（覆盖已收口）** | 5 条 i18n 用例，六块界面全覆盖，均带缺键反向断言 |
+| ② AI 最小切片 | **E1 完成（只验证通路）** | `ai.request` 双画像；模型质量/鉴权/流式/多轮未做 |
+| ③ SBOM 与上架材料 | **E2 完成（材料齐、合规未做）** | `SBOM.json` + lint 接入 + `STORE-READINESS.md` + 附录 A |
+| ④ RDP 完整链路 | **部分**：监听/协商/解码通；**画面内容与输入 E3** | `rdp.client-connect`、`rdp.client-render`、`rdp-selfcheck.py` |
+| ⑤ arm64 指引与脚本 | **E2（真机未跑）** | `verify-arm64.ps1` + `ARM64-REAL-DEVICE.md`（附录 A/B） |
+
+### 三、三项未达成的，逐条说清
+1. **RDP 画面内容**：客户端停在 shadow 的 lobby 白屏。Round 89 已证明公共 API 改不了
+   （`rdpShadowClient` 不透明、无强制激活 API、画 lobby 表面无效）。要继续必须打补丁重编 FreeRDP
+   或自建服务端。
+2. **RDP 输入回传 / NLA / 真实 Windows 互通**：完全未开始。
+3. **arm64 真机 41 项**：只有编译证据；`verify-arm64.ps1` 与自检脚本已就绪，缺硬件。
+   另：上架合规（release 证书 / 隐私政策 URL / 渗透测试）也未做。
+
+### 四、交接入口
+- 一页总览：`harmonyos/FINAL-STATUS.md`
+- 每轮细节：`harmonyos/INDEX.md`（Round 1–90）
+- 坑与手法：`harmonyos/spec/RUNBOOK.md`（§1–§36）
+- 能力表：`harmonyos/spec/capabilities.json`
+- 上架：`harmonyos/STORE-READINESS.md`
+
+### 五、最后一句
+这轮复刻**做到了"终端/SFTP/转发/VNC/i18n/AI 通路都可机器判定"**，
+**没做到"RDP 能用"与"arm64 已验证"**。不粉饰，也不抹掉已完成的证据。
