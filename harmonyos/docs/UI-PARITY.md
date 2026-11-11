@@ -378,3 +378,32 @@ host.catalog       PASS
 下一步应把问题收敛到"ENTER 提交"这一个变量上（例如给对话框加 `onSubmit` 处理，或让 type 动作在编辑场景不按 ENTER），
 在此之前**不把这条用例标记为通过**。
 
+---
+
+## Round 12 追加：编辑改名到底存没存？——存了，但列表刷新不对
+
+### 用日志与重启把问题钉死
+1. 在 `submit()` 的编辑分支加了带值日志：`host updated submit-label=%s`；
+2. 跑 `host.manage` 后日志出现：`host updated submit-label=manage-amanage-b` ⇒ **写入的 label 是对的**；
+3. 提交后立刻 dump：列表里那一行的名称列**没有任何文本**（`host-name/0` 下面没有 Text）；
+4. **重启应用后**再 dump：`manage-amanage-b` 正确显示。
+
+⇒ 结论：**持久化没问题，问题在"提交后到重启前"的内存/刷新阶段**。
+
+### 试过的修法（都没解决）
+| 尝试 | 结果 |
+|---|---|
+| 对话框字段绑 `text: this.seedX`（只在创建时给初值） | 点"保存"时输入框失焦，`text` 绑定的旧值被回灌，状态被打回旧名 |
+| 改回 `text: this.formX`（值与状态一致，失焦理论上不会回退） | 状态与提交值都正确，但列表仍显示旧/空 |
+| 提交后 `settleStore()`（等 150ms 再 `reload()`，怀疑 WAL 读写乱序） | 仍失败 |
+
+### 下一步（Round 13 从这里接）
+- 给 `reload()` 的**结束处**加日志（本轮想加，但替换锚点没命中，没加成）：
+  打印 `out.length` 与 `out[0].label`，确认是"查询返回空/旧"还是"查询对但 UI 未刷新"；
+- 如果是 UI 未刷新：把 `this.hosts = out` 换成先清空再赋值，或改用 `@Observed`/`Array.splice` 触发；
+- 如果是查询旧值：改用 `store.beginTransaction()/commit()` 包裹 update 与查询，或换 `executeSql` 直查。
+
+### 现状
+- `host.manage` 仍 **FAIL**（第 14 步），其余本轮相关用例：`sftp.manage`、`settings.persist`、`pages.logs-vault`、`host.catalog` 均 PASS。
+- 不再用"能连上/能写库"这类弱证据把这条用例标绿。
+
