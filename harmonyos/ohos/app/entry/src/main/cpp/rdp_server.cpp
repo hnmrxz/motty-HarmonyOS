@@ -746,6 +746,7 @@ napi_value RdpServerTick(napi_env env, napi_callback_info info) {
             region16_union_rect(&surface->invalidRegion, &surface->invalidRegion, &rect);
         }
         LeaveCriticalSection(&surface->lock);
+        bool published = false;
         // 发布策略（实测）：
         //  FreeRDP 的 publish 与"客户端连接/断开"存在竞态（consuming 变负 -> SIGABRT）。
         //  因此只在"恰好 1 个客户端、且该状态连续稳定 10 个 tick"时才发布；
@@ -765,9 +766,16 @@ napi_value RdpServerTick(napi_env env, napi_callback_info info) {
             if (nc == 1 && act && g_stableTicks >= 10) {
                 g_publishGuard++;
                 shadow_subsystem_frame_update(g_server->subsystem);
+                published = true;
             } else if (nc > 0) {
                 g_publishUnstable++;
             }
+        }
+        // 只有真的发布过才清脏区。否则清掉后客户端 RefreshRect 会拿到空脏区 -> 不发更新 -> 白屏。
+        if (published) {
+            EnterCriticalSection(&surface->lock);
+            region16_clear(&surface->invalidRegion);
+            LeaveCriticalSection(&surface->lock);
         }
         if (g_subsystem != nullptr) {
             g_subsystem->frames.fetch_add(1);

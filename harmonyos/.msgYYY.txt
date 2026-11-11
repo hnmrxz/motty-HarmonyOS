@@ -1,0 +1,19 @@
+﻿fix(harmonyos/rdp): 只在发布后清脏区（保留），但白屏仍未解决
+
+改动: RdpServerTick 改为 只有 published 为真才 region16_clear(&surface->invalidRegion)
+理由: 跳过发布的 tick 若也清脏区, 客户端 RefreshRect 会拿到空区域 -> 永远不更新
+
+实测(改后):
+- rdp.server-peer / rdp.client-render / rdp.client-input => 3/3 PASS(无回退)
+- rdp-render: frames=24 paints=24 size=1024x768 pixels=786432
+- rdp-canvas: bmp=24 rects=24 last=64x64 colors=1 dominant=#FFFFFF
+=> 画面依然白: 客户端只收到 24 块 64x64 更新(约 98k 像素, 占 786k 的 12%), 其余保持 gdi 初始白
+
+下一步抓手(具体):
+1. shadow_client_send_surface_update 取 surface->invalidRegion 逐块发送; 我们 union 整屏但客户端只收到 24 块 64x64
+   -> 确认客户端显示的是 server->surface 还是 server->lobby(client->inLobby)
+   -> 确认 settings->MultifragMaxRequestSize 等分片参数是否把大区域切碎
+2. 状态串加 cliLobby= 与 lastRect=(最后一块矩形坐标), 把"发的是哪块、从哪来"直接看出来
+
+纪律: 不因为三条用例绿就写"RDP 可用"; 画面内容是白的, 这点在 RDP.md 与用例 limits 里都明确写着
+全量回归 full39 因本轮要改 native 已停止(16/71 时通过 15), 下一轮用修复后构建重跑

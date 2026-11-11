@@ -446,3 +446,35 @@ union(整屏脏区) -> 条件发布 -> 清空 invalidRegion
 "frames>0 / paints>0 / valid=1" **不等于画面正确**。下一轮要新增的断言必须直接针对像素内容，
 并且先确认修复真的让像素变化，再加断言。
 
+---
+
+## Round 40：脏区清理修正（保留修复，但白屏仍未解决）
+
+### 已改
+`RdpServerTick` 里改为**只有真的发布过才清 `surface->invalidRegion`**：
+```cpp
+if (published) { region16_clear(&surface->invalidRegion); }
+```
+理由：跳过发布的 tick 若也清脏区，客户端 `RefreshRect` 会拿到空区域，等于永远不更新。
+
+### 实测（改后）
+```
+rdp.server-peer / rdp.client-render / rdp.client-input => 3/3 PASS（无回退）
+rdp-render: frames=24 paints=24 size=1024x768 pixels=786432
+rdp-canvas: drawn=3072 colors=1 | cpp bmp=24 rects=24 last=64x64 colors=1 nonBlack=3072 valid=1 dominant=#FFFFFF
+```
+
+⇒ **画面依然是白的**：客户端只收到 24 块 64×64 的更新（约 98k 像素，占 786k 的 12%），
+其余区域保持 gdi 的初始白色。
+
+### 下一步的抓手（比"猜"更具体）
+1. FreeRDP 的 `shadow_client_send_surface_update` 会取 `surface->invalidRegion` 的矩形逐块发送；
+   我们 union 的是**整屏**，但客户端只收到 24 块 64×64 ⇒ 需要确认：
+   - 客户端实际显示的是 `server->surface` 还是 `server->lobby`（`client->inLobby`）；
+   - `settings->MultifragMaxRequestSize` 等分片参数是否把大区域切碎；
+2. 建议在状态串里加 `cliLobby=`（每个客户端的 inLobby）与 `lastRect=`（最后一块矩形坐标），
+   这两个值能把"发的是哪块、从哪来"直接看出来。
+
+### 纪律
+不因为三条用例绿就写"RDP 可用"。**画面内容是白的**，这点在 RDP.md 与用例 limits 里都明确写着。
+
