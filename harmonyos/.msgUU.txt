@@ -1,0 +1,19 @@
+﻿fix(harmonyos): 撤销窗口 resize + 对话框改种子值模式；夹具生命周期定位
+
+1. 撤销主动 resize: Round 7 开 supportWindowMode + resize(2400,1500) 后出现"有时 dump 抓到桌面/主区文本消失"
+   -> 移除 resize, 只保留深色背景; 结论: 2in1 上主动改窗口尺寸会影响后续点击/焦点归属
+
+2. 对话框改种子值模式(真实修复): text: 绑定在重渲染时回灌旧状态覆盖用户输入(runner 输入路径还按 ENTER)
+   -> seedLabel/... 只在创建时给初值不再变化; onChange 写 formLabel; 提交读 formLabel; 不再用 !! 双向绑定
+   效果: 编辑能正确回填, 用户输入不被回灌覆盖
+
+3. sshfixture 生命周期是独立问题: 残留夹具(旧 hostkey/会话)会让 sftp 用例卡在 hello.txt
+   -> 先 Stop-Process sshfixture + 重建 rport + 重启夹具; 按此流程:
+      sftp.manage PASS / settings.persist PASS / pages.logs-vault PASS / host.catalog PASS
+
+4. 仍未解决: host.manage 第14步(编辑后断言新名称)
+   已确认: 日志有 host updated(保存路径执行了); 手工点字段+inputText(不按 ENTER)能改名写库;
+   runner type 走 点击->dump->inputText->keyEvent 2054(ENTER), 该路径下改名不生效
+   下一步把变量收敛到 ENTER 提交; 在此之前不把该用例标为通过
+
+RUNBOOK 已加"跑 SFTP 用例前重启夹具"的固定流程

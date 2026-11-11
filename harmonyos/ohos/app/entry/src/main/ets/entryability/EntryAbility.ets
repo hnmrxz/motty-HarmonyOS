@@ -37,14 +37,11 @@ export default class EntryAbility extends UIAbility {
     // Main window is created, set main page for this ability
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
 
+    // 不主动 resize：2in1 上 resize 会让窗口脱离系统默认布局，实测导致后续点击/焦点异常
+    // （用例里 apply 后出现"抓到的 dump 是桌面"的现象）。只设置深色背景。
     windowStage.getMainWindow().then((mainWin: window.Window) => {
-      hilog.info(DOMAIN, 'testTag', 'got main window, resizing');
-      mainWin.resize(2400, 1500).then(() => {
-        hilog.info(DOMAIN, 'testTag', 'resize ok 1500x860');
-        mainWin.setWindowBackgroundColor('#17181C');
-      }).catch((e: Error) => {
-        hilog.error(DOMAIN, 'testTag', 'resize failed: %{public}s', JSON.stringify(e));
-      });
+      mainWin.setWindowBackgroundColor('#17181C');
+      hilog.info(DOMAIN, 'testTag', 'window background set');
     }).catch((e: Error) => {
       hilog.error(DOMAIN, 'testTag', 'getMainWindow failed: %{public}s', JSON.stringify(e));
     });

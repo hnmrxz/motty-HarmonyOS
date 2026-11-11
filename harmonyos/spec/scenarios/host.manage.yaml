@@ -45,7 +45,11 @@ steps:
   - action: click
     target: id:host-edit/0
   - action: wait
-    ms: 500
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "保存|Save"
+      withinMs: 8000
   - action: type
     target: id:shell/dialog-label
     text: manage-b

@@ -178,6 +178,15 @@ struct Index {
   @State statuses: string[] = [];
   @State showDialog: boolean = false;
   @State formLabel: string = '';
+  // seed* 只在对话框创建时提供初值，之后不再变化：避免 text: 绑定在重渲染时把用户输入回灌覆盖
+  @State seedLabel: string = '';
+  @State seedAddress: string = '';
+  @State seedUser: string = '';
+  @State seedPort: string = '';
+  @State seedPassword: string = '';
+  @State seedGroup: string = '';
+  @State seedTags: string = '';
+  @State seedColor: string = '';
   @State formAddress: string = '';
   @State formUser: string = '';
   @State formPort: string = '';
@@ -415,6 +424,14 @@ struct Index {
   }
 
   private resetForm(): void {
+    this.seedLabel = '';
+    this.seedAddress = '';
+    this.seedUser = '';
+    this.seedPort = '';
+    this.seedPassword = '';
+    this.seedGroup = '';
+    this.seedTags = '';
+    this.seedColor = '';
     this.formLabel = '';
     this.formAddress = '';
     this.formUser = '';
@@ -431,6 +448,14 @@ struct Index {
       return;
     }
     this.editingId = h.id;
+    this.seedLabel = h.label;
+    this.seedAddress = h.address;
+    this.seedUser = h.user;
+    this.seedPort = h.port;
+    this.seedPassword = '';
+    this.seedGroup = h.group;
+    this.seedTags = h.tags;
+    this.seedColor = h.color;
     this.formLabel = h.label;
     this.formAddress = h.address;
     this.formUser = h.user;
@@ -1626,40 +1651,40 @@ struct Index {
     Column({ space: 10 }) {
       Text(this.editingId.length > 0 ? 'Edit Host' : 'New Host').fontSize(20).fontWeight(FontWeight.Bold).width('100%')
       Text('Label').fontSize(12).fontColor('#666666').width('100%')
-      TextInput({ placeholder: 'my server', text: this.formLabel!! }).id('shell/dialog-label').width('100%')
+      TextInput({ placeholder: 'my server', text: this.seedLabel }).id('shell/dialog-label').width('100%')
         .onChange((v: string) => { this.formLabel = v; })
       Text('Address').fontSize(12).fontColor('#666666').width('100%')
-      TextInput({ placeholder: '10.0.0.1', text: this.formAddress!! }).id('shell/dialog-address').width('100%')
+      TextInput({ placeholder: '10.0.0.1', text: this.seedAddress }).id('shell/dialog-address').width('100%')
         .onChange((v: string) => { this.formAddress = v; })
       Row({ space: 10 }) {
         Column({ space: 6 }) {
           Text('User').fontSize(12).fontColor('#666666').width('100%')
-          TextInput({ placeholder: 'root', text: this.formUser!! }).id('shell/dialog-user').width('100%')
+          TextInput({ placeholder: 'root', text: this.seedUser }).id('shell/dialog-user').width('100%')
             .onChange((v: string) => { this.formUser = v; })
         }.layoutWeight(1)
         Column({ space: 6 }) {
           Text('Port').fontSize(12).fontColor('#666666').width('100%')
-          TextInput({ placeholder: '22', text: this.formPort!! }).id('shell/dialog-port').width('100%').type(InputType.Number)
+          TextInput({ placeholder: '22', text: this.seedPort }).id('shell/dialog-port').width('100%').type(InputType.Number)
             .onChange((v: string) => { this.formPort = v; })
         }.layoutWeight(1)
       }.width('100%')
       Row({ space: 10 }) {
         Column({ space: 6 }) {
           Text('分组（Group）').fontSize(12).fontColor('#666666').width('100%')
-          TextInput({ placeholder: '个人', text: this.formGroup!! }).id('shell/dialog-group').width('100%')
+          TextInput({ placeholder: '个人', text: this.seedGroup }).id('shell/dialog-group').width('100%')
             .onChange((v: string) => { this.formGroup = v; })
         }.layoutWeight(1)
         Column({ space: 6 }) {
           Text('标签（Tags）').fontSize(12).fontColor('#666666').width('100%')
-          TextInput({ placeholder: '开发,测试,生产', text: this.formTags!! }).id('shell/dialog-tags').width('100%')
+          TextInput({ placeholder: '开发,测试,生产', text: this.seedTags }).id('shell/dialog-tags').width('100%')
             .onChange((v: string) => { this.formTags = v; })
         }.layoutWeight(1)
       }.width('100%')
       Text('颜色（Color，#RRGGBB，可选）').fontSize(12).fontColor('#666666').width('100%')
-      TextInput({ placeholder: '#22c55e', text: this.formColor!! }).id('shell/dialog-color').width('100%')
+      TextInput({ placeholder: '#22c55e', text: this.seedColor }).id('shell/dialog-color').width('100%')
         .onChange((v: string) => { this.formColor = v; })
       Text('Password (memory only, not stored)').fontSize(12).fontColor('#666666').width('100%')
-      TextInput({ placeholder: 'password', text: this.formPassword!! }).id('shell/dialog-password').width('100%')
+      TextInput({ placeholder: 'password', text: this.seedPassword }).id('shell/dialog-password').width('100%')
         .type(InputType.Password).onChange((v: string) => { this.formPassword = v; })
       Row({ space: 12 }) {
         Button('Cancel').id('shell/dialog-cancel').backgroundColor('#E6E6E6').fontColor('#1A1A1A')

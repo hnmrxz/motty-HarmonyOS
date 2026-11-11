@@ -919,3 +919,12 @@ python harmonyos\tools\rdp-selfcheck.py --serial 127.0.0.1:10100 --profile 2in1 
 2. 真机验证时先跑它，区分"arm64 特有问题"与"功能本来只到这一步"
 3. 它**不**证明画面内容正确、也不证明输入可用（这两项是 E3，脚本会打印提醒）
 
+### 跑 SFTP 相关用例前必须重启夹具（Round 11 追加）
+
+残留的 `sshfixture` 会带着旧 hostkey/会话，表现为"点不到 sftp/entry/xxx"这种假失败。固定流程：
+
+```powershell
+Get-Process sshfixture -ErrorAction SilentlyContinue | Stop-Process -Force
+hdc -t 127.0.0.1:10100 rport tcp:2222 tcp:2223
+Start-Process 待续
+

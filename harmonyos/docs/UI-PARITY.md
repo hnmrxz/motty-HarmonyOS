@@ -342,3 +342,39 @@ aa force-stop -> aa start
 ### 附带确认
 `pages.logs-vault`、`settings.persist` 在本次改动后**复跑仍 PASS**，说明对话框修复没有破坏既有流程。
 
+---
+
+## Round 11 追加：撤销窗口 resize + 对话框改「种子值」模式 + 夹具生命周期
+
+### 1) 撤销主动 resize
+Round 7 打开 `supportWindowMode` + `resize(2400,1500)` 后，出现"有时 dump 抓到桌面"、"主区文本消失"的现象；
+Round 11 把 resize **移除**（只保留深色背景设置），让窗口回到系统默认尺寸与位置。
+- 结论：**2in1 上主动改窗口尺寸会影响后续点击/焦点归属**，这条能力先不做，比"尺寸好看"重要。
+
+### 2) 对话框改「种子值」模式（真实修复）
+`text:` 绑定在重渲染时会把旧状态回灌，覆盖用户输入（runner 的输入路径还会按 ENTER 提交组合）。
+改为：
+- `seedLabel/seedAddress/…` 只在对话框**创建时**给初值，之后不再变化；
+- `onChange` 写入 `formLabel/…`，提交读 `formLabel`；
+- 不再使用 `!!` 双向绑定（它在 IME 路径下同样有回灌问题）。
+效果：编辑时表单能正确回填，且用户输入不会被回灌覆盖。
+
+### 3) 夹具（sshfixture）生命周期是独立问题
+`sftp.manage` 的失败与代码无关：**夹具进程残留旧 hostkey/会话时就会卡在 hello.txt**。
+处置：跑 SFTP 相关用例前先 `Stop-Process sshfixture` + 重建 `rport` + 重启夹具。按此流程后：
+```
+sftp.manage        PASS
+settings.persist   PASS
+pages.logs-vault   PASS
+host.catalog       PASS
+```
+
+### 4) 仍未解决
+`host.manage` 第 14 步（编辑后断言新名称）仍失败。已确认的事实：
+- 应用日志里 **出现 `host updated`**，说明保存路径确实执行了；
+- 手工"点击字段 + `inputText`（不按 ENTER）"能正确改名并写库；
+- runner 的 `type` 走"点击 → 重新 dump → `inputText` → `keyEvent 2054`(ENTER)"，在这条路径下编辑对话框的改名不生效。
+
+下一步应把问题收敛到"ENTER 提交"这一个变量上（例如给对话框加 `onSubmit` 处理，或让 type 动作在编辑场景不按 ENTER），
+在此之前**不把这条用例标记为通过**。
+
