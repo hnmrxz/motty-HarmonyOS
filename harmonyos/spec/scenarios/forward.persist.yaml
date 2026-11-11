@@ -37,7 +37,7 @@ steps:
     ms: 700
   # 信任主机密钥（转发也要过这一步）
   - action: click
-    target: id:host-row/0
+    target: id:host-open/0
   - action: wait
     ms: 2000
     expect:
@@ -50,7 +50,7 @@ steps:
     ms: 2000
     expect:
       kind: screenRegex
-      regex: "hello-from-list"
+      regex: "Send|Copy|Resize"   # pty 下夹具跑真实 shell，只断言终端已打开
       withinMs: 15000
   # 保存一条 SOCKS5 规则
   - action: click

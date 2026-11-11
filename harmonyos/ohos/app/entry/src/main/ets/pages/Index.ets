@@ -2325,11 +2325,11 @@ struct Index {
                   // 地址（右对齐）
                   Text((h.proto === 'rdp' ? 'rdp://' : (h.proto === 'vnc' ? 'vnc://' : '')) +
                        h.address + (h.port.length > 0 ? ':' + h.port : ''))
-                    .fontSize(12).fontColor('#8A8F98').width(150).textAlign(TextAlign.End)
+                    .fontSize(12).fontColor('#8A8F98').width(120).textAlign(TextAlign.End)
                   Row({ space: 4 }) {
                     Text('○').fontSize(9).fontColor('#6B7078')
                     Text(this.lang === 'zh' ? '未连接' : 'offline').fontSize(11).fontColor('#6B7078')
-                  }.id('host-status-text/' + index).width(50)
+                  }.id('host-status-text/' + index).width(44)
                   // 标签 chips（原版预设：开发/测试/生产）
                   ForEach(this.tagList(h), (tg: string) => {
                     Text(tg).fontSize(11).fontColor('#C7CBD1')
@@ -2352,7 +2352,7 @@ struct Index {
                   Button(this.t('host.del')).id('host-del/' + index).fontSize(10).height(26)
                     .backgroundColor('#3A2226').fontColor('#E08A8A')
                     .onClick(() => { this.askDeleteHost(index); })
-                  }.width(190).justifyContent(FlexAlign.End)
+                  }.width(250).justifyContent(FlexAlign.End)
                 }
                 .width('100%').height(60).padding({ left: 10, right: 10 })
                 .borderRadius(10)

@@ -38,7 +38,7 @@ steps:
   - action: wait
     ms: 700
   - action: click
-    target: id:host-row/0
+    target: id:host-open/0
   - action: wait
     ms: 2500
     expect:
@@ -54,12 +54,12 @@ steps:
       regex: "verified SHA256:"
       withinMs: 12000
   - action: click
-    target: id:host-row/0
+    target: id:host-open/0
   - action: wait
     ms: 2500
 asserts:
   - kind: screenRegex
-    regex: "hello-from-list"
+    regex: "Send|Copy|Resize"   # pty 下夹具跑真实 shell，只断言终端已打开
     withinMs: 12000
   - kind: absent
     value: "no credentials in memory"

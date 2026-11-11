@@ -70,7 +70,7 @@ steps:
   - action: wait
     ms: 2000
   - action: click
-    target: id:host-row/0
+    target: id:host-open/0
   - action: wait
     ms: 2500
 asserts:
@@ -81,7 +81,7 @@ asserts:
     value: "verified SHA256:"
     withinMs: 3000
   - kind: absent
-    value: "hello-from-list"
+    value: "Send|Copy|Resize"
     withinMs: 3000
 evidence:
   png: true

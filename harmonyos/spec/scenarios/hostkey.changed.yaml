@@ -47,7 +47,7 @@ steps:
     ms: 700
   # 第一次：未知主机 -> 信任（记下第一把钥匙）
   - action: click
-    target: id:host-row/0
+    target: id:host-open/0
   - action: wait
     ms: 2000
     expect:
@@ -60,7 +60,7 @@ steps:
     ms: 2500
     expect:
       kind: screenRegex
-      regex: "hello-from-list"
+      regex: "Send|Copy|Resize"   # pty 下夹具跑真实 shell，只断言终端已打开
       withinMs: 15000
   # 换成另一把 host key
   - action: shell
@@ -74,7 +74,7 @@ steps:
     settleMs: 2500
   # 再连：必须告警，且不能自动连上
   - action: click
-    target: id:host-row/0
+    target: id:host-open/0
   - action: wait
     ms: 3000
     expect:

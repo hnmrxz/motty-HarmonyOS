@@ -76,9 +76,16 @@ steps:
     ms: 2500
     expect:
       kind: screenRegex
-      regex: "hello-from-list"
+      # pty 下夹具跑的是真实 shell（固定 banner 只在 exec 路径），
+      # 这一步只需证明"信任后会话建立成功"：终端工具栏出现即可
+      regex: "Send|Copy|Resize"
       withinMs: 15000
   # 删除：先取消（不应删）
+  # 连接后视图切到终端，删除前先回主机列表
+  - action: click
+    target: id:nav/hosts
+  - action: wait
+    ms: 900
   - action: click
     target: id:host-del/0
   - action: wait
@@ -104,7 +111,7 @@ steps:
     ms: 1200
 asserts:
   - kind: screenRegex
-    regex: "No hosts yet"
+    regex: "还没有主机|No hosts yet"
     withinMs: 8000
   - kind: absent
     value: "manage-b"

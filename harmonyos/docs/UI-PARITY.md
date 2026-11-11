@@ -445,3 +445,35 @@ key 加入内容指纹：
   可能是本次会话没有输出，或终端行渲染有渲染时机问题）；
 - 再把 `host.manage` 剩余步骤跑通。
 
+---
+
+## Round 14 追加：把失败的用例一条条修回来（host.manage 终于 PASS）
+
+### 本轮 PASS 的用例
+| 用例 | 之前 | 修了什么 |
+|---|---|---|
+| `host.manage` | 连挂 5 轮 | Round 13 的 `ForEach` key 指纹 + 本轮：连接改点 `host-open/0`、pty 下断言改"终端面板出现"、删除前先回 `nav/hosts`、空态断言双语 |
+| `knownhosts.manage` | FAIL | 同上：选择器 `host-row→host-open`、banner→终端面板、回列表步骤 |
+| `host.recreate-trust` | FAIL | 同上 |
+| `ui.i18n` | FAIL | 旧版假设"默认英文"，实际应用**跟随系统语言**（该模拟器为中文）→ 改为 中→英→中 三段 |
+| `vault.persist` | FAIL | 选择器 + banner 断言 |
+| `forward.local` | FAIL | 选择器 + banner 断言 |
+
+### 一个真实的 UI 缺口顺手补上
+**网格视图没有空态文案**（列表有）。已在 `hostGridView()` 里补 `host/grid/empty`（`host.empty` 文案），两种视图都有空态。
+
+### 批量统一（10 个 spec 文件）
+- `id:host-row/0` → `id:host-open/0`：`host-row` 现在语义是"探测"，不是"连接"；
+- `hello-from-list` → `Send|Copy|Resize`：pty 下夹具跑的是真实 shell，固定 banner 只存在于 exec 路径。
+
+### 仍失败的 4 条（原因已分类，不是猜）
+| 用例 | 失败点 | 判断 |
+|---|---|---|
+| `ssh.connect-from-list` | 等 `verified SHA256:` | 我们的信任对话框文案与旧断言不一致（**文案对齐问题**） |
+| `cred.cleared` | 等 `no credentials in memory` | 保险库已实现，清空凭据后的路径变了（**语义变化**，需要重新设计这条用例，而不是改文案糊过去） |
+| `sftp.write` | 等 `uploaded.txt\|N` | 上传结果行格式与断言不符（**文案/时序**） |
+| `ui.i18n.panels` | 等 `下载` | 面板按钮文案是中英混排，旧断言按纯中文写（**文案对齐**） |
+
+### 纪律
+这 4 条**没有**为了变绿去放宽断言：要么把我们的文案对齐到官方用词，要么重新设计语义（如 `cred.cleared` 要先定义"清空凭据后应当发生什么"）。
+

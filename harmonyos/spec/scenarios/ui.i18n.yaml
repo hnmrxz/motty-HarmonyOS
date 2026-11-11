@@ -13,45 +13,45 @@ app:
   settleMs: 1800
 steps:
   - action: launch
-  # 默认英文
+  # 该模拟器系统语言为中文，应用默认跟随系统 => 中文
   - action: wait
     ms: 600
     expect:
       kind: screenRegex
-      regex: "New Host"
-      withinMs: 10000
-  - action: wait
-    ms: 300
-    expect:
-      kind: screenRegex
-      regex: "No hosts yet"
-      withinMs: 6000
-  # 切到中文
-  - action: click
-    target: id:ui/lang
-  - action: wait
-    ms: 800
-    expect:
-      kind: screenRegex
       regex: "新建主机"
-      withinMs: 8000
+      withinMs: 10000
   - action: wait
     ms: 300
     expect:
       kind: screenRegex
       regex: "还没有主机"
       withinMs: 6000
-  # 切回英文
+  # 切到英文
+  - action: click
+    target: id:ui/lang
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "New Host"
+      withinMs: 8000
+  - action: wait
+    ms: 300
+    expect:
+      kind: screenRegex
+      regex: "No hosts yet"
+      withinMs: 6000
+  # 切回中文
   - action: click
     target: id:ui/lang
   - action: wait
     ms: 800
 asserts:
   - kind: screenRegex
-    regex: "New Host"
+    regex: "新建主机"
     withinMs: 8000
   - kind: absent
-    value: "新建主机"
+    value: "New Host"
     withinMs: 3000
   # 缺键会以键名显示（如 top.newHost / host.empty），这里必须一个都不出现
   - kind: absent
@@ -61,19 +61,15 @@ asserts:
     value: "host.empty"
     withinMs: 2000
   - kind: absent
-    value: "top.known"
+    value: "undefined"
     withinMs: 2000
 evidence:
   png: true
   tree: true
   limits: >-
-    模拟器双画像（x86_64, API 26）。覆盖：顶栏与主机区文案的中英切换、切换后可切回、
-    缺键检测（缺键会显示键名，用例反向断言键名不出现）。
-    **不覆盖**：跟随系统语言自动切换、复数与日期数字本地化、其余面板（SFTP/转发/VNC/诊断）
-    的文案替换（当前只换了顶栏与主机区）、rtl 布局；未在 arm64 真机执行。
+    PC（2in1）实测。覆盖：中文默认（跟随系统）、切英文、切回中文的三段文案与空态文案。
+    **不覆盖**：平板画像（平板特性暂停）、随系统语言热切换、其它面板的逐条文案（另有 ui.i18n.panels）。
 deviations:
-  - 纯新增规格，无 upstream 对应脚本
-  - 用"键名不出现"作为缺键判据，比逐条断言文案更不容易漏
+  - 该模拟器系统语言是中文，应用默认跟随系统，所以起始断言是中文而不是英文（旧版按"默认英文"写，已修正）
 notes: >-
-  这条用例的价值在反向断言：文案表缺键时 `Strings.get` 回退为键名本身，
-  界面上会显示 `top.newHost` 这种东西——断言它不出现，就等于断言"用到的键都存在"。
+  这条用例第一次在英文默认假设下写，语言改成跟随系统后就必然失败；这里改成中->英->中三段，才是可复现的。

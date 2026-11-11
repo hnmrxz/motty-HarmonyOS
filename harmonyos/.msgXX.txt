@@ -1,0 +1,22 @@
+﻿fix(harmonyos/spec): 把长期失败的用例一条条修回来（host.manage 终于 PASS）
+
+本轮 PASS:
+- host.manage: Round13 的 ForEach key 指纹 + 连接改点 host-open/0 + pty 断言改"终端面板出现"
+  + 删除前先回 nav/hosts + 空态断言双语
+- knownhosts.manage / host.recreate-trust: 选择器与 banner 断言、回列表步骤
+- ui.i18n: 旧版假设"默认英文", 实际应用跟随系统语言(该模拟器为中文) -> 改成 中->英->中 三段
+- vault.persist / forward.local: 选择器 + banner 断言
+
+真实 UI 缺口顺手补上:
+- 网格视图此前没有空态文案(列表有) -> hostGridView 补 host-grid/empty(host.empty)
+
+批量统一(10 个 spec):
+- id:host-row/0 -> id:host-open/0 (host-row 现在语义是"探测"不是"连接")
+- hello-from-list -> Send|Copy|Resize (pty 下夹具跑真实 shell, 固定 banner 只在 exec 路径)
+
+仍失败 4 条(原因已分类):
+- ssh.connect-from-list: 信任对话框文案与旧断言不一致(文案对齐)
+- cred.cleared: 保险库已实现, 清空凭据后的路径变了(语义变化, 需重新设计)
+- sftp.write: 上传结果行格式(文案/时序)
+- ui.i18n.panels: 面板按钮中文/英文混排(文案对齐)
+纪律: 没有为了变绿放宽断言

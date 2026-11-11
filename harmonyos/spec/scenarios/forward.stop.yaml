@@ -42,7 +42,7 @@ steps:
   - action: wait
     ms: 800
   - action: click
-    target: id:host-row/0
+    target: id:host-open/0
   - action: wait
     ms: 2000
     expect:

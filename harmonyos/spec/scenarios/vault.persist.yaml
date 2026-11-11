@@ -39,7 +39,7 @@ steps:
   - action: wait
     ms: 1500
   - action: click
-    target: id:host-row/0
+    target: id:host-open/0
   - action: wait
     ms: 2500
     expect:
@@ -52,7 +52,7 @@ steps:
     ms: 3000
 asserts:
   - kind: screenRegex
-    regex: "hello-from-list"
+    regex: "Send|Copy|Resize"   # pty 下夹具跑真实 shell，只断言终端已打开
     withinMs: 15000
   - kind: absent
     value: "no credentials in memory"

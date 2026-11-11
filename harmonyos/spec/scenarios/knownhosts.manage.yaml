@@ -36,7 +36,7 @@ steps:
   - action: wait
     ms: 700
   - action: click
-    target: id:host-row/0
+    target: id:host-open/0
   - action: wait
     ms: 2000
     expect:
@@ -49,8 +49,14 @@ steps:
     ms: 2500
     expect:
       kind: screenRegex
-      regex: "hello-from-list"
+      # pty 下夹具跑真实 shell（固定 banner 只在 exec 路径），这里只要证明会话已建立
+      regex: "Send|Copy|Resize"
       withinMs: 15000
+  # 连接后视图切到终端，回主机列表再做后续主机操作
+  - action: click
+    target: id:nav/hosts
+  - action: wait
+    ms: 900
   - action: click
     target: id:known/open
   - action: wait
@@ -70,7 +76,7 @@ steps:
   - action: click
     target: id:known/close
   - action: click
-    target: id:host-row/0
+    target: id:host-open/0
   - action: wait
     ms: 2500
 asserts:

@@ -36,7 +36,7 @@ steps:
   - action: wait
     ms: 700
   - action: click
-    target: id:host-row/0
+    target: id:host-open/0
   - action: wait
     ms: 2000
     expect:
@@ -49,7 +49,7 @@ steps:
     ms: 2000
     expect:
       kind: screenRegex
-      regex: "hello-from-list"
+      regex: "Send|Copy|Resize"   # pty 下夹具跑真实 shell，只断言终端已打开
       withinMs: 15000
   - action: click
     target: id:fwd/open
