@@ -2365,3 +2365,22 @@ Round 61–81 动过 VNC 面板按钮顺序、转发面板滚动容器、诊断�
 - RDP 画面内容 / 输入回传 / NLA / 真实 Windows 互通 → **E3**
 - arm64 真机 41 项 → **未执行**（只有编译证据 E2）
 - 上架合规：release 证书、隐私政策 URL、渗透测试 → 未做
+
+---
+
+## Round 87：跨模块冒烟 4/4 双画像通过
+
+挑 4 条分别落在不同子系统的用例，双画像各跑一遍（默认夹具模式、`rport 2222/5901/2297`）：
+
+| 用例 | 子系统 | 2in1 | tablet |
+|---|---|---|---|
+| `terminal.vt` | 终端 VT 解析 | PASS | PASS |
+| `sftp.download` | SFTP 读取内容 | PASS | PASS |
+| `vnc.session` | VNC 会话/渲染 | PASS | PASS |
+| `ui.i18n.diagnostics` | 取词表 | PASS | PASS |
+
+记录：`spec/matrix/smoke-round87.json`。四条分别落在不同子系统，
+任一处被前面十几轮的 UI 改动破坏都会在这里暴露。
+
+### 诚实边界
+冒烟非全量：其余 52 条未在本轮执行（各自轮次有历史通过记录）。

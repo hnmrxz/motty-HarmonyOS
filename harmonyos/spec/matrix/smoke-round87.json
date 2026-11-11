@@ -1,0 +1,24 @@
+{
+  "round": 87,
+  "date": "2026-11-11",
+  "kind": "dual-profile smoke (4 cross-module specs)",
+  "fixture": "sshfixture default mode（None auth），hdc rport 2222/5901/2297",
+  "profiles": {
+    "2in1": {
+      "passed": 4,
+      "total": 4
+    },
+    "tablet": {
+      "passed": 4,
+      "total": 4
+    }
+  },
+  "specs": [
+    "terminal.vt",
+    "sftp.download",
+    "vnc.session",
+    "ui.i18n.diagnostics"
+  ],
+  "why": "跨模块冒烟：终端 VT、SFTP 下载内容、VNC 会话、诊断面板取词。四条分别落在不同子系统，任一处被前面十几轮的 UI 改动破坏都会在这里暴露。",
+  "note": "冒烟非全量：其余 52 条未在本轮执行。"
+}

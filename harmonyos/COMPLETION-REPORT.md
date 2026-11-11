@@ -111,6 +111,7 @@ SSH 连接与终端、SFTP 文件管理、端口转发（local/SOCKS5/HTTP CONNE
 | E1 能力 | **16 条** | `spec/capabilities.json`（proof 字段回指用例文件） |
 | 定向回归 | **8/8 双画像通过** | `spec/matrix/regression-round82.json` |
 | VNC 认证模式覆盖 | **2/2 双画像通过** | `spec/matrix/regression-round85.json` |
+| 跨模块冒烟 | **4/4 双画像通过** | `spec/matrix/smoke-round87.json` |
 | SBOM | 16 组件 / 36 份产物，校验通过 | `SBOM.json` + `tools/gen-sbom.py --check` |
 | RDP 自检 | 3/3 通过 | `tools/rdp-selfcheck.py` |
 
