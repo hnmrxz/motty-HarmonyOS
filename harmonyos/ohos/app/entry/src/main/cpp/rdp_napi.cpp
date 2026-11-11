@@ -57,6 +57,8 @@ static int g_bmpUpdates = 0;
 static int g_bmpRects = 0;
 static int g_bmpLastW = 0;
 static int g_bmpLastH = 0;
+static int g_bmpLastX = 0;
+static int g_bmpLastY = 0;
 static pEndPaint g_origEndPaint = nullptr;
 
 static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
@@ -93,6 +95,8 @@ static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
     g_bmpRects += static_cast<int>(bitmap->number);
     if (bitmap->number > 0) {
         g_bmpLastW = static_cast<int>(bitmap->rectangles[bitmap->number - 1].width);
+        g_bmpLastX = static_cast<int>(bitmap->rectangles[bitmap->number - 1].destLeft);
+        g_bmpLastY = static_cast<int>(bitmap->rectangles[bitmap->number - 1].destTop);
         g_bmpLastH = static_cast<int>(bitmap->rectangles[bitmap->number - 1].height);
     }
     if (g_origBitmapUpdate != nullptr) {
@@ -247,6 +251,18 @@ BOOL OnEndPaint(rdpContext *context) {
     return TRUE;
 }
 
+
+// 需要覆盖多少像素才算"整屏到齐"（95%）：按 gdi 主缓冲尺寸算
+static int st2NeedPixels(freerdp *instance) {
+    if (instance == nullptr || instance->context == nullptr || instance->context->gdi == nullptr) return 0;
+    const UINT32 w = instance->context->gdi->width;
+    const UINT32 h = instance->context->gdi->height;
+    if (w == 0 || h == 0) return 0;
+    const double need = 0.95 * static_cast<double>(w) * static_cast<double>(h);
+    return static_cast<int>(need);
+}
+
+
 // PostConnect：位图更新需要 GDI 表面来解码，否则更新会被丢弃（实测 frames=0）
 BOOL OnPostConnect(freerdp *instance) {
     if (instance == nullptr || instance->context == nullptr) {
@@ -378,6 +394,16 @@ void inputProbeWorker(RdpJob *job) {
             result = std::string("input: connect failed: ") +
                      freerdp_get_last_error_string(freerdp_get_last_error(context));
         } else {
+            // 每次渲染都从零开始统计：这些是全局累计量，不重置的话"24 块就 break"会立刻命中
+            {
+                std::lock_guard<std::mutex> lock(g_statsMtx);
+                g_stats = RenderStats();
+                g_bmpUpdates = 0;
+                g_bmpRects = 0;
+                g_bmpLastW = 0;
+                g_bmpLastH = 0;
+                g_paints.store(0);
+            }
             int keyBefore = 0, mouseBefore = 0, syncBefore = 0;
             MottyRdpInputStats(&keyBefore, &mouseBefore, &syncBefore);
             for (int i = 0; i < 40; i++) {   // ~2s 抖动，让连接稳定
@@ -480,8 +506,11 @@ void renderWorker(RdpJob *job) {
                 }
                 // 不要在第 3 个更新就退出：shadow 按 64x64 瓦片发送，
                 // 整屏需要几十个 PDU，提前 break 会留下大片未解码的白色区域。
-                if (g_bmpRects >= 24) {
-                    break;
+                {
+                    const int need = st2NeedPixels(instance);
+                    if (need > 0 && snapshot.pixels >= need) {
+                        break;
+                    }
                 }
             }
             RenderStats st;
@@ -519,10 +548,14 @@ void renderWorker(RdpJob *job) {
                 }
             }
             char buf[256];
-            snprintf(buf, sizeof(buf), "frames=%d paints=%d size=%dx%d pixels=%d colors=%d%d%d%d%d%d%d%d",
-                     st2.updates, g_paints.load(), st2.width, st2.height, st2.pixels,
+            const int depth = (instance->context->settings != nullptr)
+                ? static_cast<int>(freerdp_settings_get_uint32(instance->context->settings, FreeRDP_ColorDepth)) : -1;
+            const int dstFmt = (instance->context->gdi != nullptr) ? static_cast<int>(instance->context->gdi->dstFormat) : -1;
+            snprintf(buf, sizeof(buf),
+                     "frames=%d paints=%d size=%dx%d pixels=%d depth=%d dst=%d colors=%d/%d/%d/%d/%d/%d/%d/%d at=%d,%d",
+                     st2.updates, g_paints.load(), st2.width, st2.height, st2.pixels, depth, dstFmt,
                      st2.buckets[0], st2.buckets[1], st2.buckets[2], st2.buckets[3],
-                     st2.buckets[4], st2.buckets[5], st2.buckets[6], st2.buckets[7]);
+                     st2.buckets[4], st2.buckets[5], st2.buckets[6], st2.buckets[7], g_bmpLastX, g_bmpLastY);
             result = buf;
             freerdp_disconnect(instance);
         }

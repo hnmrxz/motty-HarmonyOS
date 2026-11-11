@@ -478,3 +478,47 @@ rdp-canvas: drawn=3072 colors=1 | cpp bmp=24 rects=24 last=64x64 colors=1 nonBla
 ### 纪律
 不因为三条用例绿就写"RDP 可用"。**画面内容是白的**，这点在 RDP.md 与用例 limits 里都明确写着。
 
+---
+
+## Round 41：渲染循环门槛修正（24 → 163 帧）+ 解码仍是白
+
+### 真实改进
+`rdpRender` 的等待循环原来写的是：
+```cpp
+if (g_bmpRects >= 24) break;   // 而且 g_bmpRects 是全局累计、从不重置
+```
+两个问题：
+1. 计数**不重置**，第二次渲染一开始就立刻命中；
+2. 24 块 64×64 只覆盖 12% 屏幕。
+
+改为：**每次渲染前把统计清零**，并且按"**已解码像素覆盖 ≥95% 屏幕**"才退出
+（新增 `st2NeedPixels()`）。
+
+实测帧数从 **24 → 163**（PDU 收满了），`bmp=163 rects=163`。
+
+### 新增诊断（可直接看）
+- `depth=` 协商色深（实测 32）
+- `dst=` GDI 目标像素格式
+- 每桶颜色计数改成带 `/` 分隔（原来 8 个数字连在一起没法读）
+- `at=x,y` 最后一块位图矩形左上角
+- 状态串新增 `cli=` / `cliLobby=`（客户端数、还在 lobby 的数量）
+
+### 仍然白屏的真正线索
+```
+colors=3093/641/2375/10/212/1997/10/652 at=64,640
+rdp-canvas: colors=1 dominant=#FFFFFF (3072 px)
+```
+⇒ **PDU 里带的字节是有变化的（8 个桶都有值），但 GDI 主缓冲采样出来是纯白**。
+也就是说：数据到客户端了，**解码/合成没有落进我们读的那块缓冲**。
+
+已排除：
+- 色深不是问题（depth=32）；
+- `primary->bitmap->data` 与 `primary_buffer` 两个来源都试过，都是白；
+- 回调链是通的（`OnBitmapUpdate` / `OnEndPaint` 都调用了原始实现，`paints=163`）。
+
+### 下一步（具体）
+1. 确认这批 163 个"bitmap update"是否真的走了 GDI 解码：`bitmap->rectangles[i].compressed` /
+   `bitmap->skipCompression` 的取值——如果 PDU 是压缩的而我们只是读了原始字节做统计，
+   那"桶里有颜色"就**不能**证明数据被解码；
+2. 若确实走 GFX（RDPGFX）通道而不是 GDI 位图通道，需要接 `Update->SurfaceBits` 而不是 `BitmapUpdate`。
+

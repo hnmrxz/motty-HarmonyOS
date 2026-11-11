@@ -798,6 +798,18 @@ napi_value RdpServerStop(napi_env env, napi_callback_info info) {
     return out;
 }
 
+
+static int countLobbyClients() {
+    if (g_server == nullptr || g_server->clients == nullptr) return 0;
+    const int n = ArrayList_Count(g_server->clients);
+    int lobby = 0;
+    for (int i = 0; i < n; i++) {
+        rdpShadowClient* c = (rdpShadowClient*)ArrayList_GetItem(g_server->clients, i);
+        if (c != nullptr && c->inLobby) lobby++;
+    }
+    return lobby;
+}
+
 // rdpServerStatus() -> "running port=3389 frames=42" / "stopped err=..."
 napi_value RdpServerStatus(napi_env env, napi_callback_info info) {
     (void)info;
@@ -817,7 +829,7 @@ napi_value RdpServerStatus(napi_env env, napi_callback_info info) {
                " inM=" + std::to_string(g_inMouse) + " inSync=" + std::to_string(g_inSync) + " srv=" + std::to_string(g_srvW) + "x" +
                std::to_string(g_srvH) + "/" + std::to_string(g_srvStride) + " skipR=" + std::to_string(g_srvSkipReason) + " surfHash=" + std::to_string(g_surfHash) +
                " hashChg=" + std::to_string(g_surfHashChanges) +
-               " unstable=" + std::to_string(g_publishUnstable) + " lob=" + std::to_string(g_lobbyPaint) + " lobNull=" + std::to_string(g_lobbyNull) + " kick=" + std::to_string(g_lobbyKick) + " tickCalls=" + std::to_string(g_tickCalls) + " tickNoSrv=" + std::to_string(g_tickNoSrv) +
+               " cli=" + std::to_string(g_server->clients != nullptr ? ArrayList_Count(g_server->clients) : 0) + " cliLobby=" + std::to_string(countLobbyClients()) + " unstable=" + std::to_string(g_publishUnstable) + " lob=" + std::to_string(g_lobbyPaint) + " lobNull=" + std::to_string(g_lobbyNull) + " kick=" + std::to_string(g_lobbyKick) + " tickCalls=" + std::to_string(g_tickCalls) + " tickNoSrv=" + std::to_string(g_tickNoSrv) +
                " tickNoSurf=" + std::to_string(g_tickNoSurface) + " pub=" + std::to_string(g_publishGuard) +
                " pubSkip=" + std::to_string(g_publishSkipped) + " cliNull=" + std::to_string(g_cliNull) +
                " cliSeen=" + std::to_string(g_cliSeen) + " upd=" + std::to_string(g_updateOk) +
