@@ -161,7 +161,8 @@ struct Index {
   @State aiAnswer: string = '';
   @State aiEndpoint: string = 'http://127.0.0.1:2297/v1/ai';
   @State rdpSrvStatus: string = '';
-  @State rdpSrvPort: number = 13389;  // 3389 是特权端口，应用绑不上
+  @State rdpSrvPort: number = 13389;
+  private rdpTickId: number = -1;  // 3389 是特权端口，应用绑不上
   @State selText: string = '';
   @State clipText: string = '';
   private touchLastY: number = -1;
@@ -672,9 +673,19 @@ struct Index {
     const dir: string = ctx !== undefined && ctx.cacheDir !== undefined ? ctx.cacheDir : '/data/storage/el2/base/cache';
     const rc: number = mottynapi.rdpServerStart(this.rdpSrvPort, 'tester', 'secret', dir);
     this.rdpSrvStatus = 'rdp-server: start rc=' + rc + ' ' + mottynapi.rdpServerStatus();
+    if (rc === 0 && this.rdpTickId === -1) {
+      // 用 JS 定时器驱动出帧（不走 std::thread：实测在 shadow 上下文线程不被调度）
+      this.rdpTickId = setInterval(() => {
+        mottynapi.rdpServerTick();
+      }, 200);
+    }
   }
 
   private stopRdpServer(): void {
+    if (this.rdpTickId !== -1) {
+      clearInterval(this.rdpTickId);
+      this.rdpTickId = -1;
+    }
     mottynapi.rdpServerStop();
     this.rdpSrvStatus = 'rdp-server: ' + mottynapi.rdpServerStatus();
   }
@@ -1173,9 +1184,9 @@ struct Index {
 
   // ---------------- RDP（FreeRDP 接入，仅连接路径）----------------
   // 说明：本轮只验证"能起、能失败、能报错"，没有画面与输入。
-  private rdpProbe(port: number): void {
+  private rdpProbe(port: number, user: string = 'administrator', password: string = 'wrong-password'): void {
     this.rdpResult = 'rdp: probing 127.0.0.1:' + port + ' ...';
-    mottynapi.rdpProbe('127.0.0.1', port, 'administrator', 'wrong-password',
+    mottynapi.rdpProbe('127.0.0.1', port, user, password,
       (result: string) => {
         this.rdpResult = 'rdp: ' + result;
         this.probeText = 'rdp: ' + result;
@@ -1862,16 +1873,6 @@ struct Index {
         Button(this.t('common.close')).id('diag/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.diagOpen = false; })
       }.width('100%')
-      Text('These entries exist to exercise protocol paths that the product UI does not expose yet.')
-        .fontSize(11).fontColor('#666666').width('100%')
-      Row({ space: 8 }) {
-        Button('TCP probe').id('net/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-          .onClick(() => { this.probeNet(); })
-        Button('SSH probe').id('ssh/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-          .onClick(() => { this.probeSsh(); })
-        Button('Hostkey check').id('ssh/hostkey-check').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-          .onClick(() => { this.hostkeyCheck(); })
-      }.width('100%')
       Row({ space: 8 }) {
         Button('term-echo').id('diag/term-echo').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.connectFixtureDemo('term-echo'); })
@@ -1893,12 +1894,25 @@ struct Index {
           .onClick(() => { this.stopRdpServer(); })
         Button('RDP srv status').id('rdp/srv-status').backgroundColor('#37474F').fontColor(Color.White)
           .onClick(() => { this.refreshRdpServer(); })
+      }.width('100%')
+      // 6 个按钮排一行会超出面板宽度（后面的按钮因此不渲染）-> 拆成两行
+      Row({ space: 8 }) {
         Button('RDP local :13389').id('rdp/probe-local').backgroundColor('#1A6DD0').fontColor(Color.White)
-          .onClick(() => { this.rdpProbe(13389); })
+          .onClick(() => { this.rdpProbe(13389, 'tester', 'secret'); })
         Button('RDP :3390').id('rdp/probe-closed').backgroundColor('#37474F').fontColor(Color.White)
           .onClick(() => { this.rdpProbe(3390); })
         Button('RDP :2222').id('rdp/probe-ssh').backgroundColor('#37474F').fontColor(Color.White)
           .onClick(() => { this.rdpProbe(2222); })
+      }.width('100%')
+      Text('These entries exist to exercise protocol paths that the product UI does not expose yet.')
+        .fontSize(11).fontColor('#666666').width('100%')
+      Row({ space: 8 }) {
+        Button('TCP probe').id('net/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.probeNet(); })
+        Button('SSH probe').id('ssh/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.probeSsh(); })
+        Button('Hostkey check').id('ssh/hostkey-check').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.hostkeyCheck(); })
       }.width('100%')
       Text(this.vncResult.length > 0 ? this.vncResult : 'vnc: (not probed)')
         .id('vnc/result').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')
@@ -2118,7 +2132,10 @@ struct Index {
       }
       if (this.diagOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
-        this.diagPanel()
+        // 诊断面板内容很多（hostkey/term/vnc/rdp 各一组），必须可滚动，否则下排按钮不渲染
+        Scroll() {
+          this.diagPanel()
+        }.width('100%').height('100%').align(Alignment.Top)
       }
       if (this.keyDialog) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})

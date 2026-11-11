@@ -1,0 +1,22 @@
+﻿feat(harmonyos): RDP 客户端连上真实服务端实现（connected，双画像通过）
+
+破的三道关口:
+1. 服务端出帧: std::thread 在 shadow 上下文不被调度 -> 改用 JS 定时器每 200ms 调
+   rdpServerTick() 画帧并 shadow_subsystem_frame_update；实测 frames 稳定增长
+2. 客户端 TLS: 'connection failed at TLS connect' -> 客户端注册 VerifyCertificateEx 回调，
+   按会话接受自签证书(返回 2，不落盘永久信任)
+3. 客户端认证: 'authentication failure' -> 客户端显式关闭 NLA(FreeRDP_NlaSecurity=FALSE)
+   + 开启 TLS/RDP security；服务端测试对端关闭认证
+
+结果: rdp: connected 127.0.0.1:13389；用例 rdp.client-connect 在 tablet 与 2in1 均通过
+
+顺带修的两个布局缺陷(同类第三次):
+- 诊断面板 6 个 RDP 按钮挤一行导致后面按钮超出面板不渲染 -> 拆两行
+- 诊断面板过高 -> 套 Scroll
+
+诚实边界:
+- 画面仍未显示(客户端无位图解码)；输入回传、NLA/CredSSP、真实 Windows 服务端互通未做
+- 服务端认证被关闭(非 NLA 认证路径未打通)
+- 证明的是'能协商并 connected'，不是'RDP 可用'
+
+用例 50 -> 51；E1 能力 16

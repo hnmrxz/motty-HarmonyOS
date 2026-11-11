@@ -73,6 +73,7 @@ int g_lockOk = 0;
 int g_paintOk = 0;
 int g_updateOk = 0;
 int g_paintSkipped = 0;
+uint32_t g_tickFrames = 0;
 int g_paintRows = 0;
 int g_capStarted = -1;
 int g_afterSleep = 0;
@@ -367,7 +368,9 @@ napi_value RdpServerStart(napi_env env, napi_callback_info info) {
             rc = 3;
         } else {
             g_server->port = static_cast<DWORD>(port);
-            g_server->authentication = TRUE;
+            // 测试对端默认不要求认证：我们的 shadow 认证回调走的是非 NLA 路径，
+            // 而客户端默认可能协商 NLA，导致'认证失败'。先用无认证证明协议链路，再单独查认证。
+            g_server->authentication = FALSE;
             if (!configDir.empty()) {
                 // 把 stderr 重定向到应用目录：FreeRDP 的 WLog 默认写 stderr，
                 // 而 OHOS 上 stderr 不进 hilog，导致失败时"什么都看不到"。
@@ -536,6 +539,35 @@ napi_value RdpServerStart(napi_env env, napi_callback_info info) {
     return out;
 }
 
+// rdpServerTick()：由 ArkTS 定时器驱动，画一帧并通知 shadow（在 JS 线程执行）。
+// 为什么不用 std::thread：实测在 shadow 上下文创建线程有时根本不被调度（tsp=0）。
+napi_value RdpServerTick(napi_env env, napi_callback_info info) {
+    (void)info;
+    int32_t drawn = 0;
+    if (g_running.load() && g_server != nullptr && g_server->surface != nullptr) {
+        rdpShadowSurface *surface = g_server->surface;
+        EnterCriticalSection(&surface->lock);
+        paintSurface(surface, static_cast<uint32_t>(g_tickFrames));
+        {
+            RECTANGLE_16 rect = {0, 0, static_cast<UINT16>(surface->width - 1),
+                                 static_cast<UINT16>(surface->height - 1)};
+            region16_union_rect(&surface->invalidRegion, &surface->invalidRegion, &rect);
+        }
+        LeaveCriticalSection(&surface->lock);
+        shadow_subsystem_frame_update(g_server->subsystem);
+        if (g_subsystem != nullptr) {
+            g_subsystem->frames.fetch_add(1);
+        }
+        g_tickFrames++;
+        g_paintOk++;
+        g_updateOk++;
+        drawn = 1;
+    }
+    napi_value out = nullptr;
+    napi_create_int32(env, drawn, &out);
+    return out;
+}
+
 napi_value RdpServerStop(napi_env env, napi_callback_info info) {
     (void)info;
     stopServerLocked();
@@ -578,6 +610,7 @@ void RegisterRdpServerFunctions(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
         {"rdpServerStart", nullptr, RdpServerStart, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpServerStop", nullptr, RdpServerStop, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"rdpServerTick", nullptr, RdpServerTick, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpServerStatus", nullptr, RdpServerStatus, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);

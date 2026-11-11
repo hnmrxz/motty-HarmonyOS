@@ -48,6 +48,17 @@ extern "C" int pthread_cancel(pthread_t t) {
 namespace {
 
 // 尝试一次 RDP 连接，返回可断言的字符串（不抛异常、不崩溃）
+// 接受自签证书：LAN 里的 RDP 服务端几乎都是自签，默认校验会卡在 TLS 阶段。
+// 返回 2 = 仅本次会话接受（不落盘），避免"默默永久信任"。
+static DWORD VerifyCertEx(freerdp *instance, const char *host, UINT16 port, const char *commonName,
+                          const char *subject, const char *issuer, const char *fingerprint, DWORD flags) {
+    (void)instance; (void)host; (void)port; (void)commonName;
+    (void)subject; (void)issuer; (void)flags;
+    fprintf(stderr, "[MOTTY_RDP_CLIENT] self-signed cert accepted fingerprint=%s\n",
+            fingerprint != nullptr ? fingerprint : "(null)");
+    return 2;
+}
+
 std::string rdpTryConnect(const RdpJob &job) {
     // 用 freerdp_new + freerdp_context_new：client_context_new 需要注册客户端入口点，
     // 而本工程只链接 libfreerdp（没编 SDL/X11 客户端），传 nullptr 会返回空。
@@ -77,6 +88,11 @@ std::string rdpTryConnect(const RdpJob &job) {
     }
     freerdp_settings_set_uint32(settings, FreeRDP_ServerPort, static_cast<uint32_t>(job.port));
     freerdp_settings_set_bool(settings, FreeRDP_CertificateCallbackPreferPEM, TRUE);
+    instance->VerifyCertificateEx = VerifyCertEx;
+    // 显式关掉 NLA：shadow 服务端不支持 CredSSP，客户端若坚持 NLA 就会报"认证失败"
+    freerdp_settings_set_bool(settings, FreeRDP_NlaSecurity, FALSE);
+    freerdp_settings_set_bool(settings, FreeRDP_TlsSecurity, TRUE);
+    freerdp_settings_set_bool(settings, FreeRDP_RdpSecurity, TRUE);
 
     const BOOL ok = freerdp_connect(instance);
     std::string result;

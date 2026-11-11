@@ -1,0 +1,64 @@
+schema: 1
+id: rdp.client-connect
+title: RDP 客户端与内嵌服务端完成真实协商并 connected（本机回环）
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - E04
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "New Host|新建主机"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 800
+  # 启动内嵌 RDP 服务端（FreeRDP shadow + 自定义 capture；出帧由 JS 定时器驱动）
+  - action: click
+    target: id:rdp/srv-start
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "running port=13389"
+      withinMs: 15000
+  # 客户端连它：真实 X.224/RDP 协商 + TLS（自签证书由客户端回调接受）
+  - action: click
+    target: id:rdp/probe-local
+  - action: wait
+    ms: 10000
+asserts:
+  - kind: screenRegex
+    regex: "rdp: connected 127.0.0.1:13389"
+    withinMs: 25000
+  - kind: absent
+    value: "rdp: connect failed"
+    withinMs: 4000
+  - kind: absent
+    value: "error context"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：客户端与**真实 RDP 服务端实现**（FreeRDP shadow）
+    完成传输层协商并到达 connected；TLS 握手通过（自签证书由 VerifyCertificateEx 按会话接受）；
+    客户端显式关闭 NLA（shadow 不支持 CredSSP）。
+    **不覆盖**：画面是否显示（客户端尚无位图解码）、输入回传、与真实 Windows 服务端互通、
+    NLA/CredSSP、多显示器、动态分辨率。
+deviations:
+  - 服务端是内嵌的 FreeRDP shadow（测试对端），认证被关闭（客户端 NLA 路径未打通）
+  - 客户端显式关闭 NLA、显式允许自签证书——这两点是本用例的前置，已写进代码注释
+notes: >-
+  这条用例证明的是"客户端真的能和一个 RDP 服务端实现完成协商并 connected"，
+  不是"RDP 可用了"：画面、输入、通道都还没做。

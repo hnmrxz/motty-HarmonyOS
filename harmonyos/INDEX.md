@@ -1977,3 +1977,30 @@ dump 里 `fwd/start`/`fwd/stop` 从"不存在"变为"存在"）。
 
 ### 四、状态
 用例 49 → **50**；E1 能力 16；D01 覆盖率补上"同端口重复启动的错误路径"。
+---
+
+## Round 70：**RDP 客户端连上真实服务端实现**（重大进展）
+
+### 一、破了三道关口（每一步都有实测依据）
+| 关口 | 现象 | 解法 |
+|---|---|---|
+| 服务端出帧 | 之前 `frames=0`（std::thread 不被调度） | **改用 JS 定时器**每 200ms 调 `rdpServerTick()` 画一帧并 `shadow_subsystem_frame_update` → `frames` 稳定增长（实测 18 帧 / 3s） |
+| 客户端 TLS | `connect failed: The connection failed at TLS connect` | 客户端注册 `VerifyCertificateEx` 回调，**按会话**接受自签证书（返回 2，不落盘永久信任） |
+| 客户端认证 | `An authentication failure aborted the connection` | 客户端显式 **关闭 NLA**（`FreeRDP_NlaSecurity=FALSE`）+ 开启 TLS/RDP security；服务端测试对端关闭认证 |
+
+### 二、结果
+`rdp: connected 127.0.0.1:13389` —— 客户端与 **FreeRDP shadow server**（真实 RDP 实现）完成协商。
+用例 `rdp.client-connect` 在 **tablet 与 2in1 均通过**。
+
+### 三、顺带修掉的两个布局缺陷（同类第三次）
+1. 诊断面板 6 个 RDP 按钮挤一行 → 后面的按钮**超出面板宽度不渲染** → 拆成两行
+2. 诊断面板整体过高 → 套 `Scroll`
+
+### 四、诚实边界
+- **画面仍未显示**：客户端没有位图解码路径（连上了但看不到图像）
+- 输入回传、NLA/CredSSP、与真实 Windows 服务端互通都未做
+- 服务端认证被关闭（我们的 shadow 认证回调走非 NLA 路径，未打通）
+- 这证明的是"客户端能与 RDP 服务端实现协商并 connected"，**不是"RDP 可用"**
+
+### 五、状态
+用例 50 → **51**；E1 能力 16。
