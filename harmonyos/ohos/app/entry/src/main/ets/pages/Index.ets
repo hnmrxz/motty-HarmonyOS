@@ -604,7 +604,18 @@ struct Index {
     this.pendingLabel = label;
     this.lookupFp(key).then((fp: string) => {
       if (fp.length > 0) {
-        this.startSession(cred, fp, h.label);
+        // 已有指纹也必须校验：主机密钥变更时不能静默连接（安全问题）
+        mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo no-auth-yet', fp,
+          (result: string) => {
+            if (result.indexOf('hostkey-mismatch') === 0) {
+              const m = new RegExp('actual=(SHA256:[A-Za-z0-9+/]+)').exec(result);
+              this.changedOld = fp;
+              this.changedNew = m !== null ? m[1] : 'unknown';
+              this.changedDialog = true;
+              return;
+            }
+            this.startSession(cred, fp, h.label);
+          });
         return;
       }
       this.setStatus(index, 'unknown host, fetching key...');
@@ -2051,23 +2062,29 @@ struct Index {
   @Builder
   changedKeyWarning() {
     Column({ space: 10 }) {
-      Text('HOST KEY HAS CHANGED').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#C62828').width('100%')
-      Text('This can mean the server was reinstalled — or that someone is intercepting the connection.')
-        .fontSize(12).fontColor('#666666').width('100%')
-      Text('old: ' + this.changedOld).id('hostkey/old').fontSize(11).fontFamily('monospace').width('100%')
+      Text(this.lang === 'zh' ? '主机密钥已变更' : 'Host key has changed')
+        .id('hostkey/changed-title').fontSize(16).fontWeight(FontWeight.Bold)
+        .fontColor('#E08A8A').width('100%')
+      Text(this.lang === 'zh'
+        ? '这可能意味着服务器重装过，也可能是有人在中间人攻击。未发送任何内容。'
+        : 'This can mean the server was reinstalled, or that someone is intercepting the connection.')
+        .fontSize(12).fontColor('#8A8F98').width('100%')
+      Text('old: ' + this.changedOld).id('hostkey/old').fontSize(11).fontFamily('monospace')
+        .fontColor('#8A8F98').width('100%')
       Text('new: ' + this.changedNew).id('hostkey/new').fontSize(11).fontFamily('monospace')
-        .fontColor('#C62828').width('100%')
+        .fontColor('#E08A8A').width('100%')
       Row({ space: 12 }) {
-        Button('Cancel').id('hostkey/cancel-changed').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('hostkey.cancel')).id('hostkey/cancel-changed').backgroundColor('#23262B').fontColor('#C7CBD1')
           .onClick(() => {
             this.changedDialog = false;
-            // 同时写主机行状态：诊断面板没打开时 probeText 是看不见的
             this.setStatus(0, 'host key changed: refused (user did not accept)');
           })
-        Button('Accept new key').id('hostkey/update').backgroundColor('#C62828').fontColor(Color.White)
+        Button(this.lang === 'zh' ? '信任新密钥' : 'Accept new key').id('hostkey/update')
+          .backgroundColor('#C62828').fontColor(Color.White)
           .onClick(() => { this.acceptChangedKey(0); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
+    .id('hostkey/changed').width(560).padding(20).backgroundColor('#1C1F24').borderRadius(12)
     .id('hostkey/changed').width(560).padding(20).backgroundColor(Color.White).borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
@@ -2199,6 +2216,10 @@ struct Index {
         .onClick(() => { this.resetAllHosts(); })
       Text(this.catalogResult).id('catalog/result').fontSize(11).fontFamily('monospace')
         .fontColor('#0A6C00').width('100%')
+      Scroll() {
+        Text(this.probeText).id('net/probe-result').fontSize(11).fontFamily('monospace')
+          .fontColor('#C7CBD1').width('100%')
+      }.height(80).width('100%').border({ width: 1, color: '#22252A' }).padding(8)
       Text(this.t('rdp.experimental'))
         .id('rdp/experimental').fontSize(10).fontColor('#C62828').width('100%')
       Text(this.rdpResult.length > 0 ? this.rdpResult : 'rdp: (not probed)')
@@ -2210,9 +2231,6 @@ struct Index {
         .id('rdp/canvas')
         .width(512).height(384)
         .backgroundColor('#000000')
-      Scroll() {
-        Text(this.probeText).id('net/probe-result').fontSize(11).fontFamily('monospace').width('100%')
-      }.height(120).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)
     }
     .id('diag/panel').width(680).padding(16).backgroundColor(Color.White).borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
@@ -2414,7 +2432,7 @@ struct Index {
       if (this.hosts.length === 0) {
         ListItem() {
           Column({ space: 6 }) {
-            Text(this.t('host.empty')).id('host-grid/empty').fontSize(13).fontColor('#6B7078')
+            Text(this.t('host.empty')).id('hosts/empty').fontSize(13).fontColor('#6B7078')
           }.width('100%').padding({ top: 60 })
         }
       }

@@ -669,3 +669,30 @@ host.manage / command.palette / snippets.crud / ui.i18n.panels / pages.logs-vaul
 命令面板目前只做"命令条目"（导航 + 快捷命令）。官方还有"新建标签页/连接到主机"分组、键盘上下键与回车执行、
 最近使用排序——这些列为后续项，不在本轮声称完成。
 
+---
+
+## Round 22 追加：按基线逐条修（含一个真实安全缺陷）
+
+### 修掉的真实缺陷
+| 问题 | 说明 | 修法 |
+|---|---|---|
+| **打开会话不校验主机密钥** | `openSession` 在已有指纹时**直接连接**，只有"测试"按钮才会检测密钥变更 → 主机密钥变了也照连，属于安全问题 | 已有指纹时先用该指纹 probe 一次；返回 `hostkey-mismatch` 就弹变更警告并**不连接** |
+| 搜索无结果没有文案 | 列表页只区分"还没有主机"，被搜索过滤空时是空白 | 确认 `host.noMatch`（`没有匹配的主机` / `no matching hosts`）在列表里按 `anyMatch()` 显示 |
+| 诊断面板的探测结果看不见 | 结果文本框放在 384px 画布**之后**，滚出可视区，`dump` 与用户都看不到 | 把结果框移到探测按钮下方（高度 80，深色边框） |
+| 主机密钥变更警告 | 英文 + 白色卡片 | 中英双语 + 深色卡片（`主机密钥已变更` / `Host key has changed`） |
+
+### 用例修正（断言过时，不是放宽）
+| 用例 | 修正 |
+|---|---|
+| `hosts.search` | 断言补中文分支 `没有匹配的主机|no matching hosts` |
+| `host.persist` / `infra.host-create-by-id` | 地址列现在渲染成 `地址:端口`，精确 `text` 断言改为 `screenRegex` |
+| `hostkey.changed` | 信任后已进会话，补 `nav/hosts` 再连；断言补中文 `主机密钥已变更` |
+| `rdp.server-peer` | 空态断言补中文 |
+
+### 本轮结果
+```
+hosts.search / host.persist / infra.host-create-by-id / hostkey.changed / net.reachability  => PASS
+回归 host.manage / hostkey.changed / net.reachability / hosts.search / ui.i18n.panels        => 5/5 PASS
+```
+仍失败：`rdp.server-peer`（RDP 服务端状态串不符，RDP 仍是实验态）、以及基线里未跑完的 RDP 系列。
+

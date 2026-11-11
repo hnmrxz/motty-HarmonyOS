@@ -73,7 +73,7 @@ steps:
     ms: 800
 asserts:
   - kind: screenRegex
-    regex: "no matching hosts"
+    regex: "没有匹配的主机|no matching hosts"
     withinMs: 8000
   - kind: absent
     value: "alpha-host"

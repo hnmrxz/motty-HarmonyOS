@@ -18,7 +18,7 @@ steps:
     ms: 800
     expect:
       kind: screenRegex
-      regex: "No hosts yet"
+      regex: "还没有主机|No hosts yet"
       withinMs: 20000
   - action: click
     target: id:diag/open

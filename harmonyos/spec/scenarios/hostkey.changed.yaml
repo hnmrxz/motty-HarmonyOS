@@ -72,6 +72,11 @@ steps:
       -RedirectStandardOutput 'E:\motty-HarmonyOS\harmonyos\.bin\sshfixture.log'
       -RedirectStandardError 'E:\motty-HarmonyOS\harmonyos\.bin\sshfixture.err' -WindowStyle Hidden"
     settleMs: 2500
+  # 信任后已进入会话（终端视图），回主机列表再连一次
+  - action: click
+    target: id:nav/hosts
+  - action: wait
+    ms: 900
   # 再连：必须告警，且不能自动连上
   - action: click
     target: id:host-open/0
@@ -79,7 +84,7 @@ steps:
     ms: 3000
     expect:
       kind: screenRegex
-      regex: "HOST KEY HAS CHANGED"
+      regex: "主机密钥已变更|Host key has changed"
       withinMs: 15000
   # 弹窗文本必须在关掉之前断言（关掉后节点就没了）
   - action: wait

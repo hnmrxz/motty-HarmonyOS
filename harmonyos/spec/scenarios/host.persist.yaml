@@ -34,7 +34,7 @@ asserts:
   - kind: text
     value: persist-check
     withinMs: 6000
-  - kind: text
+  - kind: screenRegex
     value: 10.9.9.9
     withinMs: 4000
   - kind: layout
