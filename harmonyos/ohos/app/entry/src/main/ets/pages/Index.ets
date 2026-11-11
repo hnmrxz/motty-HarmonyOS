@@ -270,10 +270,10 @@ struct Index {
   @State aiEndpoint: string = 'http://127.0.0.1:2297/v1/ai';
   @State rdpSrvStatus: string = '';
   @State rdpSrvPort: number = 13389;
-  @State rdpTargetHost: string = '';
-  @State rdpTargetPort: string = '';
-  @State rdpTargetUser: string = '';
-  @State rdpTargetPass: string = '';
+  @State rdpTargetHost: string = '127.0.0.1';
+  @State rdpTargetPort: string = '13389';
+  @State rdpTargetUser: string = 'tester';
+  @State rdpTargetPass: string = 'secret';
   @State rdpUseNla: boolean = false;
   private rdpTickId: number = -1;
   @State rdpTickCount: number = 0;

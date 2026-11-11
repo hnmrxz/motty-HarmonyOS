@@ -33,19 +33,6 @@ steps:
       regex: "running port=13389"
       withinMs: 15000
   # 填客户端目标（不填 host 会连不上：实测默认空串直接失败）
-  - action: type
-    target: id:rdp/host
-    text: 127.0.0.1
-  - action: type
-    target: id:rdp/port
-    text: "13389"
-  - action: type
-    target: id:rdp/user
-    text: tester
-  - action: type
-    target: id:rdp/pass
-    secret: true
-    text: secret
   - action: click
     target: id:rdp/render
   - action: wait

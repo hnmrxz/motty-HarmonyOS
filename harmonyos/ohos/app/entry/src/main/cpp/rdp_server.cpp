@@ -86,6 +86,8 @@ int g_tickNoSrv = 0;
 int g_tickNoSurface = 0;
 int g_publishGuard = 0;
 int g_publishSkipped = 0;
+int g_lastClients = 0;
+int g_publishUnstable = 0;
 int g_cliNull = 0;
 int g_cliSeen = 0;
 int g_paintRows = 0;
@@ -672,13 +674,27 @@ napi_value RdpServerTick(napi_env env, napi_callback_info info) {
                            static_cast<UINT16>(s2->height - 1)};
         region16_union_rect(&s2->invalidRegion, &s2->invalidRegion, &r2);
         LeaveCriticalSection(&s2->lock);
-        const int nClients = (g_server->clients != nullptr) ? ArrayList_Count(g_server->clients) : 0;
-        if (nClients > 0) {
-            g_publishGuard++;
-            shadow_subsystem_frame_update(g_server->subsystem);
-        } else {
-            g_publishSkipped++;
-        }
+  // ---- 发布（带客户端抖动护栏）----
+    const int nClients = (g_server->clients != nullptr) ? ArrayList_Count(g_server->clients) : 0;
+    // 客户端连接/断开与 publish 并发会让 FreeRDP 的 consuming 计数变负 -> WINPR_ASSERT -> abort。
+    // 护栏：只有客户端数与上次一致且全部已激活时才发布；正在连接/断开的那几帧放过去（surface 照常绘制）。
+    bool allActivated = true;
+    if (nClients > 0 && g_server->clients != nullptr) {
+      for (int ci = 0; ci < nClients; ci++) {
+        rdpShadowClient* cl = (rdpShadowClient*)ArrayList_GetItem(g_server->clients, ci);
+        if (cl == nullptr || !cl->activated) { allActivated = false; break; }
+      }
+    }
+    const bool stable = (nClients == g_lastClients);
+    g_lastClients = nClients;
+    if (nClients > 0 && allActivated && stable) {
+      g_publishGuard++;
+      shadow_subsystem_frame_update(g_server->subsystem);
+    } else if (nClients > 0) {
+      g_publishUnstable++;
+    } else {
+      g_publishSkipped++;
+    }
         EnterCriticalSection(&s2->lock);
         region16_clear(&s2->invalidRegion);
         LeaveCriticalSection(&s2->lock);
@@ -765,7 +781,7 @@ napi_value RdpServerStatus(napi_env env, napi_callback_info info) {
                " inM=" + std::to_string(g_inMouse) + " inSync=" + std::to_string(g_inSync) + " srv=" + std::to_string(g_srvW) + "x" +
                std::to_string(g_srvH) + "/" + std::to_string(g_srvStride) + " skipR=" + std::to_string(g_srvSkipReason) + " surfHash=" + std::to_string(g_surfHash) +
                " hashChg=" + std::to_string(g_surfHashChanges) +
-               " lob=" + std::to_string(g_lobbyPaint) + " lobNull=" + std::to_string(g_lobbyNull) + " kick=" + std::to_string(g_lobbyKick) + " tickCalls=" + std::to_string(g_tickCalls) + " tickNoSrv=" + std::to_string(g_tickNoSrv) +
+               " unstable=" + std::to_string(g_publishUnstable) + " lob=" + std::to_string(g_lobbyPaint) + " lobNull=" + std::to_string(g_lobbyNull) + " kick=" + std::to_string(g_lobbyKick) + " tickCalls=" + std::to_string(g_tickCalls) + " tickNoSrv=" + std::to_string(g_tickNoSrv) +
                " tickNoSurf=" + std::to_string(g_tickNoSurface) + " pub=" + std::to_string(g_publishGuard) +
                " pubSkip=" + std::to_string(g_publishSkipped) + " cliNull=" + std::to_string(g_cliNull) +
                " cliSeen=" + std::to_string(g_cliSeen) + " upd=" + std::to_string(g_updateOk) +

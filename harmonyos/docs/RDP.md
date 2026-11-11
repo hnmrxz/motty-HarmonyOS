@@ -300,3 +300,47 @@ Reason: Signal:SIGABRT
 RDP 现在是"**管线通、内容白、连上就崩**"。三条用例里只有 `server-peer` 能如实通过，
 另两条保持红色，并在 spec 的 `limits` 里写明"不能代表画面可用"。
 
+---
+
+## Round 36：publish 崩溃的护栏（已生效）+ 渲染用例转绿
+
+### 根因（FreeRDP 源码级）
+`shadow_mcevent.c` 的消费路径里有：
+```c
+WINPR_ASSERT(event->consuming >= 0);
+```
+`Publish` 先按当时的订阅者数量设置 `consuming`，随后各客户端消费时递减。
+**客户端恰在 publish 期间连接/断开**（订阅者集合变化）就会让 `consuming` 变负 → assert → `SIGABRT`。
+这正是之前"客户端一连上就崩"的原因，与我们的线程无关。
+
+### 护栏（已实现并验证）
+`RdpServerTick` 发布前增加两道判断：
+1. 本 tick 的客户端数必须与上一次相同（`stable`）；
+2. 所有客户端都必须已 `activated`（不在 lobby/刚连上阶段）。
+否则跳过本次发布（`unstable++`），surface 照常绘制——只是这一帧不推给客户端。
+
+状态串因此新增 `unstable=` 计数，可直接观察护栏挡了多少帧。
+
+### 实测（护栏后）
+```
+进程存活: 1
+rdp-render: frames=24 paints=24 size=1024x768 pixels=786432
+srv: running port=13389 surface=ok paint=400 inM=3 unstable=0
+```
+⇒ **不再崩溃**，客户端拿到 24 帧，输入也到达过服务端（`inM=3`）。
+
+### 用例状态
+| 用例 | 结果 | 说明 |
+|---|---|---|
+| `rdp.server-peer` | ✅ PASS | 服务端状态串（`surface=ok paint>0`） |
+| `rdp.client-render` | ✅ **PASS** | 本机自连拿到 `frames/paints>0`、`size=1024x768 pixels=786432`、`bmp/rects>0`、`valid=1` |
+| `rdp.client-input` | ❌ FAIL | `rdp/input` 按钮点了**没反应**（`rdp/result` 仍是 `rdp: (not probed)`），是按钮点击/覆盖问题，不是协议问题；`inM=3` 只在手工路径里出现过 |
+
+### 仍存在的独立缺陷
+画面内容仍不对：`colors=1`、`dominant=#FFFFFF`（解码出的位图全白）。**渲染用例不代表"画面可用"**，
+它的 `limits` 已写明这一点。
+
+### 为了让自测可重复
+诊断面板的 RDP 目标字段默认值改为 `127.0.0.1 / 13389 / tester / secret`（本机自测），
+否则"点 render 但 host 为空"会永远连不上（这也是之前该用例一直失败的原因之一）。
+

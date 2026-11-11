@@ -32,19 +32,6 @@ steps:
       regex: "running port=13389"
       withinMs: 15000
   # 先渲染一次建立会话（输入探针同样需要连上服务端）
-  - action: type
-    target: id:rdp/host
-    text: 127.0.0.1
-  - action: type
-    target: id:rdp/port
-    text: "13389"
-  - action: type
-    target: id:rdp/user
-    text: tester
-  - action: type
-    target: id:rdp/pass
-    secret: true
-    text: secret
   - action: click
     target: id:rdp/render
   - action: wait
