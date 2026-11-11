@@ -2469,13 +2469,13 @@ struct Index {
 
       this.pcNavItem('主机', 'nav/hosts', $r('app.media.ic_hosts'), true, () => { this.pcNav = '主机'; this.showHosts = true; })
       this.pcNavItem('工作区', 'nav/workspace', $r('app.media.ic_workspace'), false, () => {})
-      this.pcNavItem('监控', 'diag/open', $r('app.media.ic_monitor'), true, () => { this.diagOpen = true; })
-      this.pcNavItem('会话日志', 'nav/logs', $r('app.media.ic_logs'), true, () => { this.pcNav = '会话日志'; this.reloadLogs(); })
       this.pcNavItem('密钥链', 'nav/keys', $r('app.media.ic_keys'), true, () => { this.pcNav = '密钥链'; })
       this.pcNavItem('跳板路由', 'nav/jump', $r('app.media.ic_jump'), false, () => {})
+      this.pcNavItem('快捷命令', 'nav/snippets', $r('app.media.ic_snippets'), true, () => { this.pcNav = '快捷命令'; this.reloadSnippets(); })
       this.pcNavItem('端口转发', 'fwd/open', $r('app.media.ic_forward'), true, () => { this.fwdOpen = true; this.reloadRules(); })
       this.pcNavItem('已知主机', 'known/open', $r('app.media.ic_known'), true, () => { this.openKnownHosts(); })
-      this.pcNavItem('快捷命令', 'nav/snippets', $r('app.media.ic_snippets'), true, () => { this.pcNav = '快捷命令'; this.reloadSnippets(); })
+      this.pcNavItem('调试', 'diag/open', $r('app.media.ic_monitor'), true, () => { this.diagOpen = true; })
+      this.pcNavItem('会话日志', 'nav/logs', $r('app.media.ic_logs'), true, () => { this.pcNav = '会话日志'; this.reloadLogs(); })
       this.pcNavItem('笔记', 'nav/notes', $r('app.media.ic_notes'), false, () => {})
 
       Blank()
@@ -3380,7 +3380,7 @@ struct Index {
         }.width('100%').padding({ top: 50 })
       }
       List({ space: 6 }) {
-        ForEach(this.snippets, (it: SnippetItem) => {
+        ForEach(this.snippets, (it: SnippetItem, idx: number) => {
           ListItem() {
             Row({ space: 12 }) {
               Column({ space: 3 }) {
@@ -3389,13 +3389,13 @@ struct Index {
                 Text(it.cmd).fontSize(11).fontFamily('monospace').fontColor('#8A8F98')
                   .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
               }.alignItems(HorizontalAlign.Start).layoutWeight(1)
-              Button(this.t('snippet.send')).id('snippet/send/' + it.id).height(28).fontSize(11)
+              Button(this.t('snippet.send')).id('snippet/send/' + idx).height(28).fontSize(11)
                 .backgroundColor('#2F6F4F').fontColor(Color.White)
                 .onClick(() => { this.sendSnippet(it.cmd); })
-              Button(this.t('host.edit')).id('snippet/edit/' + it.id).height(28).fontSize(11)
+              Button(this.t('host.edit')).id('snippet/edit/' + idx).height(28).fontSize(11)
                 .backgroundColor('#23262B').fontColor('#C7CBD1')
                 .onClick(() => { this.openSnippetEdit(it); })
-              Button(this.t('snippet.delete')).id('snippet/del/' + it.id).height(28).fontSize(11)
+              Button(this.t('snippet.delete')).id('snippet/del/' + idx).height(28).fontSize(11)
                 .backgroundColor('#3A2226').fontColor('#E08A8A')
                 .onClick(() => { this.deleteSnippet(it.id); })
             }

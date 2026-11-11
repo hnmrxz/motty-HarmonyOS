@@ -606,3 +606,35 @@ host.manage / ui.i18n.panels / settings.persist / pages.logs-vault => 4/4 PASS
 snippets.crud => PASS
 ```
 
+---
+
+## Round 19 追加：侧栏顺序对齐官方 + 快捷命令可测化
+
+### 1) 侧栏按官方导航顺序重排
+从上游 `internal/i18n/chinese.go` 的导航用词可知官方顺序是：
+`主机 / 工作区 / 密钥链 / 跳板路由 / 快捷命令 / 端口转发 / 已知主机 / 调试 / 设置`（另有 搜索）。
+
+我们之前是「主机 / 工作区 / **监控** / 会话日志 / 密钥链 / 跳板路由 / 端口转发 / 已知主机 / 快捷命令 / 笔记」，
+顺序和用词都不对。现在改为：
+```
+主机 / 工作区 / 密钥链 / 跳板路由 / 快捷命令 / 端口转发 / 已知主机 / 调试
+（其后是我们自有的扩展页：会话日志、笔记）
+本地终端 / 设置
+```
+- 「监控」→ 官方用词 **「调试」**（`NavDebug`）；
+- 「会话日志」「笔记」**不在当前上游导航里**，作为扩展项保留，但排在官方项之后，并在此记录差异。
+
+### 2) 快捷命令行内按钮改为按索引 id
+之前 `snippet/send|edit|del/<时间戳>`，用例无法预测 → 现在 `snippet/send|edit|del/<idx>`，与主机行约定一致。
+
+### 3) `snippets.crud` 覆盖扩到 添加 → 编辑 → 删除
+```
+重置 → 空态 → 添加(nginx-restart / systemctl restart nginx) → 断言名称+命令
+→ 编辑(回填后追加 -reload → nginx-restart-reload) → 断言
+→ 删除 → 断言回到空态 + 不出现键名
+=> PASS
+```
+
+### 4) 回归
+`snippets.crud / host.manage / pages.logs-vault / ui.i18n.panels => 4/4 PASS`
+

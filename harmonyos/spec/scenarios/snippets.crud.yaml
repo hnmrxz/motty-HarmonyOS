@@ -1,6 +1,6 @@
 schema: 1
 id: snippets.crud
-title: 快捷命令：空态 -> 添加 -> 列表出现 -> 删除 -> 回到空态
+title: 快捷命令：空态 -> 添加 -> 编辑 -> 删除 -> 回到空态
 sourceScript: null
 pcOnly: true
 profile:
@@ -13,7 +13,7 @@ app:
   settleMs: 1800
 steps:
   - action: launch
-  # 卸载重装会被备份恢复数据，先显式重置（同时清 hosts / known_hosts / logs / snippets）
+  # 卸载重装会被备份恢复数据，先显式重置
   - action: click
     target: id:diag/open
   - action: wait
@@ -41,7 +41,7 @@ steps:
       kind: screenRegex
       regex: "还没有快捷命令|No snippets yet"
       withinMs: 8000
-  # 添加一条
+  # 添加
   - action: click
     target: id:snippet/add
   - action: wait
@@ -56,25 +56,54 @@ steps:
     target: id:snippet/dialog-save
   - action: wait
     ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "nginx-restart"
+      withinMs: 12000
+  - action: wait
+    ms: 300
+    expect:
+      kind: screenRegex
+      regex: "systemctl restart nginx"
+      withinMs: 8000
+  # 编辑：在原名后追加 -reload（对话框会回填原名，输入是追加）
+  - action: click
+    target: id:snippet/edit/0
+  - action: wait
+    ms: 900
+  - action: type
+    target: id:snippet/dialog-name
+    text: -reload
+  - action: click
+    target: id:snippet/dialog-save
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "nginx-restart-reload"
+      withinMs: 12000
+  # 删除：回到空态
+  - action: click
+    target: id:snippet/del/0
+  - action: wait
+    ms: 1500
 asserts:
   - kind: screenRegex
-    regex: "nginx-restart"
+    regex: "还没有快捷命令|No snippets yet"
     withinMs: 12000
-  - kind: screenRegex
-    regex: "systemctl restart nginx"
-    withinMs: 8000
   - kind: absent
     value: "snippet.title"
+    withinMs: 2000
+  - kind: absent
+    value: "nginx-restart"
     withinMs: 2000
 evidence:
   png: true
   tree: true
   limits: >-
-    PC（2in1）实测。覆盖：快捷命令页空态、添加一条并出现在列表（名称与命令都可见）、键名不泄漏。
-    **不覆盖**：删除按钮点击（条目 id 每次运行都不同，见 deviations）、编辑、排序、发送到终端、
-    快捷键绑定、分组筛选。
+    PC（2in1）实测。覆盖：空态、添加（名称+命令都渲染）、编辑（原名追加后可见）、删除后回到空态、键名不泄漏。
+    **不覆盖**：发送到终端（需要活跃会话，另有会话类用例）、快捷键绑定、分组筛选、排序、右键调序。
 deviations:
-  - 删除步骤写死 id 不可靠（id 是插入时间戳）：本轮**不点删除**，只做"添加后可见"的证据；
-    删除留到下一轮给条目加稳定 id（如按 name 生成）后再测。
+  - 编辑用"在回填的原名后追加 -reload"，因为 TextInput 会把光标放在末尾；断言写追加后的完整名称。
 notes: >-
-  先只把"能添加且真的落库并渲染"钉住；删除/编辑依赖稳定 id，属于下一步。
+  行内按钮 id 用索引（snippet/send|edit|del/<idx>），与主机行一致；此前用插入时间戳导致无法用例化。
