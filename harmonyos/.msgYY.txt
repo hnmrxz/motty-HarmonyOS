@@ -1,0 +1,20 @@
+﻿feat(harmonyos/ui): 信任/删除对话框改官方中文用词 + 深色（1:1 补齐）
+
+改动:
+- 信任主机密钥对话框: 英文 Unknown host key -> 官方中文"信任此主机？"(hostkey.title)+"信任前请通过其它渠道核对指纹。";
+  深色 #1C1F24 卡片 + 绿色主按钮
+- 删除主机对话框: 英文 Delete host? -> 官方中文"删除主机"(host.deleteTitle)+"删除选中的 %d 台主机？此操作无法撤销。";
+  深色卡片 + 红色危险按钮
+- strings.ets 增加 hostkey.title/body/trust/cancel(中英各一份); 英文语言下仍英文
+
+用例对齐(不是放宽):
+- 34 处 regex "Unknown host key" -> "信任此主机|Unknown host key"
+- Delete host? -> 删除主机|Delete host
+- ssh.connect-from-list: 旧的 verified SHA256: 状态文案已不存在, 改为断言会话/终端, 第二次连接前先回 nav/hosts
+
+复跑: ssh.connect-from-list / host.manage / knownhosts.manage / host.recreate-trust / ui.i18n / terminal.vt 全 PASS
+仍失败 3 条: cred.cleared / sftp.write / ui.i18n.panels
+
+新发现: ui.i18n.panels 第1步要求空态但失败时应用已有 1 台主机 => --fresh 有时没有真正卸装(应用在跑时可能被跳过)
+手工 uninstall+install 后实测 全部 0 且 host-grid/empty 在两种视图下都出现
+下一轮: 让 runner 在 --fresh 失败时报错而不是继续(否则持续产生假失败)

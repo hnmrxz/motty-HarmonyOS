@@ -477,3 +477,37 @@ key 加入内容指纹：
 ### 纪律
 这 4 条**没有**为了变绿去放宽断言：要么把我们的文案对齐到官方用词，要么重新设计语义（如 `cred.cleared` 要先定义"清空凭据后应当发生什么"）。
 
+---
+
+## Round 15 追加：两个对话框改为官方用词 + 深色（1:1 补齐）
+
+### 改动
+| 对话框 | 之前 | 现在 |
+|---|---|---|
+| 信任主机密钥 | 英文 `Unknown host key` / `Verify the fingerprint out-of-band…` / 白色卡片 | 官方中文 `信任此主机？`（`hostkey.title`）+ `信任前请通过其它渠道核对指纹。` + 深色 `#1C1F24` 卡片、绿色主按钮 |
+| 删除主机 | 英文 `Delete host?` / 白色卡片 | 官方中文 `删除主机`（`host.deleteTitle`）+ `删除选中的 %d 台主机？此操作无法撤销。` + 深色卡片、红色危险按钮 |
+| 字符串表 | 只有部分键 | `strings.ets` 增加 `hostkey.title/body/trust/cancel`（中英各一份） |
+
+英文语言下仍显示英文（`t()` 按语言取），所以 `lang=en` 的用例不受影响。
+
+### 用例对齐（不是放宽）
+- 34 处 `regex: "Unknown host key"` → `regex: "信任此主机|Unknown host key"`（双语都能过）；
+- `Delete host\?` → `删除主机|Delete host`；
+- `ssh.connect-from-list`：旧的 `verified SHA256:` 状态文案已不存在（信任后直接建会话），改为断言会话/终端出现，并在第二次连接前先回 `nav/hosts`。
+
+### 本轮复跑结果
+```
+ssh.connect-from-list  PASS
+host.manage            PASS
+knownhosts.manage      PASS
+host.recreate-trust    PASS
+ui.i18n                PASS
+terminal.vt            PASS
+```
+仍失败 3 条：`cred.cleared`、`sftp.write`、`ui.i18n.panels`。
+
+### 关于这 3 条的新发现
+`ui.i18n.panels` 第 1 步要求"空态"，但失败时应用里已经有 1 台主机 —— 说明 **`--fresh` 有时没有真正卸装**（应用在跑时卸载可能被跳过）。
+手工 `uninstall` + `install` 后实测：`全部 0` 且 `host-grid/empty`（"还没有主机"）在**两种视图**下都出现。
+⇒ 这 3 条里有数据状态干扰，下一轮应让 runner 在 `--fresh` 失败时**报错而不是继续**（否则会持续产生"假失败"）。
+

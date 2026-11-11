@@ -43,7 +43,7 @@ steps:
     ms: 2500
     expect:
       kind: screenRegex
-      regex: "Unknown host key"
+      regex: "信任此主机|Unknown host key"
       withinMs: 12000
   - action: click
     target: id:hostkey/trust
@@ -51,8 +51,14 @@ steps:
     ms: 2500
     expect:
       kind: screenRegex
-      regex: "verified SHA256:"
+      # 信任后直接建立会话并切到终端（旧的 verified SHA256: 状态文案已不存在）
+      regex: "#1|Send|Copy"
       withinMs: 12000
+  # 信任后已进入会话（终端视图），回主机列表再点一次以验证不再弹信任框
+  - action: click
+    target: id:nav/hosts
+  - action: wait
+    ms: 900
   - action: click
     target: id:host-open/0
   - action: wait
@@ -65,7 +71,7 @@ asserts:
     value: "no credentials in memory"
     withinMs: 2000
   - kind: absent
-    value: "Unknown host key"
+    value: "信任此主机|Unknown host key"
     withinMs: 2000
 evidence:
   png: true

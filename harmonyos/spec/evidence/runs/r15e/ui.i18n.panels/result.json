@@ -1,0 +1,30 @@
+{
+  "spec": "ui.i18n.panels",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": false,
+      "detail": "步骤内 expect 失败: 正则 'No hosts yet|No hosts|还没有主机' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n监控\\n\\n\\n\\n会话日志\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n快捷命令\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）",
+      "expect": {
+        "ok": false,
+        "detail": "正则 'No hosts yet|No hosts|还没有主机' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n监控\\n\\n\\n\\n会话日志\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n快捷命令\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）"
+      }
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：SFTP 面板按钮与标题的中英取词、切换后文案变化、 缺键反向检测。 **不覆盖**：转发面板与 VNC 面板按钮的照片级全覆盖、跟随系统语言、第三种语言、复数与日期本地化； 未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "step 1 (wait) 失败: 步骤内 expect 失败: 正则 'No hosts yet|No hosts|还没有主机' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n监控\\n\\n\\n\\n会话日志\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n快捷命令\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）"
+}

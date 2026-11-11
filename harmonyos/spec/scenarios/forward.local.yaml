@@ -41,7 +41,7 @@ steps:
     ms: 2000
     expect:
       kind: screenRegex
-      regex: "Unknown host key"
+      regex: "信任此主机|Unknown host key"
       withinMs: 12000
   - action: click
     target: id:hostkey/trust

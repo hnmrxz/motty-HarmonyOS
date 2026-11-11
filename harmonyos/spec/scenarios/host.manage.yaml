@@ -68,7 +68,7 @@ steps:
     ms: 2000
     expect:
       kind: screenRegex
-      regex: "Unknown host key"
+      regex: "信任此主机|Unknown host key"
       withinMs: 12000
   - action: click
     target: id:hostkey/trust
@@ -92,7 +92,7 @@ steps:
     ms: 500
     expect:
       kind: screenRegex
-      regex: "Delete host\\?"
+      regex: "删除主机|Delete host"
       withinMs: 6000
   - action: click
     target: id:hostdel/cancel

@@ -1703,20 +1703,23 @@ struct Index {
   @Builder
   keyConfirm() {
     Column({ space: 12 }) {
-      Text('Unknown host key').fontSize(18).fontWeight(FontWeight.Bold).width('100%')
-      Text('Verify the fingerprint out-of-band before trusting it.').fontSize(12).fontColor('#666666').width('100%')
-      Text(this.pendingFp).id('hostkey/fingerprint').fontSize(13).fontFamily('monospace').width('100%')
+      Text(this.t('hostkey.title')).id('hostkey/title').fontSize(18).fontWeight(FontWeight.Bold)
+        .fontColor('#E8EAED').width('100%')
+      Text(this.t('hostkey.body')).fontSize(12).fontColor('#8A8F98').width('100%')
+      Text(this.pendingFp).id('hostkey/fingerprint').fontSize(13).fontFamily('monospace')
+        .fontColor('#C7CBD1').width('100%')
       Row({ space: 12 }) {
-        Button('Cancel').id('hostkey/cancel').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('hostkey.cancel')).id('hostkey/cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
           .onClick(() => {
             this.keyDialog = false; this.pendingFp = ''; this.pendingKey = '';
             this.probeText = 'cancelled, nothing trusted';
           })
-        Button('Trust').id('hostkey/trust').onClick(() => this.trustAndConnect())
+        Button(this.t('hostkey.trust')).id('hostkey/trust').backgroundColor('#3DDC97').fontColor('#12141A')
+          .onClick(() => this.trustAndConnect())
       }.width('100%').justifyContent(FlexAlign.End)
     }
-    .id('hostkey/dialog').width(520).padding(20).backgroundColor(Color.White).borderRadius(12)
-    .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
+    .id('hostkey/dialog').width(520).padding(20).backgroundColor('#1C1F24').borderRadius(12)
+    .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 
   @Builder
@@ -1992,16 +1995,18 @@ struct Index {
   @Builder
   deleteHostConfirm() {
     Column({ space: 10 }) {
-      Text('Delete host?').fontSize(16).fontWeight(FontWeight.Bold).width('100%')
-      Text('This also removes its trusted host key and stored password.')
-        .fontSize(12).fontColor('#666666').width('100%')
+      Text(this.t('host.deleteTitle')).id('hostdel/title').fontSize(16).fontWeight(FontWeight.Bold)
+        .fontColor('#E8EAED').width('100%')
+      Text(this.t('host.deleteDesc').replace('%d', '1'))
+        .fontSize(12).fontColor('#8A8F98').width('100%')
       Row({ space: 12 }) {
-        Button('Cancel').id('hostdel/cancel').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('hostkey.cancel')).id('hostdel/cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
           .onClick(() => { this.deleteDialog = false; this.deleteIndex = -1; })
-        Button('Delete').id('hostdel/confirm').backgroundColor('#C62828').fontColor(Color.White)
+        Button(this.t('host.del')).id('hostdel/confirm').backgroundColor('#C62828').fontColor(Color.White)
           .onClick(() => { this.confirmDeleteHost(); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
+    .id('hostdel/dialog').width(480).padding(20).backgroundColor('#1C1F24').borderRadius(12)
     .id('hostdel/dialog').width(480).padding(20).backgroundColor(Color.White).borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
