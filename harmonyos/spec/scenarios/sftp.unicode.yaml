@@ -1,0 +1,98 @@
+schema: 1
+id: sftp.unicode
+title: 中文文件名：上传、列举、下载三个环节都不丢字符
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - C01
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "New Host|新建主机"
+      withinMs: 20000
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: uni-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:host-files/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+    expect:
+      kind: screenRegex
+      regex: "hello.txt"
+      withinMs: 15000
+  # 上传一个中文名文件
+  - action: type
+    target: id:sftp/upload-name
+    text: 中文文件.txt
+  - action: click
+    target: id:sftp/upload
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "upload: wrote [1-9][0-9]* bytes to 中文文件\\.txt"
+      withinMs: 15000
+  # 列表里应出现同名条目
+  - action: wait
+    ms: 1200
+asserts:
+  - kind: screenRegex
+    regex: "中文文件.txt"
+    withinMs: 15000
+  - kind: screenRegex
+    regex: "upload: wrote"
+  - kind: absent
+    value: "error sftpWrite"
+    withinMs: 2000
+  - kind: absent
+    value: "list: error"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：中文文件名的上传（服务端落盘）与列举回显。
+    **不覆盖**：下载回读内容、emoji/组合字符、非 BMP 字符、Windows 侧文件名规范化差异、
+    大小写敏感；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+notes: >-
+  中文名不丢字符的关键在"上传名→服务端路径→列举回显"整条链路；
+  只断言上传返回成功不够，必须在列表里看到同样的名字。

@@ -1868,3 +1868,23 @@ rdp-server: start rc=0 running port=13389 ... built=...
 
 ### 三、状态
 用例 43 → **45**；E1 能力 16；B09/E02 的 partialCoverage 已更新。
+---
+
+## Round 64：SFTP 边界用例（中文文件名、缺失文件负向）+ 修上传名默认值
+
+| 用例 | 结果 | 断言重点 |
+|---|---|---|
+| `sftp.unicode` | tablet PASS / 2in1 PASS | 上传中文名文件 → 结果串 `upload: wrote N bytes to 中文文件.txt` → **列表里出现同名条目** |
+| `sftp.missing` | tablet PASS / 2in1 PASS | 读取不存在文件 → 出现 `error`，且**反向断言** `read … (0 chars)` 不出现（否则"失败被当空文件"也会过） |
+
+### 顺手修的一个真问题：上传名默认值会"追加"
+UI 里 `sftpUploadName` 默认是 `'uploaded.txt'`，而 `type` 动作是**在光标处插入**，
+于是输入 `中文文件.txt` 得到的是 `uploaded.txt中文文件.txt`（dump 里能看到条目名）。
+把默认值改成空串、用 placeholder 提示默认名——既修了测试，也更符合 UX。
+
+### 另一处测试编排问题
+`sftp.missing` 第一次在 2in1 上失败，原因是**上一条用例留下的主机已信任**，没有信任弹窗。
+这类"用例之间互相影响"的问题，用 `--fresh`（当前实现是 uninstall+install）即可消除。
+
+### 状态
+用例 45 → **47**；E1 能力 16；C01 的 partialCoverage 已更新。

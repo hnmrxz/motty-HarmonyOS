@@ -173,7 +173,8 @@ struct Index {
   @State sftpEntries: string[] = [];
   @State sftpPreview: string = '';
   @State sftpStatus: string = '';
-  @State sftpUploadName: string = 'uploaded.txt';
+  // 默认留空：预填会导致输入的文本被**追加**在旧名字后面（实测 'uploaded.txt中文文件.txt'）
+  @State sftpUploadName: string = '';
   @State sftpUploadText: string = 'uploaded-marker-ok\n';
   @State sftpResult: string = '';
   @State sftpRenameTo: string = 'renamed.txt';

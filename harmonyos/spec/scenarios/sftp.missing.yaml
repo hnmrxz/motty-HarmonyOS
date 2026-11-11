@@ -1,0 +1,84 @@
+schema: 1
+id: sftp.missing
+title: 缺失文件负向：读取不存在的文件必须明确报错且不崩溃
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - C01
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "New Host|新建主机"
+      withinMs: 20000
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: miss-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:host-files/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+    expect:
+      kind: screenRegex
+      regex: "hello.txt"
+      withinMs: 15000
+  # 把目标文件名改成不存在的，再点下载
+  - action: type
+    target: id:sftp/file
+    text: no-such-file-xyz.txt
+  - action: click
+    target: id:sftp/download
+  - action: wait
+    ms: 2500
+asserts:
+  - kind: screenRegex
+    regex: "error"
+    withinMs: 15000
+  - kind: absent
+    value: "read no-such-file-xyz.txt (0 chars)"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：读取不存在文件时的错误传播（不崩溃、有明确错误文案）。
+    **不覆盖**：错误码细分（权限/只读/断线）、重试策略、路径遍历攻击面；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+notes: >-
+  反向断言 "read ... (0 chars)" 不出现：否则"读取失败被当成空文件"也会通过。

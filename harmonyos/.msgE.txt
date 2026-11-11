@@ -1,0 +1,16 @@
+﻿test(harmonyos): SFTP 边界用例（中文文件名/缺失文件）+ 修上传名默认值
+
+新增用例(双画像通过):
+- sftp.unicode: 上传中文名文件 -> 结果串 upload: wrote N bytes to 中文文件.txt -> 列表出现同名条目
+- sftp.missing: 读取不存在文件 -> 出现 error，反向断言 'read ... (0 chars)' 不出现
+  (否则'失败被当空文件'也会通过)
+
+修的真问题:
+- sftpUploadName 默认 'uploaded.txt'，而 type 是在光标处插入 -> 输入中文名得到
+  'uploaded.txt中文文件.txt'（dump 里能看到）。默认值改空串 + placeholder 提示，既修测试也更符合 UX
+
+测试编排问题:
+- sftp.missing 首次在 2in1 失败，因为上一条用例留下的主机已信任、没有信任弹窗
+- 用 --fresh(uninstall+install) 消除用例间影响
+
+用例 45 -> 47；E1 能力 16；C01 partialCoverage 已更新
