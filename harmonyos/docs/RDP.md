@@ -679,3 +679,31 @@ rdp-render: frames=164 paints=164 size=1024x768 pixels=786432 depth=32 ... plana
 ### 回归
 `rdp.server-peer / rdp.client-render / rdp.client-input => 3/3 PASS`
 
+---
+
+## Round 46：把已解码的画面接到 UI（方案与依据）
+
+### 现状（已验证）
+客户端已能把 32bpp 压缩位图用 `planar_decompress` 解到自建帧缓冲，64×48 采样 1377 色。
+但**还没接到产品界面**：现在只有诊断面板里 64×48 的采样图（512×384 的 Canvas 画 3072 个 fillRect）。
+
+### 为什么不直接把 1024×768 逐像素画到 Canvas
+`fillRect` 逐像素 = 786432 次调用，ARK UI 会卡死。必须走位图对象。
+
+### 采用的方案（依据本机 DevEco 文档检索结果）
+`devecocli docs search "PixelMap createPixelMap"` 命中官方指南
+《使用PixelMap完成位图操作》与 `pixelmap_native.h`：
+- **ArkTS 侧**：`image.createPixelMap(buffer, { size: { width, height }, srcPixelFormat, pixelFormat })`
+  可以直接从 **ArrayBuffer** 建像素图，然后 `Image(pixelMap)` 渲染；
+- NAPI 侧只需要把 `g_frame`（RGBA32，1024×768×4 = 3 MB）拷成 `ArrayBuffer` 返回。
+
+### 分三步落地
+1. `mottynapi.rdpFrame()` 返回 `{ width, height, buffer }`（一次性拷贝 + 复用缓冲，避免每帧分配）；
+2. `startRdpRender` 回调里 `createPixelMap` 并保存到 `@State rdpPixel`，界面用 `Image(this.rdpPixel)` 显示；
+3. 再加一条用例断言"像素图尺寸 = 1024×768，且非纯白"（用 `Image` 节点的尺寸 + 采样统计，不靠肉眼看截图）。
+
+### 风险与边界
+- 3 MB 拷贝 × 每秒多帧会有内存/GC 压力，需要降频（例如 2 fps 预览）或只在有变化时拷贝；
+- PixelMap 创建失败要能降级回 64×48 采样图（不能因此让整条链路崩）；
+- 这些都需要在 **PC（2in1）** 上实测，不能凭 API 文档声称可用。
+
