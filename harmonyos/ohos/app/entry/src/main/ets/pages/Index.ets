@@ -243,6 +243,7 @@ struct Index {
   @State pcNav: string = '主机';
   @State collapsedGroups: string[] = [];
   @State groupFilter: string = '';
+  @State protoFilter: string = '';
   @State pinnedGroups: string[] = [];
   @State knownDelKey: string = '';
   @State vaultDelKey: string = '';
@@ -1627,7 +1628,17 @@ struct Index {
 
   // 过滤主机：返回 (host, 原下标) 对。下标必须来自**未过滤**数组，
   // 否则 host-row/<i> 会随搜索变化而指向别的机器（spec 与用户都会踩到）。
+  private matchesProto(h: HostItem): boolean {
+    if (this.protoFilter.length === 0) {
+      return true;
+    }
+    return h.proto === this.protoFilter;
+  }
+
   private matchesQuery(h: HostItem): boolean {
+    if (!this.matchesProto(h)) {
+      return false;
+    }
     const q = this.hostQuery.trim().toLowerCase();
     if (q.length === 0) {
       return true;
@@ -2749,6 +2760,26 @@ struct Index {
         .backgroundColor(this.groupFilter.length === 0 ? '#E8EAED' : '#2A2D33')
         .padding({ left: 12, right: 12, top: 5, bottom: 5 }).borderRadius(14)
         .onClick(() => { this.groupFilter = ''; })
+      Text(this.lang === 'zh' ? '全部协议' : 'All proto').id('chips/proto-all').fontSize(12)
+        .fontColor(this.protoFilter.length === 0 ? '#12141A' : '#C7CBD1')
+        .backgroundColor(this.protoFilter.length === 0 ? '#E8EAED' : '#1E2127')
+        .padding({ left: 10, right: 10, top: 5, bottom: 5 }).borderRadius(14)
+        .onClick(() => { this.protoFilter = ''; })
+      Text('SSH ' + this.countProto('ssh')).id('chips/proto-ssh').fontSize(12)
+        .fontColor(this.protoFilter === 'ssh' ? '#12141A' : '#C7CBD1')
+        .backgroundColor(this.protoFilter === 'ssh' ? '#E8EAED' : '#1E2127')
+        .padding({ left: 10, right: 10, top: 5, bottom: 5 }).borderRadius(14)
+        .onClick(() => { this.protoFilter = 'ssh'; })
+      Text('RDP ' + this.countProto('rdp')).id('chips/proto-rdp').fontSize(12)
+        .fontColor(this.protoFilter === 'rdp' ? '#12141A' : '#C7CBD1')
+        .backgroundColor(this.protoFilter === 'rdp' ? '#E8EAED' : '#1E2127')
+        .padding({ left: 10, right: 10, top: 5, bottom: 5 }).borderRadius(14)
+        .onClick(() => { this.protoFilter = 'rdp'; })
+      Text('VNC ' + this.countProto('vnc')).id('chips/proto-vnc').fontSize(12)
+        .fontColor(this.protoFilter === 'vnc' ? '#12141A' : '#C7CBD1')
+        .backgroundColor(this.protoFilter === 'vnc' ? '#E8EAED' : '#1E2127')
+        .padding({ left: 10, right: 10, top: 5, bottom: 5 }).borderRadius(14)
+        .onClick(() => { this.protoFilter = 'vnc'; })
       ForEach(this.sections(), (g: string) => {
         Text(this.sectionLabel(g) + ' ' + this.countGroup(g)).id('chip/group/' + g).fontSize(12)
           .fontColor(this.groupFilter === this.sectionLabel(g) ? '#12141A' : '#C7CBD1')

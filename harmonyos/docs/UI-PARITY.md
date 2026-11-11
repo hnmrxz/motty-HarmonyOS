@@ -1001,3 +1001,27 @@ runner 新增动作 **`key`**（`uitest uiInput keyEvent <code>`，`code` 已进
 - 真实 Windows 对端的 RDP 逐像素校验（无真实对端）
 - 商店合规与 arm64 真机证据（无硬件/凭据）
 
+---
+
+## Round 62 追加：协议筛选 chips（SSH / RDP / VNC）
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| chips | `全部协议` / `SSH n` / `RDP n` / `VNC n`，id `chips/proto-all|chips/proto-ssh|chips/proto-rdp|chips/proto-vnc` |
+| 计数 | `countProto(proto)`（与分组 chip 的 `countGroup` 同思路） |
+| 过滤 | 并入 `matchesQuery()`：先判协议，再判搜索词 —— 于是**列表、网格、匹配计数三处自动一致** |
+| 状态 | `@State protoFilter`（本轮不做持久化） |
+
+### 用例
+`host.proto-filter`（pcOnly）**PASS**：清空目录 → 建 3 台（都是 SSH 协议，新建对话框暂无协议选择）→
+点 `RDP` chip → 断言「没有匹配」（正确预期）→ 点「全部协议」→ 断言三台主机恢复。
+
+### 回归
+`host.catalog / host.group-filter / hosts.search / host.batch-delete / host.manage => 5/5 PASS`
+（其中一次 `host.manage` 失败经查是 **ssh 夹具没在跑**，重启夹具后 PASS —— 环境问题，不是回归。）
+
+### 说明
+新建主机对话框目前没有"协议"选择，所以协议筛选暂时只能筛到"通过其它路径创建成 rdp/vnc 的主机"。
+下一轮如果需要，应把协议选择加进新建/编辑表单（属于 UI 1:1 的一部分）。
+
