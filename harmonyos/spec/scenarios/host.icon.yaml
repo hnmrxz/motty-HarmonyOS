@@ -1,0 +1,89 @@
+schema: 1
+id: host.icon
+title: 主机图标：表单里选图标，列表行显示对应字形；不选则为空
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1000
+  - action: click
+    target: id:diag/tab-debug
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:catalog/reset-hosts
+  - action: wait
+    ms: 1500
+  - action: click
+    target: id:diag/close
+  - action: wait
+    ms: 800
+  # 建一台带 ★ 图标的主机（先选图标再输入，避免失焦清空）
+  - action: click
+    target: id:shell/add-host
+  - action: click
+    target: id:hostform/icon-star
+  - action: type
+    target: id:shell/dialog-label
+    text: icon-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.8.8.1
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "★"
+      withinMs: 10000
+  # 再建一台不选图标的
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: icon-b
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.8.8.2
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+asserts:
+  - kind: screenRegex
+    regex: "icon-a"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "icon-b"
+    withinMs: 6000
+  - kind: screenRegex
+    regex: "★"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：表单图标选择器（无/★/▤/☁/▣/⚡）可点；选 ★ 后列表行出现 ★ 字形；不选则为空。
+    **不覆盖**：编辑主机改图标、图标在网格视图的渲染、图标与协议的组合样式。
+deviations:
+  - 只断言"★ 出现在屏幕上"（列表行），不逐行绑定 id 断言，避免列表裁剪带来的误判。
+notes: >-
+  图标字段对应上游 SavedHost.Icon；本轮只做内置 5 个字形 + 无。

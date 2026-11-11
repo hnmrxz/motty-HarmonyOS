@@ -37,12 +37,12 @@ const STORE_CONFIG: relationalStore.StoreConfig = {
 const SQL_CREATE_HOSTS =
   'CREATE TABLE IF NOT EXISTS hosts (' +
   'id TEXT PRIMARY KEY, label TEXT NOT NULL, address TEXT NOT NULL, usr TEXT, port TEXT, proto TEXT, ' +
-  'grp TEXT, tags TEXT, color TEXT)';
+  'grp TEXT, tags TEXT, color TEXT, icon TEXT)';
 
 const SQL_CREATE_KNOWN_HOSTS =
   'CREATE TABLE IF NOT EXISTS known_hosts (host TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, updated_at INTEGER)';
 
-const HOST_COLUMNS: string[] = ['id', 'label', 'address', 'usr', 'port', 'proto', 'grp', 'tags', 'color'];
+const HOST_COLUMNS: string[] = ['id', 'label', 'address', 'usr', 'port', 'proto', 'grp', 'tags', 'color', 'icon'];
 
 // 会话日志（官方 NavSessionLogs 的最小实现）
 const SQL_CREATE_NOTES =
@@ -131,6 +131,7 @@ interface HostItem {
   group: string;   // 分组名，空 = 默认组
   tags: string;    // 逗号分隔，原版预设：开发/测试/生产
   color: string;   // #RRGGBB 连接色，空 = 无
+  icon: string;    // 图标名（'', star, server, cloud, box, bolt）
 }
 
 interface TabInfo {
@@ -222,6 +223,7 @@ struct Index {
   @State formGroup: string = '';
   @State formTags: string = '';
   @State formColor: string = '';
+  @State formIcon: string = '';
   @State probeText: string = '(not probed)';
   @State keyDialog: boolean = false;
   @State changedDialog: boolean = false;
@@ -390,7 +392,8 @@ struct Index {
     const stmts: string[] = [
       'ALTER TABLE hosts ADD COLUMN grp TEXT',
       'ALTER TABLE hosts ADD COLUMN tags TEXT',
-      'ALTER TABLE hosts ADD COLUMN color TEXT'
+      'ALTER TABLE hosts ADD COLUMN color TEXT',
+      'ALTER TABLE hosts ADD COLUMN icon TEXT'
     ];
     for (let i = 0; i < stmts.length; i++) {
       try { await this.store.executeSql(stmts[i]); } catch (e) { /* 已存在 */ }
@@ -414,7 +417,8 @@ struct Index {
         proto: rs.getString(5),
         group: rs.getString(6),
         tags: rs.getString(7),
-        color: rs.getString(8)
+        color: rs.getString(8),
+      icon: rs.getString(9)
       });
     }
     rs.close();
@@ -502,6 +506,7 @@ struct Index {
     this.formGroup = '';
     this.formTags = '';
     this.formColor = '';
+    this.formIcon = '';
   }
 
   private openEditHost(index: number): void {
@@ -527,6 +532,7 @@ struct Index {
     this.formGroup = h.group;
     this.formTags = h.tags;
     this.formColor = h.color;
+    this.formIcon = h.icon;
     this.showDialog = true;
   }
 
@@ -625,7 +631,8 @@ struct Index {
       pred.equalTo('id', this.editingId);
       const patch: relationalStore.ValuesBucket = {
         'label': label, 'address': address, 'usr': this.formUser.trim(), 'port': port,
-        'grp': this.formGroup.trim(), 'tags': this.formTags.trim(), 'color': this.formColor.trim()
+        'grp': this.formGroup.trim(), 'tags': this.formTags.trim(), 'color': this.formColor.trim(),
+        'icon': this.formIcon
       };
       await this.store.update(patch, pred);
       const key = this.hostKey(address, port);
@@ -653,7 +660,8 @@ struct Index {
       'proto': this.formProto,
       'grp': this.formGroup.trim(),
       'tags': this.formTags.trim(),
-      'color': this.formColor.trim()
+      'color': this.formColor.trim(),
+        'icon': this.formIcon
     };
     try {
       await this.store.insert('hosts', bucket);
@@ -1661,6 +1669,16 @@ struct Index {
     return n;
   }
 
+
+  private iconGlyph(name: string): string {
+    if (name === 'star') { return '★'; }
+    if (name === 'server') { return '▤'; }
+    if (name === 'cloud') { return '☁'; }
+    if (name === 'box') { return '▣'; }
+    if (name === 'bolt') { return '⚡'; }
+    return '';
+  }
+
   private t(key: string): string {
     return Strings.get(this.lang, key);
   }
@@ -1879,6 +1897,39 @@ struct Index {
         Column({ space: 4 }) {
           Text('分组').fontSize(12).fontColor('#8A8F98').width('100%')
           Row({ space: 8 }) {
+          Text('图标').fontSize(12).fontColor('#8A8F98')
+          Text('无').id('hostform/icon-none').fontSize(12)
+            .fontColor(this.formIcon.length === 0 ? '#12141A' : '#C7CBD1')
+            .backgroundColor(this.formIcon.length === 0 ? '#E8EAED' : '#1E2127')
+            .padding({ left: 8, right: 8, top: 4, bottom: 4 }).borderRadius(12)
+            .onClick(() => { this.formIcon = ''; })
+          Text('★').id('hostform/icon-star').fontSize(12)
+            .fontColor(this.formIcon === 'star' ? '#12141A' : '#C7CBD1')
+            .backgroundColor(this.formIcon === 'star' ? '#E8EAED' : '#1E2127')
+            .padding({ left: 8, right: 8, top: 4, bottom: 4 }).borderRadius(12)
+            .onClick(() => { this.formIcon = 'star'; })
+          Text('▤').id('hostform/icon-server').fontSize(12)
+            .fontColor(this.formIcon === 'server' ? '#12141A' : '#C7CBD1')
+            .backgroundColor(this.formIcon === 'server' ? '#E8EAED' : '#1E2127')
+            .padding({ left: 8, right: 8, top: 4, bottom: 4 }).borderRadius(12)
+            .onClick(() => { this.formIcon = 'server'; })
+          Text('☁').id('hostform/icon-cloud').fontSize(12)
+            .fontColor(this.formIcon === 'cloud' ? '#12141A' : '#C7CBD1')
+            .backgroundColor(this.formIcon === 'cloud' ? '#E8EAED' : '#1E2127')
+            .padding({ left: 8, right: 8, top: 4, bottom: 4 }).borderRadius(12)
+            .onClick(() => { this.formIcon = 'cloud'; })
+          Text('▣').id('hostform/icon-box').fontSize(12)
+            .fontColor(this.formIcon === 'box' ? '#12141A' : '#C7CBD1')
+            .backgroundColor(this.formIcon === 'box' ? '#E8EAED' : '#1E2127')
+            .padding({ left: 8, right: 8, top: 4, bottom: 4 }).borderRadius(12)
+            .onClick(() => { this.formIcon = 'box'; })
+          Text('⚡').id('hostform/icon-bolt').fontSize(12)
+            .fontColor(this.formIcon === 'bolt' ? '#12141A' : '#C7CBD1')
+            .backgroundColor(this.formIcon === 'bolt' ? '#E8EAED' : '#1E2127')
+            .padding({ left: 8, right: 8, top: 4, bottom: 4 }).borderRadius(12)
+            .onClick(() => { this.formIcon = 'bolt'; })
+        }.width('100%').justifyContent(FlexAlign.Start)
+        Row({ space: 8 }) {
           Text('协议').fontSize(12).fontColor('#8A8F98')
           Text('SSH').id('hostform/proto-ssh').fontSize(12)
             .fontColor(this.formProto === 'ssh' ? '#12141A' : '#C7CBD1')
@@ -2577,6 +2628,7 @@ struct Index {
                   }
                   // 名称 + 用户
                   Column({ space: 4 }) {
+                    Text(this.iconGlyph(h.icon)).id('host-icon/' + h.id).fontSize(13).fontColor('#E0A458')
                     Text(h.label).fontSize(15).fontColor('#E8EAED').fontWeight(FontWeight.Medium)
                       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).width('100%')
                     Text(h.user.length > 0 ? h.user : '-').fontSize(12).fontColor('#8A8F98')

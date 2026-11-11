@@ -1093,3 +1093,32 @@ runner 新增动作 **`key`**（`uitest uiInput keyEvent <code>`，`code` 已进
 2. **`System`**：DB 加一列，首次连接成功后写入（`uname -s` 或 RDP/VNC 协商结果），卡片/详情显示；无对端时显示空。
 两者都不涉及复杂协议，属于"可实现的功能"，符合本轮目标。
 
+---
+
+## Round 67 追加：`Icon` 字段（对应上游 `SavedHost.Icon`）
+
+### 实现
+| 层 | 改动 |
+|---|---|
+| DB | `hosts` 表加 `icon TEXT`；`HOST_COLUMNS` 加 `icon`；`migrateHosts()` 加 `ALTER TABLE hosts ADD COLUMN icon TEXT` |
+| 类型/读取 | `HostItem.icon`；`reload()` 用 `rs.getString(9)` |
+| 表单 | 图标选择器：**无 / ★ / ▤ / ☁ / ▣ / ⚡**（id `hostform/icon-none|star|server|cloud|box|bolt`），激活态高亮 |
+| 落库 | 新建插入桶 + 编辑 patch 都写 `icon` |
+| 渲染 | 列表行 `host-icon/<id>` 显示 `iconGlyph(h.icon)` 字形（`★▤☁▣⚡`） |
+
+### 用例
+`host.icon` **PASS**：清空 → 建一台选 ★ 的主机 → 列表出现 `★`；再建一台不选图标的（为空）。
+
+### 回归
+`host.manage / host.form-chips / host.persist / hosts.search / host.catalog => 5/5 PASS`
+
+### 本轮踩的两个坑（同一天第二次）
+1. **插入桶漏字段**：只给"编辑 patch"加了 `icon`，新建插入桶没加 —— 表现是"选了图标但列表不显示"。
+   ⇒ 新增字段时要**同时改 create/patch 两处**，并且用一个"新建后立刻断言"的用例兜底（本次正是它抓到的）。
+2. **行内组件插错位置**：第一版把图标 Text 插进了"行内操作按钮 Row"里（那一行默认悬停才显示），
+   而且 pdate 之后还出现过一次 `'icon': this.formIcon,,` 的语法错误 —— 都是**按字符串锚点做行内插入**造成的。
+   ⇒ 行内插入一律按行号 + 上下文确认，改完先 build。
+
+### 上一轮遗留
+`full65` 的 74/75 已把 `run-all.py` 加上了"仅第 1 步失败重跑一次"；下一轮跑全量验证 75/75。
+
