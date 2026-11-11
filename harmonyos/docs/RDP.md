@@ -844,3 +844,35 @@ RDP 现在四条用例：服务端、客户端渲染、输入回传、预览显�
 ```
 ```
 
+---
+
+## Round 51：预览从"一张静态图"变成"可刷新预览"，且用例断言刷新
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 按钮 | 点一次开始预览（`toggleRdpPreview`），再点停止（文案在"RDP 预览/停止预览"之间切换） |
+| 刷新 | `setInterval(1500ms)` 重新写 BMP + `Image` 换 URL 查询串（避开图片缓存） |
+| 计数 | `rdpFrameWrites` 累加，`rdp/frame-info` 显示 `bmp: 1024x768 written writes=N` |
+| 收尾 | 关闭诊断面板时 `stopRdpPreview()` 清掉定时器（否则后台一直写 3MB 文件） |
+
+### 用例断言（关键：证明不是一次性截图）
+```yaml
+- expect: "bmp: 1024x768 written writes=[0-9]+"
+- wait 6s
+- expect: "writes=[2-9][0-9]*"      # 刷新至少 2 次
+```
+`rdp.preview` **PASS**。
+
+### 回归
+`rdp.preview / rdp.server-peer / rdp.client-render / rdp.client-input => 4/4 PASS`
+
+### 明确的边界
+- 刷新是 **1.5 秒一次**的"能看"实现，不是流畅远程桌面（3 MB/帧、无增量更新、无脏区优化）；
+- 预览图在面板下方，窗口不够高时会被裁；
+- 对端仍是同一进程里的 shadow 服务端（测试图案），**不是真实 Windows 桌面**。
+
+### 下一步
+1. 把"预览 + 输入"合到一个 RDP 会话视图（现在输入还在诊断面板的按钮上）；
+2. 增量更新：只在帧变化时写 BMP（用 `surfHash` 或帧序号判断），避免无谓 IO。
+

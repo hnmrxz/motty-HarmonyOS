@@ -285,6 +285,9 @@ struct Index {
   @State rdpSnapInfo: string = 'rdp-canvas: (empty)';
   @State rdpFrameSrc: string = '';
   @State rdpFrameInfo: string = '';
+  @State rdpFrameWrites: number = 0;
+  @State rdpPreviewOn: boolean = false;
+  private rdpPreviewTimer: number = -1;
   private rdpCanvasCtx: CanvasRenderingContext2D = new CanvasRenderingContext2D(new RenderingContextSettings(true));  // 3389 是特权端口，应用绑不上
   @State selText: string = '';
   @State clipText: string = '';
@@ -721,7 +724,7 @@ struct Index {
   }
 
   private startSession(cred: Cred, fp: string, label: string): void {
-    this.diagOpen = false;
+    this.diagOpen = false; this.stopRdpPreview();
     this.tabSeq = this.tabSeq + 1;
     const tabId: string = 't' + this.tabSeq;
     const tabLabel: string = label + ' #' + this.tabSeq;
@@ -1113,7 +1116,7 @@ struct Index {
       this.startSession(cred, fp, 'fixture shell');
       return;
     }
-    this.diagOpen = false;
+    this.diagOpen = false; this.stopRdpPreview();
     this.tabSeq = this.tabSeq + 1;
     const tabId: string = 't' + this.tabSeq;
     const tabLabel: string = kind + ' #' + this.tabSeq;
@@ -2269,7 +2272,7 @@ struct Index {
         Text(this.t('diag.title')).fontSize(16).fontWeight(FontWeight.Bold)
         Blank()
         Button(this.t('common.close')).id('diag/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-          .onClick(() => { this.diagOpen = false; })
+          .onClick(() => { this.diagOpen = false; this.stopRdpPreview(); })
       }.width('100%')
       Row({ space: 8 }) {
         Button('term-echo').id('diag/term-echo').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
@@ -2283,9 +2286,9 @@ struct Index {
         Button('pty shell').id('terminal/shell').backgroundColor('#0A6C00').fontColor(Color.White)
           .onClick(() => { this.connectFixtureDemo('shell'); })
         Button('VNC session').id('vnc/session').backgroundColor('#6A1B9A').fontColor(Color.White)
-          .onClick(() => { this.diagOpen = false; this.startVnc('secret'); })
+          .onClick(() => { this.diagOpen = false; this.stopRdpPreview(); this.startVnc('secret'); })
         Button('VNC bad pw').id('vnc/session-bad').backgroundColor('#C62828').fontColor(Color.White)
-          .onClick(() => { this.diagOpen = false; this.startVnc('wrong-password'); })
+          .onClick(() => { this.diagOpen = false; this.stopRdpPreview(); this.startVnc('wrong-password'); })
         Button(this.t('rdp.srvStart')).id('rdp/srv-start').backgroundColor('#0A6C00').fontColor(Color.White)
           .onClick(() => { this.startRdpServer(); })
         Button(this.t('rdp.srvStop')).id('rdp/srv-stop').backgroundColor('#C62828').fontColor(Color.White)
@@ -3992,11 +3995,41 @@ struct Index {
       return;
     }
     if (rc === 0) {
+      this.rdpFrameWrites = this.rdpFrameWrites + 1;
       this.rdpFrameSrc = 'file://' + path + '?v=' + Date.now();
-      this.rdpFrameInfo = 'bmp: 1024x768 written';
+      this.rdpFrameInfo = 'bmp: 1024x768 written writes=' + this.rdpFrameWrites;
     } else {
       this.rdpFrameInfo = 'bmp: rc=' + rc;
     }
+  }
+
+  // 按需刷新：1.5s 一次（3MB/帧，太频繁会拖垮 UI；这是"能看"的最小实现）
+
+  private stopRdpPreview(): void {
+    this.rdpPreviewOn = false;
+    if (this.rdpPreviewTimer !== -1) {
+      clearInterval(this.rdpPreviewTimer);
+      this.rdpPreviewTimer = -1;
+    }
+  }
+
+  private toggleRdpPreview(): void {
+    if (this.rdpPreviewOn) {
+      this.rdpPreviewOn = false;
+      if (this.rdpPreviewTimer !== -1) {
+        clearInterval(this.rdpPreviewTimer);
+        this.rdpPreviewTimer = -1;
+      }
+      this.rdpFrameInfo = 'bmp: paused writes=' + this.rdpFrameWrites;
+      return;
+    }
+    this.rdpPreviewOn = true;
+    this.updateRdpFrame();
+    this.rdpPreviewTimer = setInterval(() => {
+      if (this.rdpPreviewOn) {
+        this.updateRdpFrame();
+      }
+    }, 1500);
   }
 
 
@@ -4006,10 +4039,10 @@ struct Index {
   rdpPreviewStrip() {
     Column({ space: 6 }) {
       Row({ space: 8 }) {
-        Button(this.lang === 'zh' ? 'RDP 预览' : 'RDP preview')
+        Button((this.lang === 'zh' ? (this.rdpPreviewOn ? '停止预览' : 'RDP 预览') : (this.rdpPreviewOn ? 'Stop preview' : 'RDP preview')))
           .id('rdp/frame-btn').height(28).fontSize(12)
           .backgroundColor('#0F766E').fontColor(Color.White)
-          .onClick(() => { this.updateRdpFrame(); })
+          .onClick(() => { this.toggleRdpPreview(); })
         Text(this.rdpFrameInfo).id('rdp/frame-info').fontSize(10).fontColor('#8A8F98')
       }.width('100%').justifyContent(FlexAlign.Start)
       if (this.rdpFrameSrc.length > 0) {
