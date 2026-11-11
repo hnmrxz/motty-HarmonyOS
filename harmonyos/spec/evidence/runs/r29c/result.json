@@ -1,0 +1,164 @@
+{
+  "spec": "host.group-filter",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 11,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 12,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 13,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 14,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 15,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 16,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 17,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 18,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 19,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 20,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 21,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 22,
+      "action": "wait",
+      "ok": false,
+      "detail": "步骤内 expect 失败: 不应出现但出现了: 'in-g2'",
+      "expect": {
+        "ok": false,
+        "detail": "不应出现但出现了: 'in-g2'"
+      }
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：点分组 chip 只显示该组（另一组主机不可见）、点\"全部\"恢复显示。 **不覆盖**：筛选与搜索叠加、筛选状态的持久化、协议 chips（SSH/RDP/VNC）的筛选。"
+  },
+  "passed": false,
+  "error": "step 22 (wait) 失败: 步骤内 expect 失败: 不应出现但出现了: 'in-g2'"
+}

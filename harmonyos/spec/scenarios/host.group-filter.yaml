@@ -1,0 +1,102 @@
+schema: 1
+id: host.group-filter
+title: 分组 chips 作为筛选器：点分组只显示该组，点"全部"恢复
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1200
+  - action: click
+    target: id:catalog/reset-hosts
+  - action: wait
+    ms: 1500
+  - action: click
+    target: id:diag/close
+  - action: wait
+    ms: 800
+  # G1 组一台
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: in-g1
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.5.5.1
+  - action: type
+    target: id:shell/dialog-group
+    text: G1
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1400
+  # G2 组一台
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: in-g2
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.5.5.2
+  - action: type
+    target: id:shell/dialog-group
+    text: G2
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1400
+  # 点 G1 -> 只显示 G1
+  - action: click
+    target: id:chip/group/G1
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "in-g1"
+      withinMs: 8000
+  - action: wait
+    ms: 400
+    expect:
+      kind: absent
+      value: "in-g2"
+      withinMs: 5000
+  # 点"全部" -> 两台都回来
+  - action: click
+    target: id:chip/all
+  - action: wait
+    ms: 800
+asserts:
+  - kind: screenRegex
+    regex: "in-g2"
+    withinMs: 10000
+  - kind: screenRegex
+    regex: "in-g1"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：点分组 chip 只显示该组（另一组主机不可见）、点"全部"恢复显示。
+    **不覆盖**：筛选与搜索叠加、筛选状态的持久化、协议 chips（SSH/RDP/VNC）的筛选。
+deviations:
+  - 只用两个分组各一台主机，验证的是"筛选生效"，不测多组大量数据的滚动。
+notes: >-
+  这条用例钉住"chips 不是装饰"这一点：点了必须真的过滤列表。

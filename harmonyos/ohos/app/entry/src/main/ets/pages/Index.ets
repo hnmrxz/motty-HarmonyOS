@@ -240,6 +240,7 @@ struct Index {
   @State lang: string = 'zh';
   @State pcNav: string = '主机';
   @State collapsedGroups: string[] = [];
+  @State groupFilter: string = '';
   @State hoverRow: number = -1;
   @State selectAll: boolean = false;
   @State selectedIds: string[] = [];
@@ -2402,7 +2403,8 @@ struct Index {
   @Builder
   hostListView() {
     List({ space: 2 }) {
-      ForEach(this.sections(), (g: string) => {
+        ForEach(this.sections().filter((g: string) =>
+          this.groupFilter.length === 0 || this.sectionLabel(g) === this.groupFilter), (g: string) => {
         ListItem() {
           Row({ space: 8 }) {
             Text(this.selectAll ? '☑' : '☐').fontSize(15).width(18)
@@ -2423,6 +2425,7 @@ struct Index {
             ])
           }
           .width('100%').height(34).padding({ left: 8, right: 8 })
+          .id('group/header/' + g)
           .onClick(() => { this.toggleGroup(g); })
         }
         if (!this.isCollapsed(g)) {
@@ -2654,12 +2657,16 @@ struct Index {
           }
         })
       Text((this.lang === 'zh' ? '全部 ' : 'All ') + this.hosts.length).id('chip/all').fontSize(12)
-        .fontColor(Color.White).padding({ left: 12, right: 12, top: 5, bottom: 5 })
-        .backgroundColor('#2A2D33').borderRadius(14)
+        .fontColor(this.groupFilter.length === 0 ? '#12141A' : Color.White)
+        .backgroundColor(this.groupFilter.length === 0 ? '#E8EAED' : '#2A2D33')
+        .padding({ left: 12, right: 12, top: 5, bottom: 5 }).borderRadius(14)
+        .onClick(() => { this.groupFilter = ''; })
       ForEach(this.sections(), (g: string) => {
         Text(this.sectionLabel(g) + ' ' + this.countGroup(g)).id('chip/group/' + g).fontSize(12)
-          .fontColor('#C7CBD1').padding({ left: 12, right: 12, top: 5, bottom: 5 })
-          .backgroundColor('#1E2127').borderRadius(14)
+          .fontColor(this.groupFilter === this.sectionLabel(g) ? '#12141A' : '#C7CBD1')
+          .backgroundColor(this.groupFilter === this.sectionLabel(g) ? '#E8EAED' : '#1E2127')
+          .padding({ left: 12, right: 12, top: 5, bottom: 5 }).borderRadius(14)
+          .onClick(() => { this.groupFilter = this.sectionLabel(g); })
       }, (g: string) => 'chip-' + g)
       if (this.selectedIds.length > 0) {
         Text((this.lang === 'zh' ? '已选 ' : 'Selected ') + this.selectedIds.length).fontSize(12)
@@ -2742,6 +2749,8 @@ struct Index {
     } else {
       this.collapsedGroups = this.collapsedGroups.concat([g]);
     }
+    // 官方 savedHostGroup.Collapsed 是持久化的：折叠状态要跨重启保持
+    this.savePrefs();
   }
 
 
@@ -2807,7 +2816,8 @@ struct Index {
   hostGridView() {
     Scroll() {
       Column({ space: 10 }) {
-        ForEach(this.sections(), (g: string) => {
+        ForEach(this.sections().filter((g: string) =>
+          this.groupFilter.length === 0 || this.sectionLabel(g) === this.groupFilter), (g: string) => {
           // 分组表头
           Row({ space: 8 }) {
             Image(this.isCollapsed(g) ? $r('app.media.ic_chevron_right') : $r('app.media.ic_chevron_down'))
@@ -3171,6 +3181,9 @@ struct Index {
       if (lang === 'zh' || lang === 'en') { this.lang = lang; }
       if (view === 'list' || view === 'grid') { this.hostView = view; }
       if (sort === 'manual' || sort === 'name' || sort === 'ip') { this.hostSort = sort; }
+      const collapsed: string = this.prefs.getSync('collapsedGroups', '') as string;
+      this.collapsedGroups = collapsed.length === 0 ? []
+        : collapsed.split('\u0001').filter((x: string) => x.length > 0);
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'loadPrefs failed: %{public}s', JSON.stringify(e));
     }
@@ -3182,6 +3195,7 @@ struct Index {
       this.prefs.putSync('lang', this.lang);
       this.prefs.putSync('hostView', this.hostView);
       this.prefs.putSync('hostSort', this.hostSort);
+      this.prefs.putSync('collapsedGroups', this.collapsedGroups.join('\u0001'));
       await this.prefs.flush();
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'savePrefs failed: %{public}s', JSON.stringify(e));

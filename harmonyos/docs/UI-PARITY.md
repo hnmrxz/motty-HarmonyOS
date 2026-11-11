@@ -781,3 +781,33 @@ hosts.search / host.persist / infra.host-create-by-id / hostkey.changed / net.re
 ### 回归
 `snippets.crud / host.manage / command.palette / host.form-chips => 4/4 PASS`
 
+---
+
+## Round 29 追加：分组筛选真的生效 + 折叠状态持久化
+
+### 1) 分组 chips 以前是"装饰"
+点了没有任何反应。现在：
+- 点某个分组 chip → 列表**只显示该组**，chip 变成浅色选中态；
+- 点「全部」→ 恢复显示全部；
+- 列表与网格两种视图都按筛选渲染（两处 `ForEach(this.sections())` 都加了 filter）。
+
+对应用例 `host.group-filter`（pcOnly）**PASS**：
+G1/G2 各一台 → 点 G1 → 断言只有 `in-g1`、没有 `in-g2` → 点「全部」→ 两台都在。
+
+### 2) 分组折叠状态持久化（官方 `savedHostGroup.Collapsed`）
+- `toggleGroup()` 现在会 `savePrefs()`；
+- 折叠分组列表以 `\u0001` 分隔存进 preferences（分组名可能含逗号，不能用逗号）；
+- 启动时 `loadPrefs()` 读回。
+- 分组表头行新增 id `group/header/<组名>`（以前只能靠箭头图标，自动化点不到）。
+
+对应用例 `host.group-collapse`（pcOnly）**PASS**：
+建 G1 组主机 → 点表头折叠 → 断言行消失 → **重启应用** → 仍处于折叠状态（行仍不出现）。
+
+### 3) 回归
+`host.manage / host.group-collapse / pages.logs-vault / ui.i18n.panels / host.catalog => 5/5 PASS`
+
+### 未做
+- 筛选与搜索叠加的组合行为、筛选状态持久化；
+- 协议 chips（SSH/RDP/VNC）筛选（现在只有分组 chips 可用）；
+- 分组顺序/固定（官方 `savedHostGroup.Order/Pinned`）。
+

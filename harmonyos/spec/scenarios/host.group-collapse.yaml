@@ -1,0 +1,79 @@
+schema: 1
+id: host.group-collapse
+title: 分组折叠状态跨重启保持（官方 savedHostGroup.Collapsed 语义）
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1200
+  - action: click
+    target: id:catalog/reset-hosts
+  - action: wait
+    ms: 1500
+  - action: click
+    target: id:diag/close
+  - action: wait
+    ms: 800
+  # 建两台主机，放在同一分组
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: grp-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.4.4.4
+  - action: type
+    target: id:shell/dialog-group
+    text: G1
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1400
+  # 折叠分组 G1
+  - action: click
+    target: id:group/header/G1
+  - action: wait
+    ms: 700
+  # 折叠后那台主机不应再作为行出现
+  - action: wait
+    ms: 500
+    expect:
+      kind: absent
+      value: "grp-a"
+      withinMs: 4000
+  # 重启应用后仍应处于折叠状态
+  - action: restart
+  - action: wait
+    ms: 6000
+asserts:
+  - kind: absent
+    value: "grp-a"
+    withinMs: 12000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：点分组 chip 折叠后行消失、重启后仍折叠（折叠状态已持久化）。
+    **不覆盖**：分组顺序/固定、折叠状态随目录导出导入、多分组混合折叠。
+deviations:
+  - 折叠通过点击分组 chip（id chip/group/G1）完成，而不是折叠箭头（箭头也在同一行，语义相同）。
+notes: >-
+  用"折叠后主机行不出现"来判定折叠，避免依赖箭头图标的字符（图标是 SVG，文本断言看不到）。
