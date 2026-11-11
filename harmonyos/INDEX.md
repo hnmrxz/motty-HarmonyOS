@@ -2467,3 +2467,25 @@ Round 61–81 动过 VNC 面板按钮顺序、转发面板滚动容器、诊断�
 ### 五、最后一句
 这轮复刻**做到了"终端/SFTP/转发/VNC/i18n/AI 通路都可机器判定"**，
 **没做到"RDP 能用"与"arm64 已验证"**。不粉饰，也不抹掉已完成的证据。
+
+---
+
+## Round 91（附加轮）：补齐 `vnc.desktopsize` / `vnc.adapt` —— 双画像通过
+
+最后两条"因夹具模式不同而未覆盖"的用例，用 `-vnc-resize` 模式补齐：
+
+| 用例 | 2in1 | tablet |
+|---|---|---|
+| `vnc.desktopsize` | PASS | PASS |
+| `vnc.adapt` | PASS | PASS |
+
+记录：`spec/matrix/vnc-resize-round91.json`。
+
+### 至此三种夹具模式都有当轮双画像证据
+| 夹具模式 | 覆盖的用例 |
+|---|---|
+| 默认（None 认证） | `vnc.session`、`vnc.key`、SFTP/终端/转发等绝大多数 |
+| `-vnc-auth secret` | `vnc.auth-hextile`、`vnc.negative`（Round 85，2/2） |
+| `-vnc-resize` | `vnc.desktopsize`、`vnc.adapt`（本轮，2/2） |
+
+E02 的 partialCoverage 已同步（DesktopSize 与画布自适应从"未做"移入"已实测"）。

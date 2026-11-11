@@ -1112,7 +1112,7 @@
         "deps": "G1",
         "acceptance": "`vnc_e2e`"
       },
-      "partialCoverage": "部分：RFB 3.8、None/VNC Auth(DES)、Raw+Hextile、fillRect 渲染、指针与**键盘事件**、剪贴板、DesktopSize、画布自适应已双画像实测；缩放后坐标反算精度、ExtendedDesktopSize、Tight/ZRLE/Cursor 未做。"
+      "partialCoverage": "部分：RFB 3.8、None/VNC Auth(DES)、Raw+Hextile、fillRect 渲染、指针与键盘事件、剪贴板、**DesktopSize 与画布自适应**已双画像实测；缩放后坐标反算精度、ExtendedDesktopSize、Tight/ZRLE/Cursor 未做。"
     },
     {
       "id": "E03",

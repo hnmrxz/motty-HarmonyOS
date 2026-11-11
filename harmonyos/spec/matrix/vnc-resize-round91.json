@@ -1,0 +1,21 @@
+{
+  "round": 91,
+  "date": "2026-11-11",
+  "kind": "alternative fixture mode coverage (VNC DesktopSize)",
+  "fixture": "sshfixture -vnc-resize（服务端主动发 DesktopSize）",
+  "profiles": {
+    "2in1": {
+      "passed": 2,
+      "total": 2
+    },
+    "tablet": {
+      "passed": 2,
+      "total": 2
+    }
+  },
+  "specs": [
+    "vnc.desktopsize",
+    "vnc.adapt"
+  ],
+  "note": "补齐最后两条因夹具模式不同而未覆盖的用例：DesktopSize 变更与画布自适应。必须在 -vnc-resize 模式下跑；默认模式夹具不发 DesktopSize，这两条不成立。"
+}

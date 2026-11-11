@@ -1,0 +1,14 @@
+﻿test(harmonyos): 补齐 vnc.desktopsize / vnc.adapt（-vnc-resize 模式）双画像通过
+
+最后两条因夹具模式不同而未覆盖的用例，用 -vnc-resize 补齐:
+  vnc.desktopsize  2in1 PASS / tablet PASS
+  vnc.adapt        2in1 PASS / tablet PASS
+记录: spec/matrix/vnc-resize-round91.json
+
+至此三种夹具模式都有当轮双画像证据:
+- 默认(None 认证): vnc.session/vnc.key 及绝大多数
+- -vnc-auth secret: vnc.auth-hextile/vnc.negative (Round 85, 2/2)
+- -vnc-resize: vnc.desktopsize/vnc.adapt (本轮, 2/2)
+
+E02 partialCoverage 同步: DesktopSize 与画布自适应从'未做'移入'已实测'
+报告: COMPLETION-REPORT 补一行'VNC DesktopSize 模式 2/2'
