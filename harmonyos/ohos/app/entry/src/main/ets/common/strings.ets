@@ -56,6 +56,7 @@ export class Strings {
     ['fwd.start', 'Start'],
     ['fwd.stop', 'Stop'],
     ['fwd.test', 'Test tunnel'],
+    ['rdp.experimental', 'RDP is experimental: connect works, picture/input are not delivered yet.'],
     ['vnc.stop', 'Stop'],
     ['term.history', 'history tail'],
 
@@ -107,6 +108,7 @@ export class Strings {
     ['fwd.start', '启动'],
     ['fwd.stop', '停止'],
     ['fwd.test', '测试隧道'],
+    ['rdp.experimental', 'RDP 为实验性功能：可连接，但画面与输入尚未打通。'],
     ['vnc.stop', '停止'],
     ['term.history', '历史尾部'],
 

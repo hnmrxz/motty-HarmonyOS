@@ -1959,6 +1959,8 @@ struct Index {
         .id('vnc/result').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')
       Text(this.rdpSrvStatus.length > 0 ? this.rdpSrvStatus : 'rdp-server: (idle)')
         .id('rdp/srv-state').fontSize(11).fontFamily('monospace').fontColor('#0A6C00').width('100%')
+      Text(this.t('rdp.experimental'))
+        .id('rdp/experimental').fontSize(10).fontColor('#C62828').width('100%')
       Text(this.rdpResult.length > 0 ? this.rdpResult : 'rdp: (not probed)')
         .id('rdp/result').fontSize(11).fontFamily('monospace').fontColor('#37474F').width('100%')
       Text(this.rdpSnapInfo)

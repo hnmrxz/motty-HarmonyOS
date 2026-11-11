@@ -2114,3 +2114,26 @@ rdp-render: frames=3 paints=3 size=1024x768 pixels=786432 colors=...
 
 ### 五、状态
 用例 51 → **52**；E1 能力 16。
+---
+
+## Round 77：lobby 确认"画了但没刷新"；把 RDP 标成实验性（上架要求）
+
+### 一、lobby 调查的最终结论
+加上计数后确认：`lob=24 lobNull=0` —— **lobby 表面确实被我们画了 24 次**，
+但客户端看到的仍是纯白。说明 lobby 的内容**只在连接时下发一次**，
+我们的 `invalidRegion` 标记没有触发 lobby 的重新发送（`shadow_subsystem_frame_update`
+只作用于 `server->surface`）。这条路径没有再往下挖。
+
+### 二、落地了一个真实需求：RDP 必须自我声明"实验性"
+上架材料里最怕的是"功能看起来能用但其实不能用"。诊断面板现在**常显**提示（中英双语）：
+
+```
+RDP is experimental: connect works, picture/input are not delivered yet.
+RDP 为实验性功能：可连接，但画面与输入尚未打通。
+```
+
+实测：模拟器 tablet 上 dump 到该文案（`rdp/experimental`）。
+`STORE-READINESS.md` 补了附录 A，写清现状与两种上架取舍（保留提示 / 发布构建隐藏入口）。
+
+### 三、诚实边界
+RDP 内容仍 **E3**；用例数保持 52（不加无法证明内容的用例）。

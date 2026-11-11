@@ -79,3 +79,29 @@
 
 **文档与物料基础已就绪**（SBOM 可校验、许可清晰、权限最小化、隐私边界明确），
 **但签名证书、隐私政策 URL、arm64 真机验证、AI 端点合规这四项是硬性阻塞**，不属于能在代码仓库里完成的工作。
+
+---
+
+## 附录 A：RDP 功能的"实验性"标注（Round 77 落地）
+
+为避免上架后被当作"可用功能"，诊断面板里已加**常显**提示（中英双语，`rdp/experimental`）：
+
+- 英文：`RDP is experimental: connect works, picture/input are not delivered yet.`
+- 中文：`RDP 为实验性功能：可连接，但画面与输入尚未打通。`
+
+实测证据（模拟器 tablet，dump 已确认该文案渲染）：
+
+```
+NOTE: RDP is experimental: connect works, picture/input are not delivered yet.
+```
+
+配套事实（详见 INDEX Round 70–77）：
+- 客户端与服务端**能完成协商并 connected**（`rdp.client-connect` 双画像通过）
+- 服务端**能监听并出帧**（脚本化判定）
+- 客户端**能收到并解码桌面更新**（`rdp.client-render` 双画像通过，1024×768）
+- **但内容停在 shadow 的 lobby 白屏**，画面与输入仍未打通
+
+上架建议：
+1. 若必须保留 RDP 入口，保留该提示并把它写进应用描述与隐私声明
+2. 若市场审核对"功能不完整"零容忍，则在发布构建里隐藏 RDP 入口（诊断面板整体可关）
+

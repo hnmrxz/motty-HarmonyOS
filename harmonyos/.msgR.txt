@@ -1,0 +1,16 @@
+﻿docs(harmonyos): lobby 确认"画了但没刷新"；RDP 标为实验性（上架要求）
+
+lobby 调查最终结论:
+- 计数确认 lob=24 lobNull=0：lobby 表面确实被画了 24 次，但客户端仍看到纯白
+- 说明 lobby 内容只在连接时下发一次，invalidRegion 没触发重新发送
+  (shadow_subsystem_frame_update 只作用于 server->surface)
+- 这条路径不再往下挖
+
+落地真实需求: RDP 必须自我声明"实验性"
+- 诊断面板常显中英提示(rdp/experimental):
+  'RDP is experimental: connect works, picture/input are not delivered yet.'
+  'RDP 为实验性功能：可连接，但画面与输入尚未打通。'
+- 模拟器 tablet dump 已确认渲染
+- STORE-READINESS 补附录 A：现状与两种上架取舍(保留提示/发布构建隐藏入口)
+
+诚实边界: RDP 内容仍 E3；用例数保持 52

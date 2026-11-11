@@ -74,6 +74,8 @@ int g_paintOk = 0;
 int g_updateOk = 0;
 int g_paintSkipped = 0;
 uint32_t g_tickFrames = 0;
+int g_lobbyPaint = 0;
+int g_lobbyNull = 0;
 int g_paintRows = 0;
 int g_capStarted = -1;
 int g_afterSleep = 0;
@@ -551,7 +553,11 @@ napi_value RdpServerTick(napi_env env, napi_callback_info info) {
     if (g_running.load() && g_server != nullptr && g_server->surface != nullptr) {
         // 客户端的激活流程没有走到"进入桌面"，shadow 会一直发 lobby 画面（实测纯白 #FFFFFF）。
         // 测试服务端把 lobby 也画成我们的图案，这样"像素能到客户端并能显示"就可验证。
+        if (g_server->lobby == nullptr || g_server->lobby->data == nullptr) {
+            g_lobbyNull++;
+        }
         if (g_server->lobby != nullptr && g_server->lobby->data != nullptr) {
+            g_lobbyPaint++;
             paintSurface(g_server->lobby, static_cast<uint32_t>(g_tickFrames));
             {
                 RECTANGLE_16 rect = {0, 0, static_cast<UINT16>(g_server->lobby->width - 1),
@@ -606,7 +612,8 @@ napi_value RdpServerStatus(napi_env env, napi_callback_info info) {
                " sh=" + std::to_string(g_surfH) + " stride=" + std::to_string(g_surfStride) +
                " dnull=" + std::to_string(g_surfDataNull) + " skip=" + std::to_string(g_paintSkipped) + " cap=" + std::to_string(g_capStarted) + " tsp=" + std::to_string(g_threadSubPtr) +
                " gsp=" + std::to_string(g_subPtr) + " slp=" + std::to_string(g_afterSleep) +
-               " fadd=" + std::to_string(g_frameAdds) + " rows=" + std::to_string(g_paintRows) + " upd=" + std::to_string(g_updateOk) +
+               " fadd=" + std::to_string(g_frameAdds) + " rows=" + std::to_string(g_paintRows) +
+               " lob=" + std::to_string(g_lobbyPaint) + " lobNull=" + std::to_string(g_lobbyNull) + " upd=" + std::to_string(g_updateOk) +
                " base=" + std::to_string(g_basePtr) + " g=" + std::to_string(g_gPtr) +
                (g_threadError.empty() ? "" : (" err=" + g_threadError)) + " built=" + g_buildStamp;
     } else {
