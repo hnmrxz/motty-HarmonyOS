@@ -230,3 +230,33 @@ rdp-input: input: sent key+mouse; serverSaw keys=1 mouse=3 sync=0 (before 0/0/0)
 - 更有价值的是**用真实 RDP 服务端验证鸿蒙客户端**（客户端路径不依赖内嵌服务端）；
 - 内嵌服务端保留但标注"实验、可能崩溃"，不得作为可用功能宣传。
 
+---
+
+## Round 100：真实 Windows RDP 对端测试（客户端侧）
+
+### 一、测试目标（来自本机 Windows 版 motty 的配置，只读提取，已脱敏）
+- 主机：`47.97.34.110:3389`，用户 `administrator`，标签"求是物业一体化平台（生产）"
+- 口令由用户单次授权提供，**未写入仓库、未写入任何文件、未提交**；测试后清除输入框并强杀应用。
+
+### 二、为做这次测试而新增的能力（都是可复用的）
+1. **客户端目标可配置**：诊断面板新增 `host / port / user / password / NLA` 五个控件（默认全空 + placeholder），
+   `rdpRender` 支持第 6 个参数 `nla`；端口空值回退 13389。
+2. **NLA 开关**：真实 Windows 通常强制 NLA；本地 shadow 测试对端不支持 CredSSP，所以做成可切换。
+3. **裸 TCP 探测** `rawTcpProbe(host,port)`：把"能不能出网"与"协议协商失败"分开判断。
+
+### 三、实测结果（诚实）
+`rdp-render: connect failed: The connection transport layer failed.`
+
+- 宿主侧 `Test-NetConnection 47.97.34.110:3389` → **True**（端口可达）
+- 模拟器 `ping` 外网 → 通（9–17ms）
+⇒ 不是"网络完全不通"，而是**FreeRDP 传输层（TCP/TLS）阶段失败**，具体是 TCP 还是 TLS 未定。
+- 裸 TCP 探测按钮因面板布局溢出未能点到，尚未取得应用侧 TCP 结论。
+- **没有发生任何成功登录**；也未观察到认证失败次数（失败发生在认证之前）。
+
+### 四、下一步（需要一次带日志的定位）
+1. 把 FreeRDP 的 `WLog` 重定向到应用沙箱文件（`diagLog` 已有），用 `hdc shell` 取回，看到底是
+   `transport_connect` 还是 `TLS` 失败；日志级别 DEBUG。
+2. 若 TLS 失败：检查 `ServerHostname` 是否用于 SNI、证书链是否需要 `CertificateFile`。
+3. 若 TCP 失败：用 `rawTcpProbe` 从应用内重测（需先修面板溢出）。
+4. 只有在能拿到 `connected` 之后，才谈画面与真实输入。
+

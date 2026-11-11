@@ -162,6 +162,11 @@ struct Index {
   @State aiEndpoint: string = 'http://127.0.0.1:2297/v1/ai';
   @State rdpSrvStatus: string = '';
   @State rdpSrvPort: number = 13389;
+  @State rdpTargetHost: string = '';
+  @State rdpTargetPort: string = '';
+  @State rdpTargetUser: string = '';
+  @State rdpTargetPass: string = '';
+  @State rdpUseNla: boolean = false;
   private rdpTickId: number = -1;
   @State rdpTickCount: number = 0;
   @State rdpTickDrawn: number = -1;
@@ -708,12 +713,16 @@ struct Index {
 
   // 客户端渲染管线（最小）：连接后泵事件，把收到的位图更新统计回来
   private startRdpRender(): void {
-    this.rdpResult = 'rdp-render: connecting...';
-    mottynapi.rdpRender('127.0.0.1', this.rdpSrvPort, 'tester', 'secret', (result: string) => {
-      this.rdpResult = 'rdp-render: ' + result;
-      // 连接结束后把最后一帧画出来（证明像素能到 UI 层）
-      this.drawRdpSnapshot();
-    });
+    this.rdpResult = 'rdp-render: connecting ' + this.rdpTargetHost + ':' + this.rdpTargetPort + '...';
+    let port: number = Number.parseInt(this.rdpTargetPort, 10);
+    if (Number.isNaN(port) || port <= 0) {
+      port = this.rdpSrvPort;
+    }
+    mottynapi.rdpRender(this.rdpTargetHost, port, this.rdpTargetUser, this.rdpTargetPass,
+      (result: string) => {
+        this.rdpResult = 'rdp-render: ' + result;
+        this.drawRdpSnapshot();
+      }, this.rdpUseNla);
   }
 
   private startRdpServer(): void {
@@ -1960,6 +1969,12 @@ struct Index {
         Button('RDP render').id('rdp/render').backgroundColor('#1A6DD0').fontColor(Color.White)
           .onClick(() => { this.startRdpRender(); })
         Button('RDP input').id('rdp/input').backgroundColor('#1A6DD0').fontColor(Color.White)
+        Button('TCP').id('rdp/tcpprobe').backgroundColor('#37474F').fontColor(Color.White)
+          .onClick(() => {
+            const p2: number = Number.parseInt(this.rdpTargetPort, 10);
+            this.rdpResult = 'tcp-probe: ' +
+              mottynapi.rawTcpProbe(this.rdpTargetHost, Number.isNaN(p2) ? 3389 : p2);
+          })
           .onClick(() => { this.probeRdpInput(); })
         Button('RDP :3390').id('rdp/probe-closed').backgroundColor('#37474F').fontColor(Color.White)
           .onClick(() => { this.rdpProbe(3390); })
@@ -1980,6 +1995,19 @@ struct Index {
         .id('vnc/result').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')
       Text(this.rdpSrvStatus.length > 0 ? this.rdpSrvStatus : 'rdp-server: (idle)')
         .id('rdp/srv-state').fontSize(11).fontFamily('monospace').fontColor('#0A6C00').width('100%')
+      Row({ space: 6 }) {
+        TextInput({ text: this.rdpTargetHost, placeholder: 'host' }).id('rdp/host').width(150)
+          .onChange((v: string) => { this.rdpTargetHost = v; })
+        TextInput({ text: this.rdpTargetPort, placeholder: 'port' }).id('rdp/port').width(70)
+          .onChange((v: string) => { this.rdpTargetPort = v; })
+        TextInput({ text: this.rdpTargetUser, placeholder: 'user' }).id('rdp/user').width(110)
+          .onChange((v: string) => { this.rdpTargetUser = v; })
+        TextInput({ text: this.rdpTargetPass, placeholder: 'password' }).id('rdp/pass').type(InputType.Password).width(110)
+          .onChange((v: string) => { this.rdpTargetPass = v; })
+        Toggle({ type: ToggleType.Checkbox, isOn: this.rdpUseNla }).id('rdp/nla')
+          .onChange((v: boolean) => { this.rdpUseNla = v; })
+        Text('NLA').fontSize(11)
+      }.width('100%')
       Text(this.t('rdp.experimental'))
         .id('rdp/experimental').fontSize(10).fontColor('#C62828').width('100%')
       Text(this.rdpResult.length > 0 ? this.rdpResult : 'rdp: (not probed)')

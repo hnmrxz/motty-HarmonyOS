@@ -24,6 +24,10 @@
 #include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <cerrno>
 #include <set>
 #include <map>
 #include <string>
@@ -98,6 +102,7 @@ static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
 }
 
 struct RdpJob {
+    bool useNla = false;
     std::string host;
     int port = 3389;
     std::string user;
@@ -592,11 +597,11 @@ napi_value RdpProbe(napi_env env, napi_callback_info info) {
 
 // rdpRender(host, port, user, password, cb)
 napi_value RdpRender(napi_env env, napi_callback_info info) {
-    size_t argc = 5;
-    napi_value args[5] = {nullptr};
+    size_t argc = 6;
+    napi_value args[6] = {nullptr};
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
     if (argc < 5) {
-        napi_throw_type_error(env, nullptr, "rdpRender(host, port, user, password, cb)");
+        napi_throw_type_error(env, nullptr, "rdpRender(host, port, user, password, cb, nla?)");
         return nullptr;
     }
     auto *job = new RdpJob();
@@ -606,6 +611,11 @@ napi_value RdpRender(napi_env env, napi_callback_info info) {
     job->port = port;
     job->user = getString(env, args[2]);
     job->password = getString(env, args[3]);
+    if (argc >= 6) {
+        bool nla = false;
+        napi_get_value_bool(env, args[5], &nla);
+        job->useNla = nla;
+    }
     napi_value name = nullptr;
     napi_create_string_utf8(env, "motty.rdp.render", NAPI_AUTO_LENGTH, &name);
     if (napi_create_threadsafe_function(env, args[4], nullptr, name, 0, 1, nullptr, nullptr, nullptr,
@@ -621,6 +631,41 @@ napi_value RdpRender(napi_env env, napi_callback_info info) {
 }  // namespace
 
 // rdpSnapshot() -> ArrayBuffer(64*48*4, RGBA)：Windows 端最近一帧的采样
+// rawTcpProbe(host, port) -> "tcp: ok|errno=N"：确认应用能否出网（不含任何协议）
+napi_value RawTcpProbe(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    std::string host = argc >= 1 ? getString(env, args[0]) : "127.0.0.1";
+    int32_t port = 3389;
+    if (argc >= 2) {
+        napi_get_value_int32(env, args[1], &port);
+    }
+    std::string result;
+    struct addrinfo hints = {};
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    struct addrinfo *res = nullptr;
+    const std::string portStr = std::to_string(port);
+    const int gai = getaddrinfo(host.c_str(), portStr.c_str(), &hints, &res);
+    if (gai != 0 || res == nullptr) {
+        result = "tcp: dns fail gai=" + std::to_string(gai);
+    } else {
+        const int fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+        if (fd < 0) {
+            result = "tcp: socket fail errno=" + std::to_string(errno);
+        } else {
+            const int rc = connect(fd, res->ai_addr, res->ai_addrlen);
+            result = (rc == 0) ? "tcp: ok" : ("tcp: connect fail errno=" + std::to_string(errno));
+            close(fd);
+        }
+        freeaddrinfo(res);
+    }
+    napi_value out = nullptr;
+    napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &out);
+    return out;
+}
+
 napi_value RdpSnapshot(napi_env env, napi_callback_info info) {
     (void)info;
     // 直接返回 Uint8Array：ArkTS 侧收到的类型才与 `Uint8Array` 匹配
@@ -686,6 +731,7 @@ void RegisterRdpFunctions(napi_env env, napi_value exports) {
         {"rdpSnapshot", nullptr, RdpSnapshot, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpInputProbe", nullptr, RdpInputProbe, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpSnapStats", nullptr, RdpSnapStats, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"rawTcpProbe", nullptr, RawTcpProbe, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
 }
