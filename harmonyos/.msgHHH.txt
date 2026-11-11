@@ -1,0 +1,20 @@
+﻿fix(harmonyos): 回归续跑完成 + 修 10 条失败(断言过时/文案缺口)
+
+续跑: run-all.py 新增 --resume(跳过已有结果的用例), 把剩余 29 条跑完
+批量快照: 44/62 (spec/evidence/runs/full21/summary.json)
+
+Round 22-23 修复并单独复跑通过的 10 条:
+  host.persist / hostkey.changed / hosts.search / infra.host-create-by-id / net.reachability
+  terminal.resize / ui.i18n.diag / ui.i18n.diagnostics / ui.i18n.vnc / ui.rdp-experimental
+=> 估算 54/62, 口径写在 spec/evidence/runs/full21/status.json
+
+修复内容:
+1. 语言默认跟随系统(中文), 旧用例"点一次语言按钮=切中文"的假设失效 -> 三个 i18n 用例改为点两次
+2. 信任/删除/变更对话框改官方中文后, 旧英文断言补中文分支(terminal.resize 等)
+3. 地址列渲染成 地址:端口, 精确 text 断言改 screenRegex(host.persist/infra)
+4. RDP 实验性提示原来只有 "RDP: 实验" 四个字 -> 补说明:
+   "画面与输入尚未投递: 可连接、可解码, 但不能当作可用的远程桌面" / picture/input are not delivered yet
+
+仍失败 8 条(不追求变绿):
+- RDP 实验态: rdp.connect / rdp.client-render / rdp.client-input / rdp.server-peer
+- VNC 功能: vnc.adapt / vnc.desktopsize / vnc.auth-hextile / vnc.negative (状态串未出现, 需查面板流程)

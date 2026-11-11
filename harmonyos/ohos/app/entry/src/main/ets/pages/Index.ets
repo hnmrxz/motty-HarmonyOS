@@ -2220,8 +2220,13 @@ struct Index {
         Text(this.probeText).id('net/probe-result').fontSize(11).fontFamily('monospace')
           .fontColor('#C7CBD1').width('100%')
       }.height(80).width('100%').border({ width: 1, color: '#22252A' }).padding(8)
-      Text(this.t('rdp.experimental'))
-        .id('rdp/experimental').fontSize(10).fontColor('#C62828').width('100%')
+      Text(this.lang === 'zh' ? 'RDP：实验性' : 'RDP is experimental')
+        .id('rdp/experimental').fontSize(11).fontWeight(FontWeight.Bold)
+        .fontColor('#E0A458').width('100%')
+      Text(this.lang === 'zh'
+        ? '画面与输入尚未投递：可连接、可解码，但不能当作可用的远程桌面。'
+        : 'picture/input are not delivered yet: connect and decode work, but not usable as a desktop.')
+        .id('rdp/experimental-note').fontSize(10).fontColor('#8A8F98').width('100%')
       Text(this.rdpResult.length > 0 ? this.rdpResult : 'rdp: (not probed)')
         .id('rdp/result').fontSize(11).fontFamily('monospace').fontColor('#37474F').width('100%')
       Text('ticks=' + this.rdpTickCount + ' drawn=' + this.rdpTickDrawn).id('rdp/ticks').fontSize(11).fontColor('#0A6C00')

@@ -1,0 +1,44 @@
+{
+  "run": "full21（Round 21-23 累积）",
+  "batch_total": 62,
+  "batch_passed": 44,
+  "batch_failed": 18,
+  "note": "summary.json 是批量跑当时的快照；下表 fixed 里的 10 条在 Round 22-23 修复并单独复跑通过",
+  "fixed_after_run": [
+    "host.persist",
+    "hostkey.changed",
+    "hosts.search",
+    "infra.host-create-by-id",
+    "net.reachability",
+    "terminal.resize",
+    "ui.i18n.diag",
+    "ui.i18n.diagnostics",
+    "ui.i18n.vnc",
+    "ui.rdp-experimental"
+  ],
+  "effective_passed_estimate": 54,
+  "remaining_failures": [
+    "rdp.client-input",
+    "rdp.client-render",
+    "rdp.connect",
+    "rdp.server-peer",
+    "vnc.adapt",
+    "vnc.auth-hextile",
+    "vnc.desktopsize",
+    "vnc.negative"
+  ],
+  "remaining_kind": {
+    "RDP 实验态": [
+      "rdp.client-input",
+      "rdp.client-render",
+      "rdp.connect",
+      "rdp.server-peer"
+    ],
+    "VNC 功能": [
+      "vnc.adapt",
+      "vnc.auth-hextile",
+      "vnc.desktopsize",
+      "vnc.negative"
+    ]
+  }
+}

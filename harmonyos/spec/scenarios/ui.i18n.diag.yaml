@@ -22,6 +22,11 @@ steps:
   # 先切到中文，再打开转发面板
   - action: click
     target: id:ui/lang
+  # 应用默认跟随系统（中文）：点两次回到中文，确保后续中文断言成立
+  - action: click
+    target: id:ui/lang
+  - action: wait
+    ms: 700
   - action: wait
     ms: 800
   - action: click

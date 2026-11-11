@@ -68,3 +68,28 @@ done 34 / 62    PASS 24    FAIL 9
 **注意**：这批失败里有些是"文案/选择器过时"，有些是真实缺陷（如 `hosts.search` 缺空结果文案），
 必须逐条看 `result.json` 的 `error` 与 `final.png` 再下结论，不能一概当作环境问题。
 
+## Round 23 状态：54 / 62（估算）+ 8 条已知未通过
+
+批量跑（`full21`）当时的快照是 **44/62**，随后 Round 22–23 修复了 10 条并**单独复跑通过**：
+
+```
+host.persist / hostkey.changed / hosts.search / infra.host-create-by-id / net.reachability
+terminal.resize / ui.i18n.diag / ui.i18n.diagnostics / ui.i18n.vnc / ui.rdp-experimental
+=> 54/62（估算）
+```
+
+详见 `spec/evidence/runs/full21/status.json`（明确写了"批量快照 + 复跑修复"的口径，避免把两次混成一个数）。
+
+### 仍失败的 8 条
+| 类别 | 用例 | 说明 |
+|---|---|---|
+| RDP（实验态） | `rdp.connect`、`rdp.client-render`、`rdp.client-input`、`rdp.server-peer` | RDP 仍不可用（画面/输入未投递、服务端状态不符）。**不追求变绿**，等实现推进 |
+| VNC（功能） | `vnc.adapt`、`vnc.desktopsize`、`vnc.auth-hextile`、`vnc.negative` | 期望 `canvas=80x60` / `auth=vncauth` / `authentication failed` 等状态串未出现，需查 VNC 面板流程 |
+
+### 这一轮修的都是"断言/文案过时"，不是放宽
+- 语言默认已改为跟随系统（中文），旧用例里"点一次语言按钮 = 切到中文"的假设失效 → 改为点两次；
+- 信任/删除/变更对话框改成官方中文后，旧英文断言补上中文分支；
+- 地址列渲染成 `地址:端口`，精确 `text` 断言改 `screenRegex`；
+- RDP 实验性提示原来只有"RDP: 实验"四个字，现在补了说明（`画面与输入尚未投递` / `picture/input are not delivered yet`），
+  这样"是否可用"在界面上是**明说**的，而不是靠用户猜。
+

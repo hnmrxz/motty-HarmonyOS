@@ -1,0 +1,79 @@
+{
+  "total": 62,
+  "passed": 44,
+  "failed": 18,
+  "failures": [
+    {
+      "spec": "host.persist",
+      "error": "assert 1 (text) 失败: 未找到文本 '10.9.9.9'"
+    },
+    {
+      "spec": "hostkey.changed",
+      "error": "step 15 (click) 失败: 选择器未命中: id:host-open/0"
+    },
+    {
+      "spec": "hosts.search",
+      "error": "assert 0 (screenRegex) 失败: 正则 'no matching hosts' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n"
+    },
+    {
+      "spec": "infra.host-create-by-id",
+      "error": "assert 2 (text) 失败: 未找到文本 '10.0.0.2'"
+    },
+    {
+      "spec": "net.reachability",
+      "error": "assert 0 (screenRegex) 失败: 正则 'SSH-2\\\\.0-' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\"
+    },
+    {
+      "spec": "rdp.client-input",
+      "error": "assert 0 (screenRegex) 失败: 正则 'serverSaw keys=[1-9][0-9]*' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\"
+    },
+    {
+      "spec": "rdp.client-render",
+      "error": "assert 0 (screenRegex) 失败: 正则 'rdp-render: frames=[1-9][0-9]* paints=[1-9][0-9]*' 未命中（屏幕文本: '\\n\\n\\n\\"
+    },
+    {
+      "spec": "rdp.connect",
+      "error": "assert 0 (screenRegex) 失败: 正则 'connect failed' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\"
+    },
+    {
+      "spec": "rdp.server-peer",
+      "error": "step 1 (wait) 失败: 步骤内 expect 失败: 正则 'No hosts yet' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\"
+    },
+    {
+      "spec": "terminal.resize",
+      "error": "step 11 (wait) 失败: 步骤内 expect 失败: 正则 'Unknown host key|未知主机密钥' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\"
+    },
+    {
+      "spec": "ui.i18n.diag",
+      "error": "step 6 (wait) 失败: 步骤内 expect 失败: 正则 '启动' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\"
+    },
+    {
+      "spec": "ui.i18n.diagnostics",
+      "error": "step 5 (wait) 失败: 步骤内 expect 失败: 正则 '诊断' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\"
+    },
+    {
+      "spec": "ui.i18n.vnc",
+      "error": "assert 0 (screenRegex) 失败: 正则 '发送按键 a' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\"
+    },
+    {
+      "spec": "ui.rdp-experimental",
+      "error": "assert 0 (screenRegex) 失败: 正则 'RDP is experimental' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n"
+    },
+    {
+      "spec": "vnc.adapt",
+      "error": "step 11 (wait) 失败: 步骤内 expect 失败: 正则 'canvas=80x60' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n"
+    },
+    {
+      "spec": "vnc.auth-hextile",
+      "error": "step 3 (wait) 失败: 步骤内 expect 失败: 正则 'auth=vncauth' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\"
+    },
+    {
+      "spec": "vnc.desktopsize",
+      "error": "step 11 (wait) 失败: 步骤内 expect 失败: 正则 '80x60' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\"
+    },
+    {
+      "spec": "vnc.negative",
+      "error": "step 3 (wait) 失败: 步骤内 expect 失败: 正则 'authentication failed' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n"
+    }
+  ]
+}

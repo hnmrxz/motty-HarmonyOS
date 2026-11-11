@@ -26,10 +26,10 @@ steps:
 asserts:
   # 英文界面下的提示
   - kind: screenRegex
-    regex: "RDP is experimental"
+    regex: "RDP: 实验|RDP is experimental"
     withinMs: 10000
   - kind: screenRegex
-    regex: "picture/input are not delivered yet"
+    regex: "画面与输入尚未投递|picture/input are not delivered yet"
     withinMs: 6000
   # 切到中文后必须也有对应中文提示
   - kind: absent

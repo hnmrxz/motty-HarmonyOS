@@ -7,9 +7,13 @@ outdir.mkdir(parents=True, exist_ok=True)
 py = r"C:\Python315\python.exe"
 serial = "127.0.0.1:10100"
 
+resume = "--resume" in sys.argv
 specs = sorted((root / "spec" / "scenarios").glob("*.yaml"))
 results = []
 for i, sp in enumerate(specs):
+    if resume and (outdir / sp.stem / "result.json").exists():
+        print(f"[{i+1}/{len(specs)}] SKIP {sp.stem} (已有结果)", flush=True)
+        continue
     t0 = time.time()
     out = outdir / sp.stem
     proc = subprocess.run([py, str(runner), str(sp), "--serial", serial, "--profile", "2in1",
