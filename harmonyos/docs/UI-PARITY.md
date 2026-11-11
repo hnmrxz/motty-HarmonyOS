@@ -65,3 +65,38 @@ python harmonyos/spec/run.py harmonyos/spec/scenarios/<spec>.yaml --serial 127.0
 
 > 说明：`harmonyos/.bin/ui/motty-windows.png` 是 Windows 版字体渲染的参照，仅用于对比布局与颜色，
 > 不作为测试断言（像素级比对不入 CI，避免字体差异造成假失败）。
+
+---
+
+## Round 2 追加：补齐「顶部工具栏 / 侧栏底部 / 主区右侧按钮 / 分组 chips / 行内复选框与状态」
+
+### 新增对齐项（对照用户提供的完整窗口截图）
+
+| 区域 | 官方（截图） | 现在 |
+|---|---|---|
+| 顶部工具栏 | 左：九宫格 + ＋；右：排序/粘贴/终端/搜索/AI/通知/设置 | `pcTopBar()`，id `top/*` |
+| 侧栏品牌 | M 标 + `motty` 词标 | 已有 |
+| 侧栏导航 | 10 项 + 底部「本地终端 / 设置」 | 10 项 + `nav/local-terminal`、`nav/settings` |
+| 导航图标 | 线性图标（lucide） | **直接取上游 `internal/workbench/icons/*.svg`**（34 个） |
+| 主区顶栏右侧 | 导入/导出 + 新建主机（浅色主按钮） | `hosts/import-export` + `shell/add-host`（浅色） |
+| 筛选行 | 全选复选框 + 全部/个人/求是物业（带计数）+ 右侧展开收起/列表/网格/排序 | `chips/select-all`、`chip/all`、`chip/group/*`、`chips/collapse|expand`、`view/*` |
+| 分组表头 | 复选框 + chevron + 名称 + 数量 + 行尾「⋯」 | 已对齐，`group/menu/<组名>` |
+| 数据行 | 复选框 + 颜色条 + 圆形头像 + 名称/用户 + 地址 + 生产/测试标签 + 未连接 | 已对齐，`host-check/i`、`host-status-text/i` |
+| 窗口标题 | `Motty` | `EntryAbility_label` 已改为 `Motty` |
+
+### 关键技术点（踩坑记录）
+
+1. **lucide 图标是描边图标**（`fill="none" stroke="currentColor"`），ArkUI `Image.fillColor()` 对描边无效
+   → 把 SVG 里的 `stroke="currentColor"` 批量替换为固定色 `#C7CBD1`，代码里不再用 `fillColor`。
+2. 隐藏行内操作时**不能用 `opacity(0)`**：它仍占布局，把标题挤成 `Ora…`；
+   → 给操作区固定宽度 + 标题列 `layoutWeight(3)`，地址/状态列收窄。
+3. 之前一次脚本因锚点断言失败**整轮改动未落盘**，日志里却显示"构建成功"；
+   → 每轮改完必须**截图验证**，不能只看 BUILD SUCCESSFUL。
+
+### 尚未对齐（下一轮）
+- 列表/网格**真实切换**（目前只有图标占位）
+- 分组「⋯」与行「⋯」的**上下文菜单**（多选、全选当前分组、批量删除）
+- 行的 **OS 图标**（官方按 Linux 发行版显示彩色图标；我们现在是首字母）
+- 导入/导出、排序、设置等按钮的**实际功能**
+- 窗口默认尺寸（`resize(1500,860)` 在 2in1 模拟器未生效）
+

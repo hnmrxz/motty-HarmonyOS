@@ -169,6 +169,7 @@ struct Index {
   @State pcNav: string = '主机';
   @State collapsedGroups: string[] = [];
   @State hoverRow: number = -1;
+  @State selectAll: boolean = false;
   @State aiAnswer: string = '';
   @State aiEndpoint: string = 'http://127.0.0.1:2297/v1/ai';
   @State rdpSrvStatus: string = '';
@@ -2172,10 +2173,15 @@ struct Index {
       ForEach(this.sections(), (g: string) => {
         ListItem() {
           Row({ space: 8 }) {
-            Text(this.isCollapsed(g) ? '▸' : '▾').fontSize(12).fontColor('#8A8F98')
+            Image($r('app.media.ic_check')).width(15).height(15)
+              
+              .opacity(this.selectAll ? 1 : 0.45)
+            Image(this.isCollapsed(g) ? $r('app.media.ic_chevron_right') : $r('app.media.ic_chevron_down'))
+              .width(14).height(14)
             Text(this.sectionLabel(g)).fontSize(13).fontColor('#C7CBD1').fontWeight(FontWeight.Medium)
             Text('(' + this.countGroup(g) + ')').fontSize(12).fontColor('#6B7078')
             Blank()
+            Image($r('app.media.ic_more')).id('group/menu/' + g).width(16).height(16)
           }
           .width('100%').height(34).padding({ left: 8, right: 8 })
           .onClick(() => { this.toggleGroup(g); })
@@ -2185,6 +2191,9 @@ struct Index {
             ListItem() {
               if (this.matchesQuery(h) && this.hostGroupOf(h) === g) {
                 Row({ space: 14 }) {
+                  Image($r('app.media.ic_check')).id('host-check/' + index).width(15).height(15)
+                    
+                    .opacity(this.selectAll ? 1 : 0.45)
                   // 颜色标记（原版 paintHostColorMark：左缘 3px 圆角竖条）
                   Column().width(3).height(40).borderRadius(2)
                     .backgroundColor(h.color.length > 0 ? h.color : Color.Transparent)
@@ -2198,11 +2207,15 @@ struct Index {
                     Text(h.label).fontSize(15).fontColor('#E8EAED').fontWeight(FontWeight.Medium)
                       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).width('100%')
                     Text(h.user.length > 0 ? h.user : '-').fontSize(12).fontColor('#8A8F98')
-                  }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+                  }.alignItems(HorizontalAlign.Start).layoutWeight(3)
                   // 地址（右对齐）
                   Text((h.proto === 'rdp' ? 'rdp://' : (h.proto === 'vnc' ? 'vnc://' : '')) +
                        h.address + (h.port.length > 0 ? ':' + h.port : ''))
-                    .fontSize(12).fontColor('#8A8F98').width(190).textAlign(TextAlign.End)
+                    .fontSize(12).fontColor('#8A8F98').width(170).textAlign(TextAlign.End)
+                  Row({ space: 4 }) {
+                    Text('○').fontSize(9).fontColor('#6B7078')
+                    Text(this.lang === 'zh' ? '未连接' : 'offline').fontSize(11).fontColor('#6B7078')
+                  }.id('host-status-text/' + index).width(58)
                   // 标签 chips（原版预设：开发/测试/生产）
                   ForEach(this.tagList(h), (tg: string) => {
                     Text(tg).fontSize(11).fontColor('#C7CBD1')
@@ -2211,7 +2224,7 @@ struct Index {
                   }, (tg: string) => h.id + tg)
                   // 行内操作：默认隐藏，悬停显示（对齐原版交互），id 保持在树上供用例使用
                   Row({ space: 6 }) {
-                  Button('⋯').fontSize(14).width(30).height(30)
+                    Button('⋯').fontSize(13).width(26).height(26)
                     .backgroundColor('#23262B').fontColor('#C7CBD1')
                     .onClick(() => { this.openSession(h.label, index); })
                   Button(this.t('host.test')).id('host-row/' + index).fontSize(11).height(28)
@@ -2228,7 +2241,7 @@ struct Index {
                   Button(this.t('host.del')).id('host-del/' + index).fontSize(11).height(28)
                     .backgroundColor('#3A2226').fontColor('#E08A8A')
                     .onClick(() => { this.askDeleteHost(index); })
-                  }.opacity(this.hoverRow === index ? 1 : 0)
+                  }.width(150).justifyContent(FlexAlign.End).opacity(this.hoverRow === index ? 1 : 0)
                 }
                 .width('100%').height(60).padding({ left: 10, right: 10 })
                 .borderRadius(10)
@@ -2262,9 +2275,10 @@ struct Index {
   }
 
   @Builder
-  pcNavItem(label: string, id: string, enabled: boolean, onTap: () => void) {
+  pcNavItem(label: string, id: string, icon: Resource, enabled: boolean, onTap: () => void) {
     Row({ space: 12 }) {
-      Text(label.substring(0, 1)).fontSize(14).fontColor('#9AA0A6').width(20).textAlign(TextAlign.Center)
+      Image(icon).width(17).height(17)
+        
       Text(label).fontSize(14)
         .fontColor(this.pcNav === label && enabled ? Color.White : '#C7CBD1')
         .fontWeight(this.pcNav === label && enabled ? FontWeight.Medium : FontWeight.Normal)
@@ -2276,6 +2290,28 @@ struct Index {
     .backgroundColor(this.pcNav === label && enabled ? '#2A2D33' : Color.Transparent)
     .opacity(enabled ? 1 : 0.45)
     .onClick(() => { if (enabled) { onTap(); } })
+  }
+
+
+  @Builder
+  pcTopBar() {
+    Row({ space: 10 }) {
+      // 左：九宫格 + 新建
+      Image($r('app.media.ic_grid')).width(16).height(16)
+      Image($r('app.media.ic_plus')).width(16).height(16)
+      Blank()
+      // 右：一排工具图标（占位按钮，id 便于后续接功能）
+      Image($r('app.media.ic_sort')).id('top/order').width(16).height(16)
+      Image($r('app.media.ic_columns')).id('top/paste').width(16).height(16)
+      Image($r('app.media.ic_terminal')).id('top/terminal').width(16).height(16)
+      Image($r('app.media.ic_search')).id('top/search').width(16).height(16)
+      Image($r('app.media.ic_sparkles')).id('top/ai').width(16).height(16)
+      Image($r('app.media.ic_bell')).id('top/notice').width(16).height(16)
+      Image($r('app.media.ic_settings')).id('top/settings').width(16).height(16)
+    }
+    .width('100%').height(38).padding({ left: 14, right: 14 })
+    .backgroundColor('#0C0D10')
+    .border({ width: { bottom: 1 }, color: '#1E2126' })
   }
 
   @Builder
@@ -2290,25 +2326,30 @@ struct Index {
         Blank()
       }.width('100%').padding({ left: 14, right: 14, top: 18, bottom: 18 })
 
-      this.pcNavItem('主机', 'nav/hosts', true, () => { this.pcNav = '主机'; this.showHosts = true; })
-      this.pcNavItem('工作区', 'nav/workspace', false, () => {})
-      this.pcNavItem('监控', 'diag/open', true, () => { this.diagOpen = true; })
-      this.pcNavItem('会话日志', 'nav/logs', false, () => {})
-      this.pcNavItem('密钥链', 'nav/keys', false, () => {})
-      this.pcNavItem('跳板路由', 'nav/jump', false, () => {})
-      this.pcNavItem('端口转发', 'fwd/open', true, () => { this.fwdOpen = true; this.reloadRules(); })
-      this.pcNavItem('已知主机', 'known/open', true, () => { this.openKnownHosts(); })
-      this.pcNavItem('快捷命令', 'nav/snippets', false, () => {})
-      this.pcNavItem('笔记', 'nav/notes', false, () => {})
+      this.pcNavItem('主机', 'nav/hosts', $r('app.media.ic_hosts'), true, () => { this.pcNav = '主机'; this.showHosts = true; })
+      this.pcNavItem('工作区', 'nav/workspace', $r('app.media.ic_workspace'), false, () => {})
+      this.pcNavItem('监控', 'diag/open', $r('app.media.ic_monitor'), true, () => { this.diagOpen = true; })
+      this.pcNavItem('会话日志', 'nav/logs', $r('app.media.ic_logs'), false, () => {})
+      this.pcNavItem('密钥链', 'nav/keys', $r('app.media.ic_keys'), false, () => {})
+      this.pcNavItem('跳板路由', 'nav/jump', $r('app.media.ic_jump'), false, () => {})
+      this.pcNavItem('端口转发', 'fwd/open', $r('app.media.ic_forward'), true, () => { this.fwdOpen = true; this.reloadRules(); })
+      this.pcNavItem('已知主机', 'known/open', $r('app.media.ic_known'), true, () => { this.openKnownHosts(); })
+      this.pcNavItem('快捷命令', 'nav/snippets', $r('app.media.ic_snippets'), false, () => {})
+      this.pcNavItem('笔记', 'nav/notes', $r('app.media.ic_notes'), false, () => {})
 
       Blank()
+      // 底部固定项（对照参照图：本地终端 / 设置）
+      this.pcNavItem('本地终端', 'nav/local-terminal', $r('app.media.ic_terminal'), true, () => {
+        this.pcNav = '本地终端';
+      })
+      this.pcNavItem('设置', 'nav/settings', $r('app.media.ic_settings'), false, () => {})
       Row({ space: 8 }) {
-        Button(this.t('top.lang')).id('ui/lang').height(28).fontSize(12)
-          .backgroundColor('#2A2D33').fontColor('#C7CBD1')
+        Button(this.t('top.lang')).id('ui/lang').height(26).fontSize(11)
+          .backgroundColor('#1E2127').fontColor('#9AA0A6')
           .onClick(() => { this.toggleLang(); })
         Blank()
         Text('RDP: 实验').id('rdp/experimental').fontSize(10).fontColor('#E0A458')
-      }.width('100%').padding({ left: 12, right: 12, bottom: 14 })
+      }.width('100%').padding({ left: 12, right: 12, top: 6, bottom: 12 })
     }
     .width(210).height('100%').backgroundColor('#101114')
     .border({ width: { right: 1 }, color: '#22252A' })
@@ -2330,8 +2371,11 @@ struct Index {
             if (this.matchesQuery(this.hosts[i])) { this.openSession(this.hosts[i].label, i); return; }
           }
         })
+      Button(this.lang === 'zh' ? '导入/导出' : 'Import/Export').id('hosts/import-export')
+        .height(38).fontSize(14).backgroundColor('#1E2127').fontColor('#C7CBD1')
       Button(this.t('top.newHost')).id('shell/add-host').height(38).fontSize(14)
-        .backgroundColor('#1E2127').fontColor('#C7CBD1')
+        .fontWeight(FontWeight.Medium)
+        .backgroundColor('#E8EAED').fontColor('#12141A')
         .onClick(() => { this.resetForm(); this.showDialog = true; })
     }
     .width('100%').padding({ left: 22, right: 22, top: 16, bottom: 10 })
@@ -2339,20 +2383,28 @@ struct Index {
 
   @Builder
   pcChips() {
-    Row({ space: 8 }) {
-      Text('全部 ' + this.hosts.length).id('chip/all').fontSize(12)
+    Row({ space: 10 }) {
+      Image($r('app.media.ic_check')).id('chips/select-all').width(16).height(16)
+        
+        .opacity(this.selectAll ? 1 : 0.45)
+        .onClick(() => { this.selectAll = !this.selectAll; })
+      Text((this.lang === 'zh' ? '全部 ' : 'All ') + this.hosts.length).id('chip/all').fontSize(12)
         .fontColor(Color.White).padding({ left: 12, right: 12, top: 5, bottom: 5 })
         .backgroundColor('#2A2D33').borderRadius(14)
-      Text('SSH ' + this.countProto('ssh')).id('chip/ssh').fontSize(12)
-        .fontColor('#C7CBD1').padding({ left: 12, right: 12, top: 5, bottom: 5 })
-        .backgroundColor('#1E2127').borderRadius(14)
-      Text('RDP ' + this.countProto('rdp')).id('chip/rdp').fontSize(12)
-        .fontColor('#C7CBD1').padding({ left: 12, right: 12, top: 5, bottom: 5 })
-        .backgroundColor('#1E2127').borderRadius(14)
-      Text('VNC ' + this.countProto('vnc')).id('chip/vnc').fontSize(12)
-        .fontColor('#C7CBD1').padding({ left: 12, right: 12, top: 5, bottom: 5 })
-        .backgroundColor('#1E2127').borderRadius(14)
+      ForEach(this.sections(), (g: string) => {
+        Text(this.sectionLabel(g) + ' ' + this.countGroup(g)).id('chip/group/' + g).fontSize(12)
+          .fontColor('#C7CBD1').padding({ left: 12, right: 12, top: 5, bottom: 5 })
+          .backgroundColor('#1E2127').borderRadius(14)
+      }, (g: string) => 'chip-' + g)
       Blank()
+      Image($r('app.media.ic_chevron_down')).id('chips/collapse').width(15).height(15)
+        .onClick(() => { this.collapsedGroups = this.sections(); })
+      Image($r('app.media.ic_chevron_right')).id('chips/expand').width(15).height(15)
+        .onClick(() => { this.collapsedGroups = []; })
+      Image($r('app.media.ic_rows')).id('view/list').width(16).height(16)
+      Image($r('app.media.ic_grid')).id('view/grid').width(16).height(16)
+      Image($r('app.media.ic_sort')).id('view/sort').width(16).height(16)
+      Image($r('app.media.ic_sliders')).id('view/order').width(16).height(16)
     }.width('100%').padding({ left: 22, right: 22, bottom: 8 })
   }
 
@@ -2416,6 +2468,7 @@ struct Index {
 
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
+      this.pcTopBar()
       Row() {
         this.pcSidebar()
         Column() {
@@ -2432,7 +2485,7 @@ struct Index {
         }
         .layoutWeight(1).height('100%').backgroundColor('#17181C')
       }
-      .width('100%').height('100%').backgroundColor('#17181C')
+      .width('100%').height('100%').backgroundColor('#17181C').margin({ top: 38 })
 
       if (this.vncOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
