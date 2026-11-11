@@ -64,6 +64,10 @@ const char *g_buildStamp = __DATE__ " " __TIME__;
 std::string g_lastError;
 // 我们自己的 ep.Init 是否被调用过：用来把失败点切在 shadow_subsystem_init 的前半段/后半段
 int g_vssInitCalls = 0;
+int g_vssStartCalls = 0;
+int g_threadEntered = 0;
+int g_threadExited = 0;
+int g_startRc = -2;
 std::string g_lastConfigDir;
 int g_lastRc = -1;
 
@@ -117,7 +121,11 @@ void paintSurface(rdpShadowSurface *surface, uint32_t frame) {
 }
 
 void captureThread(VssSubsystem *sub) {
+    g_threadEntered++;
     uint32_t frame = 0;
+    if (sub == nullptr) {
+        return;
+    }
     while (!sub->stop.load()) {
         rdpShadowServer *server = sub->common.server;
         sub->loops.fetch_add(1);
@@ -138,6 +146,7 @@ void captureThread(VssSubsystem *sub) {
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(1000 / kVssFps));
     }
+    g_threadExited++;
 }
 
 rdpShadowSubsystem *vss_new(void) {
@@ -183,12 +192,26 @@ int vss_uninit(rdpShadowSubsystem *base) {
 }
 
 int vss_start(rdpShadowSubsystem *base) {
+    g_vssStartCalls++;
     auto *sub = reinterpret_cast<VssSubsystem *>(base);
     if (sub == nullptr) {
         return -1;
     }
+    // 幂等：shadow_server_thread 会调用 ep.Start；重复调用时若线程已在跑就直接返回。
+    // （直接对 joinable 的 std::thread 赋值会抛 std::system_error -> std::terminate）
+    if (sub->worker.joinable()) {
+        serverLog("subsystem start: capture already running");
+        return 0;
+    }
     sub->stop.store(false);
-    sub->worker = std::thread(captureThread, sub);
+    try {
+        sub->worker = std::thread(captureThread, sub);
+        g_startRc = 1;
+    } catch (...) {
+        g_startRc = 0;
+        serverLog("subsystem start: thread creation failed");
+        return -1;
+    }
     serverLog("subsystem started (capture thread running)");
     return 0;
 }
@@ -234,7 +257,36 @@ int vss_entry_points(RDP_SHADOW_ENTRY_POINTS *ep) {
     return 1;
 }
 
+// 线程生命周期：必须先停并 join，再 stop/uninit/free shadow server。
+// 上一版直接起线程但没 join 就 free，导致 std::terminate / 野指针。
+// 启动采集线程：shadow 不会调用 ep.Start（实测），所以由我们起。
+// 用 try/catch 兜住 std::system_error，避免 std::terminate。
+int startCaptureThread() {
+    if (g_subsystem == nullptr || g_subsystem->worker.joinable()) {
+        return 0;
+    }
+    g_subsystem->stop.store(false);
+    try {
+        g_subsystem->worker = std::thread(captureThread, g_subsystem);
+        return 1;
+    } catch (...) {
+        serverLog("capture thread creation failed");
+        return 0;
+    }
+}
+
+void stopCaptureThread() {
+    if (g_subsystem == nullptr) {
+        return;
+    }
+    g_subsystem->stop.store(true);
+    if (g_subsystem->worker.joinable()) {
+        g_subsystem->worker.join();
+    }
+}
+
 void stopServerLocked() {
+    stopCaptureThread();
     if (g_server != nullptr) {
         shadow_server_stop(g_server);
         shadow_server_uninit(g_server);

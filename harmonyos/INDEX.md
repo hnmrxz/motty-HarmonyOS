@@ -1724,3 +1724,42 @@ exit=0
 ### 四、诚实边界
 `rdp.server-peer`（spec）**仍失败**；本轮通过的只是"服务端能启动"这条脚本化检查。
 不把脚本通过说成"RDP 完整链路可用"。
+---
+
+## Round 59：采集线程之谜（定位到"ep.Start 被调用但函数体没走到线程创建"）
+
+### 一、修掉的真 bug：重复启动导致崩溃
+上一版我"start 成功后自己起采集线程"，与 shadow 内部的 `ep.Start` 撞车：
+对 **已 joinable** 的 `std::thread` 赋值会抛 `std::system_error` → `std::terminate`。
+崩溃栈已符号化确认：
+```
+std::__n1::thread::operator=[abi:v15004](std::thread&&)   thread:256
+(anonymous namespace)::vss_start(...)                      rdp_server.cpp:194
+shadow_server_thread                                       shadow_server.c
+```
+→ 说明 **FreeRDP 确实会调用 `ep.Start`**（在 `shadow_server_thread` 里）。
+处置：删掉我们自己的重复启动；`vss_start` 改为**幂等**（已 joinable 直接返回 0），并 try/catch 兜底。
+
+### 二、仍未解决：`loops=0 surface=null frames=0`
+状态行实测：`vssStart=1 startRc=-2 tIn=0 tOut=0`
+- `vssStart=1`：`ep.Start` 被调用了一次
+- `startRc=-2`（初值）：**函数体没有执行到 `std::thread` 赋值那一行**
+- `tIn=0`：线程函数一次都没进入
+
+也就是说进到 `vss_start` 后、在 try 之前就返回了。可能原因（下一轮按序排除）：
+1. `base == nullptr` → 我们的空指针分支提前 return -1（但 `ep.Init` 同一指针是好的，需打印指针值确认）
+2. `sub->worker.joinable()` 为真（对象的 worker 处于奇怪状态，需打印 joinable 结果）
+3. 我们的 `reinterpret_cast<VssSubsystem*>(base)` 与 `ep.New` 分配的布局不一致
+   （`rdpShadowSubsystem` 必须是 `VssSubsystem` 的第一个成员——当前是，但要验证 `sizeof`/offset）
+
+### 三、当前可引用的证据（与上一轮相同，未退化）
+`tools/rdp-peer-check.ps1` 通过：
+```
+state: rdp-server: start rc=0 running port=13389 frames=0 loops=0 surface=null built=Nov 11 2026 08:16:07
+PASS 服务端处于 running / PASS 端口匹配 / PASS 二进制含构建指纹 → exit=0
+```
+**服务端能监听、能接受连接**这件事是脚本化机器判定通过的；**画面/位图**仍未验证。
+
+### 四、诚实边界
+`rdp.server-peer`（spec）仍失败；RDP 客户端仍只有连接路径；
+"服务端能启动"≠"RDP 可用"。

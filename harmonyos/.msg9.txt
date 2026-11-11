@@ -1,0 +1,19 @@
+﻿fix(harmonyos): 修掉采集线程重复启动崩溃；定位 ep.Start 未走到线程创建
+
+崩溃根因(已符号化):
+- 我"start 成功后自己起采集线程"与 shadow 内部 ep.Start 撞车
+- 对已 joinable 的 std::thread 赋值抛 std::system_error -> std::terminate
+- 栈: thread::operator= @ thread:256 -> vss_start @ rdp_server.cpp:194 -> shadow_server_thread
+  说明 FreeRDP 确实会调用 ep.Start（在 shadow_server_thread 里）
+处置: 删掉重复启动；vss_start 改幂等(已 joinable 直接返回 0) + try/catch
+
+仍未解决:
+- 状态行实测 vssStart=1 startRc=-2 tIn=0 tOut=0
+  => ep.Start 被调用，但函数体没执行到线程创建那行，线程一次未进入
+- 下一轮按序排除: base 是否空 / worker 是否 joinable / reinterpret_cast 布局是否一致
+
+证据(未退化):
+- tools/rdp-peer-check.ps1 通过: rc=0 running port=13389 + 端口匹配 + built 指纹，exit=0
+- 服务端能监听、能接受连接；画面/位图仍未验证
+
+诚实边界: rdp.server-peer(spec) 仍失败；RDP 客户端仍只有连接路径
