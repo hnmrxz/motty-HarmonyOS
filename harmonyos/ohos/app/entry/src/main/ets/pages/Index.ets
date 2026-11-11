@@ -323,6 +323,7 @@ struct Index {
   @State editingId: string = '';      // 非空 = 编辑模式
   @State deleteDialog: boolean = false;
   @State deleteIndex: number = -1;
+  @State deleteIds: string[] = [];
   @State hostQuery: string = '';
 
   private creds: Map<string, Cred> = new Map<string, Cred>();
@@ -521,6 +522,33 @@ struct Index {
 
   // 删除主机：同时清掉它的 known_hosts 与保险库口令（否则会留下孤儿信任）
   private async confirmDeleteHost(): Promise<void> {
+    // 批量删除分支：先清所选，再复用逐台删除的语义（hosts + known_hosts + 保险库）
+    if (this.deleteIds.length > 0) {
+      const ids: string[] = this.deleteIds.slice();
+      this.deleteIds = [];
+      this.deleteDialog = false;
+      if (this.store !== null) {
+        for (let i = 0; i < ids.length; i++) {
+          const idx2 = this.hosts.findIndex((x: HostItem) => x.id === ids[i]);
+          if (idx2 < 0) { continue; }
+          const h = this.hosts[idx2];
+          const key = this.hostKey(h.address, h.port);
+          const hp = new relationalStore.RdbPredicates('hosts');
+          hp.equalTo('id', h.id);
+          await this.store.delete(hp);
+          const kp = new relationalStore.RdbPredicates('known_hosts');
+          kp.equalTo('host', key);
+          await this.store.delete(kp);
+          await Vault.remove(key);
+          this.creds.delete(key);
+        }
+      }
+      this.selectedIds = [];
+      await this.settleStore();
+      await this.reload();
+      await this.reloadRules();
+      return;
+    }
     const idx = this.deleteIndex;
     this.deleteDialog = false;
     if (idx < 0 || idx >= this.hosts.length || this.store === null) {
@@ -2120,11 +2148,11 @@ struct Index {
     Column({ space: 10 }) {
       Text(this.t('host.deleteTitle')).id('hostdel/title').fontSize(16).fontWeight(FontWeight.Bold)
         .fontColor('#E8EAED').width('100%')
-      Text(this.t('host.deleteDesc').replace('%d', '1'))
+      Text(this.t('host.deleteDesc').replace('%d', String(this.deleteIds.length > 0 ? this.deleteIds.length : 1)))
         .fontSize(12).fontColor('#8A8F98').width('100%')
       Row({ space: 12 }) {
         Button(this.t('hostkey.cancel')).id('hostdel/cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
-          .onClick(() => { this.deleteDialog = false; this.deleteIndex = -1; })
+          .onClick(() => { this.deleteDialog = false; this.deleteIndex = -1; this.deleteIds = []; })
         Button(this.t('host.del')).id('hostdel/confirm').backgroundColor('#C62828').fontColor(Color.White)
           .onClick(() => { this.confirmDeleteHost(); })
       }.width('100%').justifyContent(FlexAlign.End)
@@ -2678,7 +2706,7 @@ struct Index {
           .fontColor('#E0A458').padding({ left: 8 })
         Button(this.lang === 'zh' ? '批量删除' : 'Delete').id('chips/delete-selected').height(24).fontSize(11)
           .backgroundColor('#3A2226').fontColor('#E08A8A')
-          .onClick(() => { this.deleteSelected(); })
+          .onClick(() => { this.askDeleteSelected(); })
         Button(this.lang === 'zh' ? '清除' : 'Clear').id('chips/clear-selection').height(24).fontSize(11)
           .backgroundColor('#1E2127').fontColor('#C7CBD1')
           .onClick(() => { this.clearSelection(); })
@@ -3856,6 +3884,14 @@ struct Index {
         hilog.error(DOMAIN, TAG, 'requestFocus palette failed: %{public}s', JSON.stringify(e));
       }
     }, 120);
+  }
+
+
+  private askDeleteSelected(): void {
+    if (this.selectedIds.length === 0) { return; }
+    this.deleteIds = this.selectedIds.slice();
+    this.deleteIndex = -1;
+    this.deleteDialog = true;
   }
 
   build() {

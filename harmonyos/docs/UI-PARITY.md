@@ -901,3 +901,31 @@ runner 新增动作 **`key`**（`uitest uiInput keyEvent <code>`，`code` 已进
 ### 结果
 `host.group-pin / host.group-filter / host.group-collapse / host.manage => 4/4 PASS`，lint 全绿。
 
+---
+
+## Round 33 追加：批量删除必须二次确认（真实安全缺口）
+
+### 之前的问题
+全选后点「批量删除」**直接就把主机删了**，没有确认框。官方语义是
+`删除选中的 %d 台主机？此操作无法撤销。`（`host.deleteDesc`），单台删除有确认、批量却没有——这是真实的误删风险。
+
+### 现在
+| 行为 | 实现 |
+|---|---|
+| 点「批量删除」 | 走 `askDeleteSelected()`：把选中 id 复制到 `deleteIds`，弹确认框（**不再直接删**） |
+| 确认框文案 | `host.deleteDesc` 用真实台数替换：`删除选中的 2 台主机？此操作无法撤销。` |
+| 确认 | 逐台删除 hosts + known_hosts + 保险库口令（与单台删除同一套语义），再刷新 |
+| 取消 | 清空 `deleteIds`，数据不动 |
+| 单台删除 | 行为不变（仍走 `deleteIndex` 分支） |
+
+### 用例
+`host.batch-delete`（pcOnly）**PASS**：
+建 2 台 → 全选 → 点批量删除 → **断言确认框里出现"删除选中的 2 台主机"** → 取消（两台都还在）→ 再删一次 → 确认 → 断言回到空态、两台都不再出现。
+
+### 回归
+`host.batch-delete / host.manage / host.form-chips / snippets.crud => 4/4 PASS`
+
+### 一个实现细节
+第一次改的时候把按钮的 `onClick` 换掉时**缩进没对上**（替换未命中），结果点批量删除仍是"直接删"，
+用例在"确认框文案"那一步就失败——这类"改了但没生效"的替换，必须靠**用例**而不是靠读代码来确认。
+

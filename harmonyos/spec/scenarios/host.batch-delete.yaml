@@ -1,0 +1,111 @@
+schema: 1
+id: host.batch-delete
+title: 批量删除：必须先确认（显示选中台数），确认后清空；取消则保留
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1200
+  - action: click
+    target: id:catalog/reset-hosts
+  - action: wait
+    ms: 1500
+  - action: click
+    target: id:diag/close
+  - action: wait
+    ms: 800
+  # 两台主机
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: bd-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.7.7.1
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1400
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: bd-b
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.7.7.2
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1400
+  # 全选 -> 批量删除 -> 先弹确认
+  - action: click
+    target: id:chips/select-all
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:chips/delete-selected
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "删除选中的 2 台主机|Delete 2 selected hosts"
+      withinMs: 8000
+  # 取消：两台都还在
+  - action: click
+    target: id:hostdel/cancel
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "bd-a"
+      withinMs: 6000
+  # 再删一次并确认：应清空
+  - action: click
+    target: id:chips/delete-selected
+  - action: wait
+    ms: 900
+  - action: click
+    target: id:hostdel/confirm
+  - action: wait
+    ms: 1800
+asserts:
+  - kind: screenRegex
+    regex: "还没有主机|No hosts yet"
+    withinMs: 12000
+  - kind: absent
+    value: "bd-a"
+    withinMs: 3000
+  - kind: absent
+    value: "bd-b"
+    withinMs: 3000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：全选后点批量删除会先弹确认（文案带真实台数 2）、取消不动数据、
+    再次确认后清空并回到空态。
+    **不覆盖**：只选中部分主机的批量删除、删除时保险库口令是否真的被清（另有 cred 类用例）、
+    撤销删除。
+deviations:
+  - 确认文案断言同时接受中文与英文（语言跟随系统，可能为任一）。
+notes: >-
+  这条用例的价值在于"批量删除不许一步到位"：没有确认框的实现会让这条在第一步就失败。
