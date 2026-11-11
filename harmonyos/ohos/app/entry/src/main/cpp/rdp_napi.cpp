@@ -106,6 +106,7 @@ static int g_frameH = 0;
 static int g_ilvOk = 0;
 static int g_ilvFail = 0;
 static int g_rawCopy = 0;
+static std::atomic<int> g_frameSeq{0};
 static std::mutex g_frameMtx;
 
 static bool ensureFrame(int w, int h) {
@@ -152,7 +153,7 @@ static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
                                 d.width, d.height, g_frame, PIXEL_FORMAT_RGBA32,
                                 stride, d.destLeft, d.destTop, W, H, TRUE);
                         }
-                        if (ok) g_planarOk++; else g_planarFail++;
+                        if (ok) { g_planarOk++; g_frameSeq.fetch_add(1); } else { g_planarFail++; }
                     } else {
                         if (g_ilv == nullptr) g_ilv = bitmap_interleaved_context_new(FALSE);
                         if (g_ilv != nullptr) {
@@ -160,7 +161,7 @@ static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
                                 d.width, d.height, d.bitsPerPixel, g_frame, PIXEL_FORMAT_RGBA32,
                                 stride, d.destLeft, d.destTop, W, H, nullptr);
                         }
-                        if (ok) g_ilvOk++; else g_ilvFail++;
+                        if (ok) { g_ilvOk++; g_frameSeq.fetch_add(1); } else { g_ilvFail++; }
                     }
                 } else {
                     const UINT32 bpp = (d.bitsPerPixel > 0) ? d.bitsPerPixel / 8 : 4;
@@ -178,6 +179,7 @@ static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
                         }
                     }
                     g_rawCopy++;
+                    g_frameSeq.fetch_add(1);
                 }
             }
         }
@@ -920,6 +922,15 @@ napi_value RdpWriteBmp(napi_env env, napi_callback_info info) {
     return out;
 }
 
+
+// rdpFrameSeq() -> 已解压帧序号（用于"帧没变就不重复写 BMP"）
+napi_value RdpFrameSeq(napi_env env, napi_callback_info info) {
+    (void)info;
+    napi_value out = nullptr;
+    napi_create_int32(env, g_frameSeq.load(), &out);
+    return out;
+}
+
 napi_value RdpSnapshot(napi_env env, napi_callback_info info) {
     (void)info;
     // 直接返回 Uint8Array：ArkTS 侧收到的类型才与 `Uint8Array` 匹配
@@ -986,6 +997,7 @@ void RegisterRdpFunctions(napi_env env, napi_value exports) {
         {"rdpInputProbe", nullptr, RdpInputProbe, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpSnapStats", nullptr, RdpSnapStats, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpWriteBmp", nullptr, RdpWriteBmp, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"rdpFrameSeq", nullptr, RdpFrameSeq, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpFrame", nullptr, RdpFrame, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rawTcpProbe", nullptr, RawTcpProbe, nullptr, nullptr, nullptr, napi_default, nullptr},
     };

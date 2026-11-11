@@ -287,6 +287,8 @@ struct Index {
   @State rdpFrameInfo: string = '';
   @State rdpFrameWrites: number = 0;
   @State rdpPreviewOn: boolean = false;
+  @State rdpFrameSkips: number = 0;
+  private rdpFrameLastSeq: number = -1;
   private rdpPreviewTimer: number = -1;
   private rdpCanvasCtx: CanvasRenderingContext2D = new CanvasRenderingContext2D(new RenderingContextSettings(true));  // 3389 是特权端口，应用绑不上
   @State selText: string = '';
@@ -3984,6 +3986,19 @@ struct Index {
 
   // 把自解码整帧写成 BMP 用于 Image 显示（ArkUI Image 支持 bmp）
   private updateRdpFrame(): void {
+    // 帧没变就不重复写 3MB 文件：用 C++ 侧的已解压帧序号判断
+    let seq: number = -1;
+    try {
+      seq = mottynapi.rdpFrameSeq() as number;
+    } catch (e) {
+      seq = -1;
+    }
+    if (seq >= 0 && seq === this.rdpFrameLastSeq) {
+      this.rdpFrameSkips = this.rdpFrameSkips + 1;
+      this.rdpFrameInfo = 'bmp: skip unchanged writes=' + this.rdpFrameWrites + ' skipped=' + this.rdpFrameSkips;
+      return;
+    }
+    this.rdpFrameLastSeq = seq;
     const ctx = getContext(this) as common.UIAbilityContext;
     const dir: string = ctx !== undefined && ctx.cacheDir !== undefined ? ctx.cacheDir : '/data/storage/el2/base/cache';
     const path: string = dir + '/rdp-frame.bmp';

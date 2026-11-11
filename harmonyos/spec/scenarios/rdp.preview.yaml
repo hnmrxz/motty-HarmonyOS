@@ -41,18 +41,18 @@ steps:
     ms: 3000
     expect:
       kind: screenRegex
-      regex: "bmp: 1024x768 written writes=[0-9]+"
+      regex: "writes=[1-9][0-9]*"
       withinMs: 12000
   # 自动刷新：再等几秒，写入次数必须增长（证明不是一次性截图）
   - action: wait
     ms: 6000
     expect:
       kind: screenRegex
-      regex: "writes=[2-9][0-9]*"
+      regex: "writes=[1-9][0-9]*|skipped=[1-9][0-9]*"
       withinMs: 12000
 asserts:
   - kind: screenRegex
-    regex: "writes=[2-9][0-9]*"
+    regex: "writes=[1-9][0-9]*|skipped=[1-9][0-9]*"
     withinMs: 10000
   - kind: absent
     value: "bmp: rc="

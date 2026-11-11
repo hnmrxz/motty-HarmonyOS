@@ -1,0 +1,70 @@
+schema: 1
+id: rdp.preview-idle
+title: 预览增量：停掉服务端后帧不再变化，预览应跳过写盘（skipped 增长）
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - E04
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "New Host|新建主机"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1000
+  - action: click
+    target: id:rdp/srv-start
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "running port=13389"
+      withinMs: 15000
+  - action: click
+    target: id:rdp/render
+  - action: wait
+    ms: 16000
+  - action: click
+    target: id:rdp/frame-btn
+  - action: wait
+    ms: 5000
+    expect:
+      kind: screenRegex
+      regex: "writes=[1-9][0-9]*"
+      withinMs: 12000
+  # 渲染循环已经结束、客户端断开：之后不应再有新帧（帧序号冻结）
+  # 再等几个刷新周期，应当出现"跳过未变化帧"
+  - action: wait
+    ms: 9000
+    expect:
+      kind: screenRegex
+      regex: "skipped=[1-9][0-9]*"
+      withinMs: 20000
+asserts:
+  - kind: screenRegex
+    regex: "skipped=[1-9][0-9]*"
+    withinMs: 10000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：停掉内置 RDP 服务端后，预览刷新检测到帧序号未变并跳过写盘（skipped 增加）。
+    **不覆盖**：真实网络抖动导致的部分帧更新、帧序号回绕（int32）、多客户端场景。
+    注：原本想用 rdp/srv-stop 停服务端，但该按钮被按钮行溢出裁掉、点不到（已记为待修 UI 缺陷），
+    改用"渲染结束后帧自然冻结"这一等价场景。
+deviations:
+  - 用"停服务端让帧冻结"来构造"帧未变"的场景，而不是靠真实的静止桌面。
+  - 连续跑多条 RDP 用例时先停应用再跑。
+notes: >-
+  这条用例证明的是"增量判断生效"（不重复写 3MB 文件），不是画面质量。
