@@ -1072,3 +1072,24 @@ runner 新增动作 **`key`**（`uitest uiInput keyEvent <code>`，`code` 已进
 - **悬停高亮没有自动化覆盖**：`uitest` 不注入 hover 事件；已写进用例 `limits`，不假装测过；
 - Esc 关闭后焦点落点、连续开关多次也没覆盖。
 
+---
+
+## Round 65 追加：主机字段对照（上游 `internal/workbench/persist.go: SavedHost` vs 本实现）
+
+| 上游字段 | 本实现 | 差距 |
+|---|---|---|
+| `ID` | `hosts.id` | ✅ |
+| `Label` | `hosts.label` | ✅ |
+| `Group` | `hosts.grp` | ✅（含 ★ 固定、折叠） |
+| `Tags` | `hosts.tags` | ✅（表单 chips + 12/32 校验） |
+| `Color` | `hosts.color` | ✅（7 色板 + #RRGGBB 校验） |
+| `Address` / `Port` / `User` | `hosts.address` / `port` / `usr` | ✅ |
+| **`Icon`** | 无 | ❌ **缺**：主机卡片图标固定，官方可按主机设图标 |
+| **`System`** | 无 | ❌ **缺**：官方记录远端系统（用于图标/提示），我们没存 |
+| `savedTransport`（传输协议等） | `hosts.proto`（ssh/rdp/vnc） | ⚠️ 部分：我们有协议三选一，但没有上游的传输细项 |
+
+### 结论（下一轮可直接做的两件小事）
+1. **`Icon`**：DB 加一列 + 表单加图标选择器（6~8 个内置图标）+ 列表/网格卡片渲染，用例断言"选图标后卡片显示对应图标 id"；
+2. **`System`**：DB 加一列，首次连接成功后写入（`uname -s` 或 RDP/VNC 协商结果），卡片/详情显示；无对端时显示空。
+两者都不涉及复杂协议，属于"可实现的功能"，符合本轮目标。
+
