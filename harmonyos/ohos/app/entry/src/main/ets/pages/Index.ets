@@ -24,6 +24,8 @@ import { util } from '@kit.ArkTS';
 import mottynapi from 'libmottynapi.so';
 import { picker, fileIo } from '@kit.CoreFileKit';
 
+const FRAME_W: number = 1024;
+const FRAME_H: number = 768;
 const DOMAIN: number = 0x0000;
 const TAG: string = 'MOTTY';
 
@@ -901,6 +903,7 @@ struct Index {
   // 模型质量本身不在验证范围内（见 spec 的 evidence.limits）。
   // ---------------- RDP 服务端（诊断用：给客户端一个真实协议的对端）----------------
   // 把 C++ 侧 64x48 采样画到 Canvas（每像素一个 fillRect，共 3072 次）
+
   private drawRdpSnapshot(): void {
     this.rdpSnapInfo = 'rdp-canvas: start';
     let px: Uint8Array;

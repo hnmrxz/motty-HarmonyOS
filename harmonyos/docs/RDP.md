@@ -707,3 +707,31 @@ rdp-render: frames=164 paints=164 size=1024x768 pixels=786432 depth=32 ... plana
 - PixelMap 创建失败要能降级回 64×48 采样图（不能因此让整条链路崩）；
 - 这些都需要在 **PC（2in1）** 上实测，不能凭 API 文档声称可用。
 
+---
+
+## Round 47：PixelMap 接 UI 的第一次尝试失败（记录清楚，代码已回退）
+
+### 做了什么
+1. **保留**：NAPI 新增 `rdpFrame()`，把自解码整帧（1024×768 RGBA，3 MB）以 `ArrayBuffer` 返回；
+2. **尝试后回退**：ArkTS 侧 `image.createPixelMap(buffer, {size, pixelFormat, editable, alphaType})`
+   → `Image(pixelMap)` 显示。
+
+### 失败现象（实测，不是猜）
+- `rdpPixelInfo` 停在 `'pixel: creating 3145728B'`：**`createPixelMap` 的 Promise 既不 resolve 也不 reject**，
+  等 18 秒仍无结果，`rdp/frame` 节点始终不存在；
+- 期间还出现一次 SIGSEGV（仍是 FreeRDP `WLog_PrintMessageVA` 那条间歇性崩溃，与 PixelMap 无直接证据关系）。
+
+### 处置
+- ArkTS 侧的 PixelMap 代码**全部回退**（不留半成品），只保留 NAPI 的 `rdpFrame()`；
+- 回退后 `rdp.server-peer / rdp.client-render / rdp.client-input => 3/3 PASS`。
+
+### 下一步（换一条更稳的路）
+1. **不走 ArkTS `createPixelMap`**：在 NAPI 里用 `OH_PixelmapNative_CreatePixelmap`（`pixelmap_native.h`）
+   直接把 `g_frame` 建成原生 PixelMap 再交给 ArkUI；
+2. 或退一步：把整帧编码成 PNG 写到缓存目录，UI 用 `Image($r('file://...'))` 显示（简单、慢一点，但可靠）；
+3. 两种方案都要先在小尺寸（例如 256×192）验证 Promise/回调能正常完成，再上 1024×768。
+
+### 教训
+**"API 文档说能" ≠ "本机能跑"**。这次按文档写了 `createPixelMap`，结果是静默不返回；
+以后再接平台 API，先用最小尺寸跑通一次、拿到可观察的完成信号，再往上加。
+

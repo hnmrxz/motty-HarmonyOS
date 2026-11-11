@@ -843,6 +843,29 @@ napi_value RawTcpProbe(napi_env env, napi_callback_info info) {
     return out;
 }
 
+
+// rdpFrame() -> ArrayBuffer(RGBA32, w*h*4)：把自解码帧整帧交给 ArkTS 建 PixelMap。
+// 复用同一个 ArrayBuffer 需要外部每次拷贝，因此这里一次性新建，调用方负责别长期持有。
+napi_value RdpFrame(napi_env env, napi_callback_info info) {
+    (void)info;
+    std::lock_guard<std::mutex> lock(g_frameMtx);
+    if (g_frame == nullptr || g_frameW <= 0 || g_frameH <= 0) {
+        napi_value nul = nullptr;
+        napi_get_null(env, &nul);
+        return nul;
+    }
+    const size_t bytes = static_cast<size_t>(g_frameW) * static_cast<size_t>(g_frameH) * 4;
+    napi_value ab = nullptr;
+    void *data = nullptr;
+    if (napi_create_arraybuffer(env, bytes, &data, &ab) != napi_ok || data == nullptr) {
+        napi_value nul = nullptr;
+        napi_get_null(env, &nul);
+        return nul;
+    }
+    memcpy(data, g_frame, bytes);
+    return ab;
+}
+
 napi_value RdpSnapshot(napi_env env, napi_callback_info info) {
     (void)info;
     // 直接返回 Uint8Array：ArkTS 侧收到的类型才与 `Uint8Array` 匹配
@@ -908,6 +931,7 @@ void RegisterRdpFunctions(napi_env env, napi_value exports) {
         {"rdpSnapshot", nullptr, RdpSnapshot, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpInputProbe", nullptr, RdpInputProbe, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpSnapStats", nullptr, RdpSnapStats, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"rdpFrame", nullptr, RdpFrame, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rawTcpProbe", nullptr, RawTcpProbe, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
