@@ -2962,6 +2962,7 @@ struct Index {
 
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
+      Column() {
       this.pcTopBar()
       Row() {
         this.pcSidebar()
@@ -2983,7 +2984,8 @@ struct Index {
         }
         .layoutWeight(1).height('100%').backgroundColor('#17181C')
       }
-      .width('100%').height('100%').backgroundColor('#17181C').margin({ top: 38 })
+      .layoutWeight(1).width('100%').backgroundColor('#17181C')
+      }
 
       if (this.vncOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})

@@ -218,3 +218,29 @@ catalog-import: added=0 dup=2 total=2        # 幂等
 - `groups` 字段已写出但导入时未恢复折叠状态；
 - `version > 4` 与非法 JSON 的拒绝路径未加入用例（有代码分支）。
 
+---
+
+## Round 7 追加：窗口尺寸生效 + 布局裁切修复
+
+### 修掉的
+| 问题 | 根因 | 修法 |
+|---|---|---|
+| `mainWin.resize()` 完全没生效 | 用的是**回调式** `getMainWindow((err, win) => …)`，该签名在此 API 版本下不触发 | 改成 Promise：`windowStage.getMainWindow().then(...)`，并在 then/catch 里各打一条 hilog |
+| 缩窗口后内容被裁（侧栏底部「本地终端/设置/English」看不到） | 顶栏用 `Stack()` + 内容 `.margin({top:38})` 硬顶下来，高度 100% 再被 margin 顶出可视区 | 顶栏改为**布局内元素**：`Column(){ pcTopBar(); Row(){侧栏, 主区}.layoutWeight(1) }`，不再用 margin 补丁 |
+| 窗口偏小 | `resize(1500,860)` 实际得到的窗口反而更小（单位与缩放比不是 vp） | 改为 `resize(2400,1500)`，实测窗口明显变大且内容完整 |
+
+### 实测
+```
+hilog: resize ok 1500x860        # 旧目标也“成功”，但窗口反而变小
+hilog: got main window, resizing # 现在能看到完整链路
+截图 win3.png：窗口变大、侧栏底部四项完整可见、无裁切
+```
+
+### 学到的一条
+- `getMainWindow` 的回调式与 Promise 式行为不一致；**凡是没有日志的“没生效”，先怀疑调用签名**。
+- 布局上尽量不用“视觉平移”的 margin 补丁，改成 flex 里真实的兄弟关系，窗口缩放才不会裁切。
+
+### 仍未做
+- 设置页（`nav/settings` 目前是禁用态）
+- 排序/视图模式的持久化（官方 `state.save()`）
+

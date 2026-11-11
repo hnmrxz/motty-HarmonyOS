@@ -24,6 +24,12 @@
         "description": "$string:EntryAbility_desc",
         "icon": "$media:layered_image",
         "label": "$string:EntryAbility_label",
+        // PC 端：允许自由窗口/分屏，并给出合理最小尺寸（否则 resize 会被系统忽略）
+        "supportWindowMode": ["fullscreen", "split", "floating"],
+        "minWindowWidth": 900,
+        "minWindowHeight": 600,
+        "maxWindowWidth": 3840,
+        "maxWindowHeight": 2160,
         "startWindowIcon": "$media:startIcon",
         "startWindowBackground": "$color:start_window_background",
         "exported": true,

@@ -37,13 +37,16 @@ export default class EntryAbility extends UIAbility {
     // Main window is created, set main page for this ability
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
 
-    windowStage.getMainWindow((winErr, mainWin) => {
-      if (!winErr && mainWin !== undefined) {
-        // PC 端默认窗口：参考 Windows 版 motty 的 ~1500x830 观感
-        mainWin.resize(1500, 860).then(() => {
-          mainWin.setWindowBackgroundColor('#17181C');
-        }).catch(() => {});
-      }
+    windowStage.getMainWindow().then((mainWin: window.Window) => {
+      hilog.info(DOMAIN, 'testTag', 'got main window, resizing');
+      mainWin.resize(2400, 1500).then(() => {
+        hilog.info(DOMAIN, 'testTag', 'resize ok 1500x860');
+        mainWin.setWindowBackgroundColor('#17181C');
+      }).catch((e: Error) => {
+        hilog.error(DOMAIN, 'testTag', 'resize failed: %{public}s', JSON.stringify(e));
+      });
+    }).catch((e: Error) => {
+      hilog.error(DOMAIN, 'testTag', 'getMainWindow failed: %{public}s', JSON.stringify(e));
     });
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
