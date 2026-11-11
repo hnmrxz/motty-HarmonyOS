@@ -150,3 +150,31 @@ python harmonyos/spec/run.py harmonyos/spec/scenarios/<spec>.yaml --serial 127.0
   精确取到该行头像节点再判断是"图标没渲染"还是"分支没走"。
 - 行复选框被行级 `onClick` 吞掉点击的问题（当前用顶部全选作为可靠入口）。
 
+---
+
+## Round 5 追加：行复选框点击修复 + 图标渲染确认
+
+### 修掉的
+| 问题 | 根因 | 修法 |
+|---|---|---|
+| 行内复选框点击无效（顶部全选却可用） | `Text` 的点击区在 `Row`/`ListItem` 内被父级命中测试吞掉 | 改成 `Button` + `.hitTestBehavior(HitTestMode.Block)`，并缩小行内右侧列宽避免挤压 |
+| 行点击误吞操作 | 整行曾被设了 `onClick(() => {})` | 删除行级 `onClick`，改为只有"名称/用户列"可点开连接 |
+
+### 确认（用 DevEco CLI 判断，不靠肉眼）
+- 给头像加 id 后 `devecocli ui layout` 显示：`host-avatar-icon/0`、`host-avatar-icon/1` 都存在
+  ⇒ 两行都走了 **OS 图标分支**（不是首字母回退）。
+- 之前把 `NAS` 行那个"灰底白 S"误判成首字母回退——**它其实是 Synology 品牌图标本身**。
+  结论：OS 图标功能是好的，之前的怀疑来自肉眼误读，不是代码问题。
+
+### 交互验证（脚本点击 + 结构断言）
+```
+select-all 点击        -> 批量操作条出现 (True)
+chips/clear-selection  -> 批量操作条消失 (False)
+host-check/0 点击      -> 批量操作条出现 (True)
+```
+
+### 记录的一个坑
+- 用 PowerShell 写含 `☑/☐` 等符号的 ArkTS 代码时，**编码会把符号写坏**（显示成 `鈽?`）。
+  虽未导致编译失败，但会让 `Text(...)` 字面量退化。**含非 ASCII 符号的代码行必须用 Python 以 UTF-8 写入**，
+  写完后用 `dump`/编译双重确认。
+

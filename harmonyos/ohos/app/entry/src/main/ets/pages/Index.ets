@@ -2176,7 +2176,8 @@ struct Index {
       ForEach(this.sections(), (g: string) => {
         ListItem() {
           Row({ space: 8 }) {
-            Image($r('app.media.ic_check')).width(15).height(15)
+            Text(this.selectAll ? '☑' : '☐').fontSize(15).width(18)
+              .textAlign(TextAlign.Center).fontColor(this.selectAll ? '#3DDC97' : '#6B7078')
               
               .opacity(this.selectAll ? 1 : 0.45)
             Image(this.isCollapsed(g) ? $r('app.media.ic_chevron_right') : $r('app.media.ic_chevron_down'))
@@ -2200,7 +2201,11 @@ struct Index {
             ListItem() {
               if (this.matchesQuery(h) && this.hostGroupOf(h) === g) {
                 Row({ space: 14 }) {
-                  Image($r('app.media.ic_check')).id('host-check/' + index).width(15).height(15)
+                  Button(this.isSelected(h) ? '☑' : '☐').id('host-check/' + index)
+                    .fontSize(15).width(24).height(24).padding(0).backgroundColor('#00000000')
+                    .fontColor(this.isSelected(h) ? '#3DDC97' : '#6B7078')
+                    .hitTestBehavior(HitTestMode.Block)
+                    .onClick(() => { this.toggleSelect(h); })
                     
                     .opacity(this.isSelected(h) ? 1 : (this.selectAll ? 1 : 0.45))
                   // 颜色标记（原版 paintHostColorMark：左缘 3px 圆角竖条）
@@ -2208,9 +2213,10 @@ struct Index {
                     .backgroundColor(h.color.length > 0 ? h.color : Color.Transparent)
                   // 图标块：首字母
                   if (this.hasOsIcon(h)) {
-                    Image(this.osImage(h)).width(26).height(26)
+                    Image(this.osImage(h)).id('host-avatar-icon/' + index).width(26).height(26)
                   } else {
-                    Text(h.label.substring(0, 1).toUpperCase()).fontSize(16).fontWeight(FontWeight.Bold)
+                    Text(h.label.substring(0, 1).toUpperCase()).id('host-avatar-letter/' + index)
+                      .fontSize(16).fontWeight(FontWeight.Bold)
                       .fontColor(Color.White).width(40).height(40).textAlign(TextAlign.Center)
                       .borderRadius(20)
                       .backgroundColor(h.color.length > 0 ? h.color : '#2A2D33')
@@ -2220,24 +2226,26 @@ struct Index {
                     Text(h.label).fontSize(15).fontColor('#E8EAED').fontWeight(FontWeight.Medium)
                       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).width('100%')
                     Text(h.user.length > 0 ? h.user : '-').fontSize(12).fontColor('#8A8F98')
-                  }.alignItems(HorizontalAlign.Start).layoutWeight(3)
+                  }
+                  .alignItems(HorizontalAlign.Start).layoutWeight(3)
+                  .onClick(() => { this.openSession(h.label, index); })
                   // 地址（右对齐）
                   Text((h.proto === 'rdp' ? 'rdp://' : (h.proto === 'vnc' ? 'vnc://' : '')) +
                        h.address + (h.port.length > 0 ? ':' + h.port : ''))
-                    .fontSize(12).fontColor('#8A8F98').width(170).textAlign(TextAlign.End)
+                    .fontSize(12).fontColor('#8A8F98').width(150).textAlign(TextAlign.End)
                   Row({ space: 4 }) {
                     Text('○').fontSize(9).fontColor('#6B7078')
                     Text(this.lang === 'zh' ? '未连接' : 'offline').fontSize(11).fontColor('#6B7078')
-                  }.id('host-status-text/' + index).width(58)
+                  }.id('host-status-text/' + index).width(50)
                   // 标签 chips（原版预设：开发/测试/生产）
                   ForEach(this.tagList(h), (tg: string) => {
                     Text(tg).fontSize(11).fontColor('#C7CBD1')
-                      .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+                      .padding({ left: 7, right: 7, top: 3, bottom: 3 })
                       .backgroundColor('#23262B').borderRadius(12)
                   }, (tg: string) => h.id + tg)
                   // 行内操作：默认隐藏，悬停显示（对齐原版交互），id 保持在树上供用例使用
-                  Row({ space: 6 }) {
-                    Button('⋯').fontSize(13).width(26).height(26)
+                  Row({ space: 4 }) {
+                    Button('⋯').fontSize(13).width(24).height(24)
                     .backgroundColor('#23262B').fontColor('#C7CBD1')
                     .onClick(() => { this.openSession(h.label, index); })
                     .bindMenu([
@@ -2260,7 +2268,7 @@ struct Index {
                   Button(this.t('host.del')).id('host-del/' + index).fontSize(11).height(28)
                     .backgroundColor('#3A2226').fontColor('#E08A8A')
                     .onClick(() => { this.askDeleteHost(index); })
-                  }.width(150).justifyContent(FlexAlign.End).opacity(this.hoverRow === index ? 1 : 0)
+                  }.width(96).justifyContent(FlexAlign.End).opacity(this.hoverRow === index ? 1 : 0)
                 }
                 .width('100%').height(60).padding({ left: 10, right: 10 })
                 .borderRadius(10)
@@ -2269,7 +2277,6 @@ struct Index {
                   if (isHover) { this.hoverRow = index; }
                   else if (this.hoverRow === index) { this.hoverRow = -1; }
                 })
-                .onClick(() => {})
               }
             }
           }, (h: HostItem) => h.id)
@@ -2403,7 +2410,8 @@ struct Index {
   @Builder
   pcChips() {
     Row({ space: 10 }) {
-      Image($r('app.media.ic_check')).id('chips/select-all').width(16).height(16)
+      Text(this.selectAll ? '☑' : '☐').id('chips/select-all').fontSize(16).width(20)
+        .textAlign(TextAlign.Center).fontColor(this.selectAll ? '#3DDC97' : '#6B7078')
         
         .opacity(this.selectAll ? 1 : 0.45)
         .onClick(() => {
