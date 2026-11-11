@@ -2295,6 +2295,15 @@ Round 61–81 动过 VNC 面板按钮顺序、转发面板滚动容器、诊断�
 `vnc.desktopsize`/`vnc.adapt`（需 `-vnc-resize`）属不同夹具模式，未覆盖。
 ---
 
+## Round 83：文档数字对齐 + 补记 INDEX 缺失的 4 个轮次
+
+- 核对标题时发现 `Round 1 / 69 / 75 / 76` **完全不存在**：那几轮用 PowerShell here-string 追加中文，
+  **静默失败**（`AppendAllText` 收到空串）。已改用 Python 重写这四段。
+  教训写进本文件：**中文文档不要用 PowerShell here-string 拼**。
+- `COMPLETION-REPORT.md`：用例数字 50 → 55，新增 §8「最终状态」，
+  写清 E1/E2/E3 口径与接手者的最短路径，并明确"这个复刻**不是** RDP 能用了"。
+- 校验：`spec/lint.py` 全绿、`gen-sbom.py --check` 16 组件/36 产物通过、INDEX 轮次 1–82 无缺失。
+
 ## Round 84：`sftp.download` 双画像通过（补上"读到的是不是对的内容"）
 
 ### 一、用例
@@ -2334,3 +2343,25 @@ Round 61–81 动过 VNC 面板按钮顺序、转发面板滚动容器、诊断�
 
 ### 三、状态
 用例仍 56 条（这两条本就存在，只是此前未在此模式验证）；E1 能力 16。
+
+---
+
+## Round 86：收尾一致性核查
+
+本轮不加功能，只做"账要平"：
+
+| 检查项 | 结果 |
+|---|---|
+| INDEX 轮次完整性（1–86） | 补齐 `Round 83` 条目后无缺失 |
+| `spec/lint.py` | 全绿 |
+| `gen-sbom.py --check` | 16 组件 / 36 份产物通过 |
+| 工作区 | 干净（`git status` 无输出） |
+| 与远端 | `HEAD == origin/main` |
+
+另外把 `COMPLETION-REPORT.md` §8 与两个回归矩阵对齐（`regression-round82.json` 8/8、
+`regression-round85.json` 2/2 双画像）。
+
+### 仍缺的（不因为文档补齐而消失）
+- RDP 画面内容 / 输入回传 / NLA / 真实 Windows 互通 → **E3**
+- arm64 真机 41 项 → **未执行**（只有编译证据 E2）
+- 上架合规：release 证书、隐私政策 URL、渗透测试 → 未做

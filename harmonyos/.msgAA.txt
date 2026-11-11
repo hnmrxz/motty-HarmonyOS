@@ -1,0 +1,9 @@
+﻿docs(harmonyos): 收尾一致性核查 + 补 Round 83/86 条目
+
+- INDEX 补齐 Round 83 与 Round 86，轮次 1-86 无缺失
+- COMPLETION-REPORT §8 与两个回归矩阵对齐:
+  regression-round82.json (8/8 双画像) + regression-round85.json (2/2 双画像)
+- 核查: lint 全绿、SBOM 16 组件 36 产物通过、工作区干净、HEAD==origin/main
+
+仍缺(不因文档补齐而消失): RDP 画面/输入/NLA/真实 Windows 互通(E3)、
+arm64 真机 41 项(未执行)、上架合规(release 证书/隐私政策 URL/渗透测试)
