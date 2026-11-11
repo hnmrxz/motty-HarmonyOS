@@ -866,6 +866,60 @@ napi_value RdpFrame(napi_env env, napi_callback_info info) {
     return ab;
 }
 
+
+// rdpWriteBmp(path) -> 0 ok / <0 失败：把自解码整帧写成 32bpp BMP（ArkUI Image 支持 bmp）。
+napi_value RdpWriteBmp(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int32_t rc = -1;
+    char path[512] = {0};
+    size_t len = 0;
+    if (argc >= 1 && napi_get_value_string_utf8(env, args[0], path, sizeof(path), &len) == napi_ok) {
+        std::lock_guard<std::mutex> lock(g_frameMtx);
+        if (g_frame != nullptr && g_frameW > 0 && g_frameH > 0) {
+            FILE *f = fopen(path, "wb");
+            if (f != nullptr) {
+                const uint32_t w = static_cast<uint32_t>(g_frameW);
+                const uint32_t h = static_cast<uint32_t>(g_frameH);
+                const uint32_t rowBytes = w * 4;
+                const uint32_t imgSize = rowBytes * h;
+                const uint32_t fileSize = 54 + imgSize;
+                unsigned char hdr[54] = {0};
+                hdr[0] = 'B'; hdr[1] = 'M';
+                memcpy(&hdr[2], &fileSize, 4);
+                uint32_t off = 54; memcpy(&hdr[10], &off, 4);
+                uint32_t hdrSize = 40; memcpy(&hdr[14], &hdrSize, 4);
+                memcpy(&hdr[18], &w, 4);
+                memcpy(&hdr[22], &h, 4);
+                uint16_t planes = 1; memcpy(&hdr[26], &planes, 2);
+                uint16_t bpp = 32; memcpy(&hdr[28], &bpp, 2);
+                memcpy(&hdr[34], &imgSize, 4);
+                bool ok = fwrite(hdr, 1, 54, f) == 54;
+                unsigned char *row = static_cast<unsigned char*>(malloc(rowBytes));
+                if (row != nullptr) {
+                    for (int32_t y = static_cast<int32_t>(h) - 1; y >= 0 && ok; y--) {
+                        const unsigned char *src = g_frame + static_cast<size_t>(y) * rowBytes;
+                        for (uint32_t x = 0; x < w; x++) {
+                            row[x * 4 + 0] = src[x * 4 + 2];
+                            row[x * 4 + 1] = src[x * 4 + 1];
+                            row[x * 4 + 2] = src[x * 4 + 0];
+                            row[x * 4 + 3] = 255;
+                        }
+                        if (fwrite(row, 1, rowBytes, f) != rowBytes) ok = false;
+                    }
+                    free(row);
+                } else { ok = false; }
+                fclose(f);
+                rc = ok ? 0 : -2;
+            }
+        }
+    }
+    napi_value out = nullptr;
+    napi_create_int32(env, rc, &out);
+    return out;
+}
+
 napi_value RdpSnapshot(napi_env env, napi_callback_info info) {
     (void)info;
     // 直接返回 Uint8Array：ArkTS 侧收到的类型才与 `Uint8Array` 匹配
@@ -931,6 +985,7 @@ void RegisterRdpFunctions(napi_env env, napi_value exports) {
         {"rdpSnapshot", nullptr, RdpSnapshot, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpInputProbe", nullptr, RdpInputProbe, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpSnapStats", nullptr, RdpSnapStats, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"rdpWriteBmp", nullptr, RdpWriteBmp, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpFrame", nullptr, RdpFrame, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rawTcpProbe", nullptr, RawTcpProbe, nullptr, nullptr, nullptr, napi_default, nullptr},
     };

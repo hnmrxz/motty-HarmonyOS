@@ -805,3 +805,42 @@ RDP 画面显示能力（BMP 路线）仍然**已被手工证明可用**（见 R
 2. 重写后先 dump 一次，确认 `rdp/frame-btn`、`rdp/render`、`rdp/input` 三个 id 都在、坐标不重叠；
 3. 再写 `rdp.preview` 用例。
 
+---
+
+## Round 50：预览入口做成了（独立 `@Builder` + 独立用例 PASS）
+
+### 这次怎么避开的坑
+上一轮三次失败都是"在 `build()` 结构中间插多行 UI"。这次换法：
+1. 新建 **独立 `@Builder rdpPreviewStrip()`**：自带 `Column`，含 `rdp/frame-btn` 按钮、`rdp/frame-info` 文本、`rdp/frame` 图片；
+2. 在诊断面板里**只插一行调用** `this.rdpPreviewStrip()`，位置放在 `rdp/experimental` 标题**链式调用结束之后**
+   （第一次插在链中间，编译直接报 `fontColor does not exist on type 'void'` —— 链被切断）；
+3. 插完先 dump 一次核对坐标：
+   ```
+   rdp/frame-btn [944,1395][1101,1448]
+   rdp/srv-start [2379,476][2605,552]
+   rdp/render    [1253,571][1475,641]
+   rdp/input     [1490,571][1693,647]
+   ```
+   ⇒ 新按钮出现，**原有按钮坐标没变**（这正是上一轮被破坏的东西）。
+
+### 用例
+`rdp.preview`（pcOnly）**PASS**：
+```
+launch -> diag -> rdp/srv-start -> rdp/render(18s) -> rdp/frame-btn -> 断言 "bmp 1024x768 written"
+```
+断言的是"写 BMP 成功 + 预览入口被触发"，并声明不覆盖刷新帧率/逐像素一致。
+
+### 回归
+`rdp.server-peer / rdp.client-render / rdp.client-input => 3/3 PASS`
+（加上 `rdp.preview` 本轮 RDP 相关 4 条全绿。）
+
+### 又一次"回退连坐"
+`rdpWriteBmp` 在 Round 49 的回退里被一起撤销了，导致本轮首次运行时点预览直接
+`bmp: rdpWriteBmp threw`（NAPI 函数不存在）。
+**教训：回退只回退"出问题的那部分"，不要整文件 checkout**；否则会把之前已经验证过的能力一起删掉。
+
+### 现状
+RDP 现在四条用例：服务端、客户端渲染、输入回传、预览显示，都通过。
+```
+```
+

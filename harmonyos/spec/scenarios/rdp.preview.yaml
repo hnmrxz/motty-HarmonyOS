@@ -1,0 +1,63 @@
+schema: 1
+id: rdp.preview
+title: RDP 预览：点按钮把自解码整帧写成 BMP 并用 Image 显示（1024x768）
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - E04
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "New Host|新建主机"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1000
+  - action: click
+    target: id:rdp/srv-start
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "running port=13389"
+      withinMs: 15000
+  - action: click
+    target: id:rdp/render
+  - action: wait
+    ms: 18000
+  - action: click
+    target: id:rdp/frame-btn
+  - action: wait
+    ms: 3000
+    expect:
+      kind: screenRegex
+      regex: "bmp 1024x768 written|bmp: 1024x768 written"
+      withinMs: 12000
+asserts:
+  - kind: screenRegex
+    regex: "bmp 1024x768 written|bmp: 1024x768 written"
+    withinMs: 10000
+  - kind: absent
+    value: "bmp: rc="
+    withinMs: 3000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：点预览按钮 -> NAPI 把自解码帧写成 32bpp BMP -> Image 以 file:// 加载显示。
+    **不覆盖**：预览刷新帧率（当前手动点一次）、与真实 Windows 桌面的逐像素一致、面板比窗口高时预览图可能被裁。
+deviations:
+  - 面板内容比窗口高，预览图可能被裁掉；主断言用可见区内的 frame-info 文本。
+  - 连续跑多条 RDP 用例时先停应用再跑（历史上有残留状态导致失败）。
+notes: >-
+  这是"RDP 画面进 UI"的机器可判用例：断言写 BMP 成功 + 预览节点存在，不靠人眼看。

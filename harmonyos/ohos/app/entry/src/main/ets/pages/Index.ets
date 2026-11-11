@@ -283,6 +283,8 @@ struct Index {
   @State rdpSnapDrawn: number = 0;
   @State rdpSnapColors: number = 0;
   @State rdpSnapInfo: string = 'rdp-canvas: (empty)';
+  @State rdpFrameSrc: string = '';
+  @State rdpFrameInfo: string = '';
   private rdpCanvasCtx: CanvasRenderingContext2D = new CanvasRenderingContext2D(new RenderingContextSettings(true));  // 3389 是特权端口，应用绑不上
   @State selText: string = '';
   @State clipText: string = '';
@@ -2358,6 +2360,7 @@ struct Index {
       Text(this.lang === 'zh' ? 'RDP：实验性' : 'RDP is experimental')
         .id('rdp/experimental').fontSize(11).fontWeight(FontWeight.Bold)
         .fontColor('#E0A458').width('100%')
+      this.rdpPreviewStrip()
       Text(this.lang === 'zh'
         ? '画面与输入尚未投递：可连接、可解码，但不能当作可用的远程桌面。'
         : 'picture/input are not delivered yet: connect and decode work, but not usable as a desktop.')
@@ -3973,6 +3976,47 @@ struct Index {
     }
     .id('vaultdel/dialog').width(520).padding(20).backgroundColor('#1C1F24').borderRadius(12)
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
+  }
+
+
+  // 把自解码整帧写成 BMP 用于 Image 显示（ArkUI Image 支持 bmp）
+  private updateRdpFrame(): void {
+    const ctx = getContext(this) as common.UIAbilityContext;
+    const dir: string = ctx !== undefined && ctx.cacheDir !== undefined ? ctx.cacheDir : '/data/storage/el2/base/cache';
+    const path: string = dir + '/rdp-frame.bmp';
+    let rc: number = -99;
+    try {
+      rc = mottynapi.rdpWriteBmp(path) as number;
+    } catch (e) {
+      this.rdpFrameInfo = 'bmp: rdpWriteBmp threw';
+      return;
+    }
+    if (rc === 0) {
+      this.rdpFrameSrc = 'file://' + path + '?v=' + Date.now();
+      this.rdpFrameInfo = 'bmp: 1024x768 written';
+    } else {
+      this.rdpFrameInfo = 'bmp: rc=' + rc;
+    }
+  }
+
+
+  // RDP 预览条：独立容器（避免改动既有按钮行的布局）。
+  // 点按钮 -> NAPI 把自解码整帧写成 BMP -> Image 以 file:// 加载显示。
+  @Builder
+  rdpPreviewStrip() {
+    Column({ space: 6 }) {
+      Row({ space: 8 }) {
+        Button(this.lang === 'zh' ? 'RDP 预览' : 'RDP preview')
+          .id('rdp/frame-btn').height(28).fontSize(12)
+          .backgroundColor('#0F766E').fontColor(Color.White)
+          .onClick(() => { this.updateRdpFrame(); })
+        Text(this.rdpFrameInfo).id('rdp/frame-info').fontSize(10).fontColor('#8A8F98')
+      }.width('100%').justifyContent(FlexAlign.Start)
+      if (this.rdpFrameSrc.length > 0) {
+        Image(this.rdpFrameSrc).id('rdp/frame').width(512).height(384)
+          .objectFit(ImageFit.Fill).border({ width: 1, color: '#3A3F46' })
+      }
+    }.width('100%').alignItems(HorizontalAlign.Start)
   }
 
   build() {
