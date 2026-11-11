@@ -878,3 +878,26 @@ runner 新增动作 **`key`**（`uitest uiInput keyEvent <code>`，`code` 已进
 固定标记一开始写成 `Text(this.isPinned(g) ? '📌' : '')`，**空字符串的 Text 不进 dump**，所以自动化点不到；
 改成始终有字符的 `★/☆`（弱化未固定态颜色）后即可稳定选中。
 
+---
+
+## Round 32 追加：固定/折叠的"跨重启 + 回退"闭环
+
+### 本轮把 `host.group-pin` 从"单向"扩展到闭环
+```
+建 G1 → 建 G2（自然顺序 G1 在前）
+→ 点 star 固定 G2 → 【步骤内断言】G2 在 G1 上方
+→ restart → 【步骤内断言】仍 G2 在上方（固定状态持久化）
+→ 再点一次取消固定 → 【末尾断言】G1 回到 G2 上方（自然顺序恢复）
+```
+
+### 踩到的两个"测试自身"问题
+1. **断言位置**：一开始把"固定后 G2 在上"和"取消固定后 G1 在上"都放进末尾 `asserts`，
+   而末尾状态已取消固定 → 两条互相矛盾必然失败。顺序类行为要放在**动作之后立刻断言**（步骤内 `expect`）。
+2. **schema 三处都要放行**：`before` 断言需要
+   - `$defs/assertion.properties` 增加 `a`/`b`
+   - `$defs/assertion.properties.kind.enum` 增加 `before`
+   只加前者的表现是：用例能跑过，但 `lint` 报 schema 不合规——**用例绿了不代表基线合法**。
+
+### 结果
+`host.group-pin / host.group-filter / host.group-collapse / host.manage => 4/4 PASS`，lint 全绿。
+

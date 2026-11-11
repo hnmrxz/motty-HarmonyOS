@@ -67,13 +67,36 @@ steps:
     target: id:group/pin/G2
   - action: wait
     ms: 900
+  - action: wait
+    ms: 400
+    expect:
+      kind: before
+      a: "id:group/header/G2"
+      b: "id:group/header/G1"
+      withinMs: 10000
+  # 重启后固定状态应保持
+  - action: restart
+  - action: wait
+    ms: 6000
+  - action: wait
+    ms: 300
+    expect:
+      kind: before
+      a: "id:group/header/G2"
+      b: "id:group/header/G1"
+      withinMs: 10000
+  # 取消固定后应回到自然顺序（G1 在前）
+  - action: click
+    target: id:group/pin/G2
+  - action: wait
+    ms: 900
 asserts:
   # G2 必须排在 G1 前面
-  - kind: before
-    a: "id:group/header/G2"
-    b: "id:group/header/G1"
-    withinMs: 10000
   # 固定标记出现在 G2 上（文本是 📌，同时确认 G1 有同样的节点但内容为空）
+  - kind: before
+    a: "id:group/header/G1"
+    b: "id:group/header/G2"
+    withinMs: 10000
   - kind: screenRegex
     regex: "G2"
     withinMs: 6000
@@ -81,9 +104,9 @@ evidence:
   png: true
   tree: true
   limits: >-
-    PC（2in1）实测。覆盖：点分组表头的固定标记后，被固定分组排到未固定分组之前。
-    **不覆盖**：取消固定后的顺序回退（同一路径反向操作）、多个固定分组之间的相对顺序、
-    固定状态跨重启（折叠状态已有单独用例覆盖同类持久化）。
+    PC（2in1）实测。覆盖：点分组表头的固定标记后，被固定分组排到未固定分组之前；
+    重启后固定状态保持；取消固定后顺序回退。
+    **不覆盖**：多个固定分组之间的相对顺序、固定状态随目录导出/导入。
 deviations:
   - 用新增的 before 断言（比较两个节点 y 坐标）判定顺序，而不是靠文本顺序猜。
 notes: >-
