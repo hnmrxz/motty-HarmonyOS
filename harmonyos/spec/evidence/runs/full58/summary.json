@@ -1,0 +1,446 @@
+{
+  "total": 73,
+  "passed": 70,
+  "failed": 3,
+  "results": [
+    {
+      "spec": "ai.request",
+      "passed": true,
+      "seconds": 59.4,
+      "error": ""
+    },
+    {
+      "spec": "command.palette-keys",
+      "passed": true,
+      "seconds": 20.1,
+      "error": ""
+    },
+    {
+      "spec": "command.palette",
+      "passed": true,
+      "seconds": 16.1,
+      "error": ""
+    },
+    {
+      "spec": "cred.cleared",
+      "passed": true,
+      "seconds": 73.7,
+      "error": ""
+    },
+    {
+      "spec": "diag.tabs",
+      "passed": true,
+      "seconds": 21.9,
+      "error": ""
+    },
+    {
+      "spec": "forward.double-start",
+      "passed": true,
+      "seconds": 64.5,
+      "error": ""
+    },
+    {
+      "spec": "forward.http",
+      "passed": true,
+      "seconds": 60.6,
+      "error": ""
+    },
+    {
+      "spec": "forward.local",
+      "passed": true,
+      "seconds": 59.7,
+      "error": ""
+    },
+    {
+      "spec": "forward.persist",
+      "passed": true,
+      "seconds": 65.0,
+      "error": ""
+    },
+    {
+      "spec": "forward.socks5",
+      "passed": true,
+      "seconds": 60.4,
+      "error": ""
+    },
+    {
+      "spec": "forward.stop",
+      "passed": true,
+      "seconds": 73.9,
+      "error": ""
+    },
+    {
+      "spec": "host.batch-delete",
+      "passed": true,
+      "seconds": 65.7,
+      "error": ""
+    },
+    {
+      "spec": "host.catalog",
+      "passed": true,
+      "seconds": 106.5,
+      "error": ""
+    },
+    {
+      "spec": "host.form-chips",
+      "passed": true,
+      "seconds": 38.1,
+      "error": ""
+    },
+    {
+      "spec": "host.form-validation",
+      "passed": true,
+      "seconds": 37.5,
+      "error": ""
+    },
+    {
+      "spec": "host.group-collapse",
+      "passed": true,
+      "seconds": 53.9,
+      "error": ""
+    },
+    {
+      "spec": "host.group-filter",
+      "passed": true,
+      "seconds": 69.2,
+      "error": ""
+    },
+    {
+      "spec": "host.group-pin",
+      "passed": true,
+      "seconds": 80.5,
+      "error": ""
+    },
+    {
+      "spec": "host.manage",
+      "passed": true,
+      "seconds": 75.8,
+      "error": ""
+    },
+    {
+      "spec": "host.persist",
+      "passed": true,
+      "seconds": 28.7,
+      "error": ""
+    },
+    {
+      "spec": "host.recreate-trust",
+      "passed": true,
+      "seconds": 93.4,
+      "error": ""
+    },
+    {
+      "spec": "hostkey.changed",
+      "passed": true,
+      "seconds": 68.7,
+      "error": ""
+    },
+    {
+      "spec": "hosts.search",
+      "passed": true,
+      "seconds": 89.2,
+      "error": ""
+    },
+    {
+      "spec": "infra.host-create-by-id",
+      "passed": true,
+      "seconds": 46.0,
+      "error": ""
+    },
+    {
+      "spec": "knownhosts.manage",
+      "passed": true,
+      "seconds": 66.3,
+      "error": ""
+    },
+    {
+      "spec": "net.reachability",
+      "passed": true,
+      "seconds": 13.8,
+      "error": ""
+    },
+    {
+      "spec": "notes.crud",
+      "passed": true,
+      "seconds": 62.2,
+      "error": ""
+    },
+    {
+      "spec": "pages.logs-vault",
+      "passed": true,
+      "seconds": 53.0,
+      "error": ""
+    },
+    {
+      "spec": "rdp.client-connect",
+      "passed": true,
+      "seconds": 31.0,
+      "error": ""
+    },
+    {
+      "spec": "rdp.client-input",
+      "passed": true,
+      "seconds": 36.2,
+      "error": ""
+    },
+    {
+      "spec": "rdp.client-render",
+      "passed": true,
+      "seconds": 48.5,
+      "error": ""
+    },
+    {
+      "spec": "rdp.connect",
+      "passed": false,
+      "seconds": 35.2,
+      "error": "assert 0 (screenRegex) 失败: 正则 'connect failed' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已"
+    },
+    {
+      "spec": "rdp.preview-idle",
+      "passed": true,
+      "seconds": 52.4,
+      "error": ""
+    },
+    {
+      "spec": "rdp.preview",
+      "passed": true,
+      "seconds": 51.0,
+      "error": ""
+    },
+    {
+      "spec": "rdp.server-peer",
+      "passed": true,
+      "seconds": 18.9,
+      "error": ""
+    },
+    {
+      "spec": "session.tabs",
+      "passed": true,
+      "seconds": 61.2,
+      "error": ""
+    },
+    {
+      "spec": "settings.persist",
+      "passed": true,
+      "seconds": 62.1,
+      "error": ""
+    },
+    {
+      "spec": "sftp.browse",
+      "passed": true,
+      "seconds": 58.2,
+      "error": ""
+    },
+    {
+      "spec": "sftp.download",
+      "passed": true,
+      "seconds": 60.5,
+      "error": ""
+    },
+    {
+      "spec": "sftp.manage",
+      "passed": true,
+      "seconds": 64.7,
+      "error": ""
+    },
+    {
+      "spec": "sftp.missing",
+      "passed": true,
+      "seconds": 65.9,
+      "error": ""
+    },
+    {
+      "spec": "sftp.navigate",
+      "passed": true,
+      "seconds": 65.3,
+      "error": ""
+    },
+    {
+      "spec": "sftp.unicode",
+      "passed": true,
+      "seconds": 73.0,
+      "error": ""
+    },
+    {
+      "spec": "sftp.write",
+      "passed": true,
+      "seconds": 64.8,
+      "error": ""
+    },
+    {
+      "spec": "snippets.crud",
+      "passed": true,
+      "seconds": 57.5,
+      "error": ""
+    },
+    {
+      "spec": "ssh.connect-from-list",
+      "passed": true,
+      "seconds": 57.1,
+      "error": ""
+    },
+    {
+      "spec": "ssh.exec",
+      "passed": true,
+      "seconds": 49.7,
+      "error": ""
+    },
+    {
+      "spec": "ssh.hostkey",
+      "passed": true,
+      "seconds": 51.0,
+      "error": ""
+    },
+    {
+      "spec": "terminal.arrow",
+      "passed": true,
+      "seconds": 60.7,
+      "error": ""
+    },
+    {
+      "spec": "terminal.copy",
+      "passed": true,
+      "seconds": 60.6,
+      "error": ""
+    },
+    {
+      "spec": "terminal.interactive",
+      "passed": true,
+      "seconds": 72.5,
+      "error": ""
+    },
+    {
+      "spec": "terminal.key",
+      "passed": true,
+      "seconds": 55.7,
+      "error": ""
+    },
+    {
+      "spec": "terminal.pty",
+      "passed": true,
+      "seconds": 66.1,
+      "error": ""
+    },
+    {
+      "spec": "terminal.resize",
+      "passed": true,
+      "seconds": 77.4,
+      "error": ""
+    },
+    {
+      "spec": "terminal.scrollback",
+      "passed": true,
+      "seconds": 56.6,
+      "error": ""
+    },
+    {
+      "spec": "terminal.scrollview",
+      "passed": true,
+      "seconds": 60.4,
+      "error": ""
+    },
+    {
+      "spec": "terminal.touchscroll",
+      "passed": true,
+      "seconds": 60.8,
+      "error": ""
+    },
+    {
+      "spec": "terminal.view",
+      "passed": true,
+      "seconds": 55.2,
+      "error": ""
+    },
+    {
+      "spec": "terminal.vt",
+      "passed": true,
+      "seconds": 59.3,
+      "error": ""
+    },
+    {
+      "spec": "ui.i18n.diag",
+      "passed": true,
+      "seconds": 23.8,
+      "error": ""
+    },
+    {
+      "spec": "ui.i18n.diagnostics",
+      "passed": false,
+      "seconds": 26.2,
+      "error": "assert 0 (screenRegex) 失败: 正则 'TCP 探测' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\"
+    },
+    {
+      "spec": "ui.i18n.panels",
+      "passed": true,
+      "seconds": 64.4,
+      "error": ""
+    },
+    {
+      "spec": "ui.i18n.vnc",
+      "passed": true,
+      "seconds": 28.7,
+      "error": ""
+    },
+    {
+      "spec": "ui.i18n",
+      "passed": true,
+      "seconds": 18.6,
+      "error": ""
+    },
+    {
+      "spec": "ui.rdp-experimental",
+      "passed": false,
+      "seconds": 19.0,
+      "error": "assert 1 (screenRegex) 失败: 正则 '画面与输入尚未投递|picture/input are not delivered yet' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n"
+    },
+    {
+      "spec": "vault.persist",
+      "passed": true,
+      "seconds": 56.4,
+      "error": ""
+    },
+    {
+      "spec": "vnc.adapt",
+      "passed": true,
+      "seconds": 53.2,
+      "error": ""
+    },
+    {
+      "spec": "vnc.auth-hextile",
+      "passed": true,
+      "seconds": 29.4,
+      "error": ""
+    },
+    {
+      "spec": "vnc.clipboard",
+      "passed": true,
+      "seconds": 60.7,
+      "error": ""
+    },
+    {
+      "spec": "vnc.desktopsize",
+      "passed": true,
+      "seconds": 53.0,
+      "error": ""
+    },
+    {
+      "spec": "vnc.key",
+      "passed": true,
+      "seconds": 55.7,
+      "error": ""
+    },
+    {
+      "spec": "vnc.negative",
+      "passed": true,
+      "seconds": 23.7,
+      "error": ""
+    },
+    {
+      "spec": "vnc.session",
+      "passed": true,
+      "seconds": 22.1,
+      "error": ""
+    }
+  ],
+  "at": "2026-11-12T01:51:44"
+}

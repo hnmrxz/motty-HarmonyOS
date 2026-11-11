@@ -1,6 +1,6 @@
 schema: 1
 id: ui.i18n.diagnostics
-title: 面板级双语（四）：诊断面板标题与按钮随语言切换，且无缺键
+title: 面板级双语（四）：诊断面板分页后，调试页与 RDP 页的按钮文案随语言切换且无缺键
 sourceScript: null
 profile:
   - 2in1
@@ -21,28 +21,45 @@ steps:
       withinMs: 20000
   - action: click
     target: id:ui/lang
-  # 应用默认跟随系统（中文）：点两次回到中文，确保后续中文断言成立
   - action: click
     target: id:ui/lang
   - action: wait
     ms: 700
-  - action: wait
-    ms: 800
   - action: click
     target: id:diag/open
   - action: wait
-    ms: 1200
+    ms: 900
+  # 调试页：TCP 探测 / 主机密钥检查
+  - action: click
+    target: id:diag/tab-debug
+  - action: wait
+    ms: 1000
     expect:
       kind: screenRegex
       regex: "诊断"
       withinMs: 10000
+  - action: wait
+    ms: 200
+    expect:
+      kind: screenRegex
+      regex: "TCP 探测"
+      withinMs: 8000
+  - action: wait
+    ms: 200
+    expect:
+      kind: screenRegex
+      regex: "主机密钥检查"
+      withinMs: 8000
+  # RDP 页：RDP 服务启动
+  - action: click
+    target: id:diag/tab-rdp
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "RDP 服务启动"
+      withinMs: 8000
 asserts:
-  - kind: screenRegex
-    regex: "TCP 探测"
-    withinMs: 8000
-  - kind: screenRegex
-    regex: "主机密钥检查"
-    withinMs: 6000
   - kind: screenRegex
     regex: "RDP 服务启动"
     withinMs: 6000
@@ -65,10 +82,10 @@ evidence:
   png: true
   tree: true
   limits: >-
-    模拟器双画像（x86_64, API 26）。覆盖：诊断面板标题与 TCP/主机密钥/RDP 服务按钮的中英取词、
-    切换后文案变化、缺键反向检测。
-    **不覆盖**：RDP :3390 / :2222 两个探测按钮、第三条结果与状态行、第三语言、系统语言跟随。
+    模拟器双画（x86_64, API 26）。覆盖：分页后「调试」页的 TCP 探测/主机密钥检查文案、
+    「RDP」页的 RDP 服务启动文案，以及中文界面下不出现英文原文或键名。
+    **不覆盖**：RDP :3390/:2222 探测按钮、状态行、第三种语言。
 deviations:
-  - 纯新增规格，无 upstream 对应脚本
+  - 面板已分页：调试页与 RDP 页的断言必须分别在对应页执行（不能同时断言两页文案）。
 notes: >-
   反向断言英文原文与键名同时缺席，才说明这些按钮确实走了取词表。

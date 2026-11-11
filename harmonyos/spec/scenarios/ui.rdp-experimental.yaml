@@ -21,6 +21,9 @@ steps:
       withinMs: 20000
   - action: click
     target: id:diag/open
+  # 实验性说明在「快照」页
+  - action: click
+    target: id:diag/tab-snap
   - action: wait
     ms: 1000
 asserts:
@@ -29,7 +32,7 @@ asserts:
     regex: "RDP: 实验|RDP is experimental"
     withinMs: 10000
   - kind: screenRegex
-    regex: "画面与输入尚未投递|picture/input are not delivered yet"
+    regex: "画面已能解码并投递|picture is decoded and delivered"
     withinMs: 6000
   # 切到中文后必须也有对应中文提示
   - kind: absent

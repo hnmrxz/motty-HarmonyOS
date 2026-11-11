@@ -166,3 +166,32 @@ vnc.desktopsize   PASS     (夹具 -vnc-resize)
 
 **已迁移**：30 条依赖调试页控件的用例已统一插入切页步骤；新增 `diag.tabs` 用例保护"分页不被改回单页"。
 
+---
+
+## 全量回归 full58（73 条，分页后的构建）
+
+```
+SUMMARY passed=70/73
+FAIL rdp.connect            (assert "connect failed" 未命中；见下"已知自动化问题")
+FAIL ui.i18n.diagnostics    (断言跨了两页：调试页文案与 RDP 页文案不能同时断言) -> 已修
+FAIL ui.rdp-experimental    (实验性说明已移到「快照」页，且提示文案已更新) -> 已修
+```
+
+### 分页带来的两类用例修正（已做）
+1. **跨页断言**：`ui.i18n.diagnostics` 原先同时断言「调试」页（TCP 探测/主机密钥检查）与「RDP」页（RDP 服务启动）的文案。
+   分页后必须分别在各页断言 → 重写为：切调试页断言两条 → 切回 RDP 页断言一条，末尾只保留 RDP 页断言。
+2. **文案更新**：`ui.rdp-experimental` 断言的旧说明「画面与输入尚未投递」已被改为
+   「画面已能解码并投递到界面」（这是在 RDP 画面真的能显示之后改的），用例同步更新，并先切到快照页。
+
+### 已知自动化问题：`rdp.connect`
+- 手工流程（开面板 → 点 `rdp/probe-closed` → 等 5s）稳定得到
+  `rdp: connect failed: The connection transport layer failed.`；
+- 但 `run.py --fresh` 跑这条用例时，断言阶段屏幕里**面板已经不见了**，且**没有崩溃日志**；
+- 已尝试：加 `wait`（1000→2500ms）、把 `settleMs` 1800→4000、加长 probe 后等待（4→8s），均无效；
+- 结论：**暂记为已知自动化问题**（不是产品缺陷，手工验证通过）。下一步用 `run.py` 的步骤日志逐帧对比
+  "面板何时消失"，而不是继续猜。
+
+### 当前基线
+真实通过 **70/73**；两条用例已修（`ui.i18n.diagnostics`、`ui.rdp-experimental` 各自单独跑均 PASS），
+`rdp.connect` 仍为红（已知自动化问题）。**不把它算进通过数**。
+

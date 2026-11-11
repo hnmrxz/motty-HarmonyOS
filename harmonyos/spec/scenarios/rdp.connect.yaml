@@ -10,15 +10,18 @@ capabilities:
 app:
   bundleName: com.motty.harmony
   ability: EntryAbility
-  settleMs: 1800
+  settleMs: 4000
 steps:
   - action: launch
   - action: click
     target: id:diag/open
+  # 面板已分页且更高，打开后要等它真的渲染出来再点里面的按钮
+  - action: wait
+    ms: 2500
   - action: click
     target: id:rdp/probe-closed
   - action: wait
-    ms: 4000
+    ms: 8000
     expect:
       kind: screenRegex
       regex: "connect failed"
