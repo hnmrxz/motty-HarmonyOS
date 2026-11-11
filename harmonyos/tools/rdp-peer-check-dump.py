@@ -78,6 +78,9 @@ if not click("rdp/srv-start"):
     sys.exit(4)
 time.sleep(3.5)
 
+# 关键：状态行只在点击时刷新，先点一次"status"按钮拿实时值（否则读到的是启动瞬间的快照）
+if click("rdp/srv-status"):
+    time.sleep(1.5)
 state = text_of("rdp/srv-state")
 print("state:", state[:300])
 checks = [

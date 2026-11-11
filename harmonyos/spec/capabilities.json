@@ -1157,7 +1157,7 @@
         "deps": "R12",
         "acceptance": "`rdp_e2e`、`rdp_files_e2e`"
       },
-      "partialCoverage": "仅连接路径（含失败语义）双画像实测；成功连接、TLS/证书 pin、NLA/CredSSP、能力协商、位图、输入、通道均未做。"
+      "partialCoverage": "仅连接路径（含失败语义）与内嵌 RDP 服务端'能监听'已双画像实测；服务端不产帧（采集线程在 shadow 上下文不可靠）、成功连接真实服务端、TLS/证书 pin、NLA/CredSSP、能力协商、位图、输入、通道均未达成。"
     },
     {
       "id": "E05",

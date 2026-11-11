@@ -72,6 +72,13 @@ int g_startStage = 0;
 int g_lockOk = 0;
 int g_paintOk = 0;
 int g_updateOk = 0;
+int g_paintSkipped = 0;
+int g_paintRows = 0;
+int g_capStarted = -1;
+int g_afterSleep = 0;
+int g_frameAdds = 0;
+unsigned long long g_threadSubPtr = 0;
+unsigned long long g_subPtr = 0;
 unsigned long long g_surfW = 0, g_surfH = 0, g_surfStride = 0;
 int g_surfDataNull = 1;
 std::string g_threadError;
@@ -108,6 +115,14 @@ void serverLog(const char *fmt, ...) {
 // 把一帧图案写进 shadow 的表面：左半暖色、右半冷色，横向渐变便于肉眼确认
 void paintSurface(rdpShadowSurface *surface, uint32_t frame) {
     if (surface == nullptr || surface->data == nullptr) {
+        g_paintSkipped++;
+        return;
+    }
+    // 护栏：surface 的宽高来自 shadow 内部，实测可能读到脏值；
+    // 若不做上界检查，paintSurface 会变成"看似死循环"。
+    if (surface->width == 0 || surface->height == 0 || surface->width > 8192 ||
+        surface->height > 8192 || surface->scanline < surface->width * 4) {
+        g_paintSkipped++;
         return;
     }
     const UINT32 w = surface->width;
@@ -126,10 +141,12 @@ void paintSurface(rdpShadowSurface *surface, uint32_t frame) {
             px[2] = moving ? 0x40 : gx;          // R
             px[3] = 0xFF;                        // A
         }
+        g_paintRows++;
     }
 }
 
 void captureThread(VssSubsystem *sub) {
+    g_threadSubPtr = reinterpret_cast<unsigned long long>(sub);
     g_threadEntered++;
     uint32_t frame = 0;
     if (sub == nullptr) {
@@ -159,7 +176,9 @@ void captureThread(VssSubsystem *sub) {
             shadow_subsystem_frame_update(&sub->common);
             g_updateOk++;
             sub->frames.fetch_add(1);
+            g_frameAdds++;
         }
+        g_afterSleep++;
         std::this_thread::sleep_for(std::chrono::milliseconds(1000 / kVssFps));
     }
     g_threadExited++;
@@ -270,9 +289,15 @@ int startCaptureThread() {
     g_subsystem->stop.store(false);
     try {
         g_subsystem->worker = std::thread(captureThread, g_subsystem);
+        g_capStarted = 1;
         return 1;
+    } catch (const std::exception &e) {
+        g_capStarted = 0;
+        g_threadError = std::string("capture: ") + e.what();
+        serverLog("capture thread creation failed: %s", e.what());
+        return 0;
     } catch (...) {
-        serverLog("capture thread creation failed");
+        g_capStarted = 2;
         return 0;
     }
 }
@@ -429,6 +454,7 @@ napi_value RdpServerStart(napi_env env, napi_callback_info info) {
                 rc = 4;
             } else {
                 g_subsystem = reinterpret_cast<VssSubsystem *>(g_server->subsystem);
+                g_subPtr = reinterpret_cast<unsigned long long>(g_subsystem);
                 if (g_subsystem != nullptr) {
                     g_subsystem->common.Authenticate = vss_authenticate;
                     serverLog("subsystem ready: monitors=%u", g_subsystem->common.numMonitors);
@@ -495,8 +521,11 @@ napi_value RdpServerStart(napi_env env, napi_callback_info info) {
                     serverLog("server listening on port %d", port);
                     // 采集线程在这里创建（唯一位置）：vss_start 不再建线程，
                     // 因为实测在 shadow 线程里构造 std::thread 会卡住。
-                    const int capStarted = startCaptureThread();
-                    serverLog("capture thread started=%d", capStarted);
+                    // 结论（多轮实测）：在 shadow 的上下文里创建 std::thread 不可靠——
+                    // 有时线程函数从不执行（tsp=0）、有时整屏绘制卡住、有时 8x8 能完成。
+                    // 因此本版本**不启动采集线程**：服务端只监听，不提供画面。
+                    // 这比"看起来有画面但其实没发出去"更诚实。
+                    serverLog("capture disabled in this build (see INDEX Round 62)");
                 }
             }
     }
@@ -528,7 +557,9 @@ napi_value RdpServerStatus(napi_env env, napi_callback_info info) {
                " surface=" + (surfaceSeen != 0 ? "ok" : "null") + " stage=" + std::to_string(g_startStage) + " lock=" + std::to_string(g_lockOk) +
                " paint=" + std::to_string(g_paintOk) + " sw=" + std::to_string(g_surfW) +
                " sh=" + std::to_string(g_surfH) + " stride=" + std::to_string(g_surfStride) +
-               " dnull=" + std::to_string(g_surfDataNull) + " upd=" + std::to_string(g_updateOk) +
+               " dnull=" + std::to_string(g_surfDataNull) + " skip=" + std::to_string(g_paintSkipped) + " cap=" + std::to_string(g_capStarted) + " tsp=" + std::to_string(g_threadSubPtr) +
+               " gsp=" + std::to_string(g_subPtr) + " slp=" + std::to_string(g_afterSleep) +
+               " fadd=" + std::to_string(g_frameAdds) + " rows=" + std::to_string(g_paintRows) + " upd=" + std::to_string(g_updateOk) +
                " base=" + std::to_string(g_basePtr) + " g=" + std::to_string(g_gPtr) +
                (g_threadError.empty() ? "" : (" err=" + g_threadError)) + " built=" + g_buildStamp;
     } else {
