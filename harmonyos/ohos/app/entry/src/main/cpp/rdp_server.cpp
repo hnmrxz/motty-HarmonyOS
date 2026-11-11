@@ -456,6 +456,10 @@ napi_value RdpServerStart(napi_env env, napi_callback_info info) {
                 g_server = nullptr;
                 rc = 4;
             } else {
+                // shadow 默认先给客户端一个"lobby"画面并要求交互才进桌面；
+                // 直接授权，避免客户端看到的是 lobby 而不是真实桌面内容。
+                g_server->mayView = TRUE;
+                g_server->mayInteract = TRUE;
                 g_subsystem = reinterpret_cast<VssSubsystem *>(g_server->subsystem);
                 g_subPtr = reinterpret_cast<unsigned long long>(g_subsystem);
                 if (g_subsystem != nullptr) {

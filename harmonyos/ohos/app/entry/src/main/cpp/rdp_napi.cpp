@@ -24,6 +24,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <set>
 #include <string>
 #include <thread>
 #include <vector>
@@ -126,9 +127,56 @@ void ClientGlobalUninit(void) { }
 // 比 BitmapUpdate 回调更可靠：gdi_init 之后 gdi 自己会接管解码。
 static std::atomic<int> g_paints{0};
 
+// 最近一帧的 64x48 RGBA 采样（供 ArkTS 画到 Canvas）
+static const int kSnapW = 64;
+static const int kSnapH = 48;
+static uint8_t g_snap[kSnapW * kSnapH * 4] = {0};
+static std::atomic<int> g_snapValid{0};
+static std::atomic<int> g_snapColors{0};
+static std::atomic<int> g_snapNonBlack{0};
+
+static void snapshotFromGdi(rdpContext *context) {
+    if (context == nullptr || context->gdi == nullptr || context->gdi->primary_buffer == nullptr) {
+        return;
+    }
+    const BYTE *buf = context->gdi->primary_buffer;
+    const UINT32 w = context->gdi->width;
+    const UINT32 h = context->gdi->height;
+    if (w == 0 || h == 0) {
+        return;
+    }
+    for (int y = 0; y < kSnapH; y++) {
+        const UINT32 sy = static_cast<UINT32>(y) * h / static_cast<UINT32>(kSnapH);
+        for (int x = 0; x < kSnapW; x++) {
+            const UINT32 sx = static_cast<UINT32>(x) * w / static_cast<UINT32>(kSnapW);
+            const size_t src = (static_cast<size_t>(sy) * w + sx) * 4;
+            const size_t dst = (static_cast<size_t>(y) * kSnapW + x) * 4;
+            g_snap[dst + 0] = buf[src + 0];
+            g_snap[dst + 1] = buf[src + 1];
+            g_snap[dst + 2] = buf[src + 2];
+            g_snap[dst + 3] = 255;
+        }
+    }
+    {
+        // 在 C++ 侧先算一遍，用于判断"是采样问题"还是"跨语言传参问题"
+        std::set<uint32_t> seen;
+        int nonBlack = 0;
+        for (int i = 0; i < kSnapW * kSnapH; i++) {
+            const uint32_t c = (static_cast<uint32_t>(g_snap[i * 4 + 2]) << 16) |
+                               (static_cast<uint32_t>(g_snap[i * 4 + 1]) << 8) |
+                               g_snap[i * 4 + 0];
+            seen.insert(c);
+            if (c != 0) nonBlack++;
+        }
+        g_snapColors.store(static_cast<int>(seen.size()));
+        g_snapNonBlack.store(nonBlack);
+    }
+    g_snapValid.store(1);
+}
+
 BOOL OnEndPaint(rdpContext *context) {
     g_paints.fetch_add(1);
-    (void)context;
+    snapshotFromGdi(context);
     return TRUE;
 }
 
@@ -295,6 +343,8 @@ void renderWorker(RdpJob *job) {
                 std::lock_guard<std::mutex> lock(g_statsMtx);
                 st = g_stats;
             }
+            // 采样必须放在泵循环之后：EndPaint 时刻缓冲可能还是空白（实测 colors=1）
+            snapshotFromGdi(instance->context);
             // 若 EndPaint 有计数，说明更新到达了：直接从 GDI 主缓冲读像素做统计
             RenderStats st2;
             {
@@ -429,10 +479,41 @@ napi_value RdpRender(napi_env env, napi_callback_info info) {
 
 }  // namespace
 
+// rdpSnapshot() -> ArrayBuffer(64*48*4, RGBA)：Windows 端最近一帧的采样
+napi_value RdpSnapshot(napi_env env, napi_callback_info info) {
+    (void)info;
+    // 直接返回 Uint8Array：ArkTS 侧收到的类型才与 `Uint8Array` 匹配
+    // （返回裸 ArrayBuffer 时实测读出来全是 0）
+    void *data = nullptr;
+    napi_value buffer = nullptr;
+    if (napi_create_arraybuffer(env, sizeof(g_snap), &data, &buffer) != napi_ok) {
+        return nullptr;
+    }
+    memcpy(data, g_snap, sizeof(g_snap));
+    napi_value typed = nullptr;
+    if (napi_create_typedarray(env, napi_uint8_array, sizeof(g_snap), buffer, 0, &typed) != napi_ok) {
+        return nullptr;
+    }
+    return typed;
+}
+
+// rdpSnapStats() -> "colors=N nonBlack=M"（C++ 侧采样统计，用于排查跨语言传参）
+napi_value RdpSnapStats(napi_env env, napi_callback_info info) {
+    (void)info;
+    char buf[96];
+    snprintf(buf, sizeof(buf), "colors=%d nonBlack=%d valid=%d", g_snapColors.load(),
+             g_snapNonBlack.load(), g_snapValid.load());
+    napi_value out = nullptr;
+    napi_create_string_utf8(env, buf, NAPI_AUTO_LENGTH, &out);
+    return out;
+}
+
 void RegisterRdpFunctions(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
         {"rdpProbe", nullptr, RdpProbe, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"rdpRender", nullptr, RdpRender, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"rdpSnapshot", nullptr, RdpSnapshot, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"rdpSnapStats", nullptr, RdpSnapStats, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
 }

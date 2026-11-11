@@ -162,7 +162,11 @@ struct Index {
   @State aiEndpoint: string = 'http://127.0.0.1:2297/v1/ai';
   @State rdpSrvStatus: string = '';
   @State rdpSrvPort: number = 13389;
-  private rdpTickId: number = -1;  // 3389 是特权端口，应用绑不上
+  private rdpTickId: number = -1;
+  @State rdpSnapDrawn: number = 0;
+  @State rdpSnapColors: number = 0;
+  @State rdpSnapInfo: string = 'rdp-canvas: (empty)';
+  private rdpCanvasCtx: CanvasRenderingContext2D = new CanvasRenderingContext2D(new RenderingContextSettings(true));  // 3389 是特权端口，应用绑不上
   @State selText: string = '';
   @State clipText: string = '';
   private touchLastY: number = -1;
@@ -667,11 +671,38 @@ struct Index {
   // 真实产品接外部模型；这里把"请求构造 / 超时 / 错误处理 / 结果呈现"验证到可断言，
   // 模型质量本身不在验证范围内（见 spec 的 evidence.limits）。
   // ---------------- RDP 服务端（诊断用：给客户端一个真实协议的对端）----------------
+  // 把 C++ 侧 64x48 采样画到 Canvas（每像素一个 fillRect，共 3072 次）
+  private drawRdpSnapshot(): void {
+    const px: Uint8Array = mottynapi.rdpSnapshot() as Uint8Array;
+    const w = 64;
+    const h = 48;
+    let drawn = 0;
+    const seen: Set<number> = new Set<number>();
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const off = (y * w + x) * 4;
+        const b = px[off + 0];
+        const g = px[off + 1];
+        const r = px[off + 2];
+        seen.add((r << 16) | (g << 8) | b);
+        const css = 'rgb(' + r + ',' + g + ',' + b + ')';
+        this.rdpCanvasCtx.fillStyle = css;
+        this.rdpCanvasCtx.fillRect(x * 8, y * 8, 8, 8);
+        drawn++;
+      }
+    }
+    this.rdpSnapDrawn = drawn;
+    this.rdpSnapColors = seen.size;
+    this.rdpSnapInfo = 'rdp-canvas: drawn=' + drawn + ' colors=' + this.rdpSnapColors + ' | cpp ' + (mottynapi.rdpSnapStats() as string);
+  }
+
   // 客户端渲染管线（最小）：连接后泵事件，把收到的位图更新统计回来
   private startRdpRender(): void {
     this.rdpResult = 'rdp-render: connecting...';
     mottynapi.rdpRender('127.0.0.1', this.rdpSrvPort, 'tester', 'secret', (result: string) => {
       this.rdpResult = 'rdp-render: ' + result;
+      // 连接结束后把最后一帧画出来（证明像素能到 UI 层）
+      this.drawRdpSnapshot();
     });
   }
 
@@ -1930,6 +1961,12 @@ struct Index {
         .id('rdp/srv-state').fontSize(11).fontFamily('monospace').fontColor('#0A6C00').width('100%')
       Text(this.rdpResult.length > 0 ? this.rdpResult : 'rdp: (not probed)')
         .id('rdp/result').fontSize(11).fontFamily('monospace').fontColor('#37474F').width('100%')
+      Text(this.rdpSnapInfo)
+        .id('rdp/canvas-info').fontSize(11).fontFamily('monospace').fontColor('#0A6C00')
+      Canvas(this.rdpCanvasCtx)
+        .id('rdp/canvas')
+        .width(512).height(384)
+        .backgroundColor('#000000')
       Scroll() {
         Text(this.probeText).id('net/probe-result').fontSize(11).fontFamily('monospace').width('100%')
       }.height(120).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)
