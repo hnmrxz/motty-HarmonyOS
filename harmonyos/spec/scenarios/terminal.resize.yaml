@@ -14,6 +14,19 @@ app:
   skipFresh: true
 steps:
   - action: launch
+  # 卸载重装会被备份恢复数据（known_hosts 可能还在），先显式重置以保证会弹信任框
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1200
+  - action: click
+    target: id:catalog/reset-hosts
+  - action: wait
+    ms: 1500
+  - action: click
+    target: id:diag/close
+  - action: wait
+    ms: 900
   - action: wait
     ms: 800
     expect:

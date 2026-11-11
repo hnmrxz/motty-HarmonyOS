@@ -1,0 +1,37 @@
+{
+  "run": "full24（Round 24-25，夹具参数已自动化）",
+  "total": 62,
+  "batch_passed": 58,
+  "batch_failed": 4,
+  "fixed_after_run": [
+    "terminal.resize"
+  ],
+  "effective_passed": 59,
+  "remaining_failures": [
+    "rdp.client-input",
+    "rdp.client-render",
+    "rdp.server-peer"
+  ],
+  "failures": [
+    {
+      "spec": "rdp.client-input",
+      "error": "assert 0 (screenRegex) 失败: 正则 'serverSaw keys=[1-9][0-9]*' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n调试\\n\\n\\n\\n会话日志\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）"
+    },
+    {
+      "spec": "rdp.client-render",
+      "error": "assert 0 (screenRegex) 失败: 正则 'rdp-render: frames=[1-9][0-9]* paints=[1-9][0-9]*' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n调试\\n\\n\\n\\n会话日志\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）"
+    },
+    {
+      "spec": "rdp.server-peer",
+      "error": "assert 0 (screenRegex) 失败: 正则 'rdp-server: start rc=0 running port=13389' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n调试\\n\\n\\n\\n会话日志\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）"
+    },
+    {
+      "spec": "terminal.resize",
+      "error": "step 11 (wait) 失败: 步骤内 expect 失败: 正则 '信任此主机|Trust this host|Unknown host key' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n调试\\n\\n\\n\\n会话日志\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）"
+    }
+  ],
+  "notes": [
+    "batch 快照 58/62；terminal.resize 在批量上下文中受备份恢复影响（known_hosts 残留），已加显式重置并单独复跑通过 => 有效 59/62",
+    "剩余 3 条全部是 RDP 实验态（画面/输入未投递、服务端状态不符），不追求变绿"
+  ]
+}

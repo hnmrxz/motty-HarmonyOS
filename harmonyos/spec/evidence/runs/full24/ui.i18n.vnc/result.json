@@ -1,0 +1,118 @@
+{
+  "spec": "ui.i18n.vnc",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：VNC 面板指针/按键按钮的中英取词、切换后文案变化、 缺键反向检测。 **不覆盖**：剪贴板与状态行的逐条覆盖、第三种语言、系统语言跟随；未在 arm64 真机执行。"
+  },
+  "passed": true
+}

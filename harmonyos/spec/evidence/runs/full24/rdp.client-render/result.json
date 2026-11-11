@@ -1,0 +1,77 @@
+{
+  "spec": "rdp.client-render",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": false,
+      "detail": "正则 'rdp-render: frames=[1-9][0-9]* paints=[1-9][0-9]*' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n调试\\n\\n\\n\\n会话日志\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）"
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：客户端通过官方客户端入口点建立上下文、gdi 解码桌面更新、 EndPaint 触发、桌面尺寸与像素数统计正确（1024×768 = 786432）。 **不覆盖**：把像素画到 Canvas（UI 渲染）、输入回传、NLA、与真实 Windows 服务端互通。 注意：本用例**不**断言具体颜色分布（那依赖服务端图案细节）。"
+  },
+  "passed": false,
+  "error": "assert 0 (screenRegex) 失败: 正则 'rdp-render: frames=[1-9][0-9]* paints=[1-9][0-9]*' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n调试\\n\\n\\n\\n会话日志\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）"
+}

@@ -1,0 +1,17 @@
+﻿chore(harmonyos/spec): full24 全量新鲜回归 —— 58/62 批次, 有效 59/62
+
+full24(夹具参数自动化后首次全量):
+  58/62 PASS (批次快照)
+  terminal.resize 批量中受"备份恢复带回归 known_hosts"影响 -> 已加显式重置, 单独复跑 PASS
+  => 有效 59/62
+
+剩余失败 3 条(全部 RDP 实验态, 不代表回归):
+  rdp.client-render (paints=0 画面未投递)
+  rdp.client-input  (输入未投递)
+  rdp.server-peer   (内嵌 shadow 服务端状态不符/崩溃)
+  对比: rdp.connect / rdp.client-connect(连接与失败路径) 通过
+
+与上一轮对比: full21 批次 44/62 + 10 条复跑修复 ~ 54/62 -> full24 有效 59/62
+提升来自夹具参数自动化(VNC 4 条)、语言默认跟随系统后的用例修正(i18n 3 条)、
+对话框中文化后的断言对齐、地址列文本断言改 screenRegex —— 均为断言/环境层面修正,
+没有为了变绿放宽业务断言

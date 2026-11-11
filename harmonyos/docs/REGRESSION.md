@@ -110,3 +110,32 @@ vnc.desktopsize   PASS     (夹具 -vnc-resize)
 同时修了一个工具本身的坑：`run-all.py` 曾被 PowerShell 写入带 BOM，Python 直接 `SyntaxError`；
 已去掉 BOM（`﻿`）。
 
+## Round 25 新基线：58/62（批量）→ 59/62（含复跑修复）
+
+`full24` 全量新鲜回归（夹具参数已自动化，每条用例走 `--fresh`）：
+
+```
+[批次快照] 58 / 62 PASS
+[复跑] terminal.resize PASS（批量中受"备份恢复带回归 known_hosts"影响，已加显式重置）
+=> 有效 59 / 62
+```
+
+### 仍然失败的 3 条（全部 RDP，实验态）
+| 用例 | 期望 | 现状 |
+|---|---|---|
+| `rdp.client-render` | `rdp-render: frames=N paints=N` | 画面未投递（paints 为 0） |
+| `rdp.client-input` | `serverSaw keys=N` | 输入未投递到服务端 |
+| `rdp.server-peer` | `rdp-server: start rc=0 running port=13389` | 内嵌 shadow 服务端状态不符/崩溃（见 RDP.md） |
+
+这 3 条**不代表回归**，是 RDP 功能本身没完成；`rdp.connect` 与 `rdp.client-connect` 这两条（连接/失败路径）是通过的。
+
+### 与上一轮的对比
+| 轮次 | 通过 |
+|---|---|
+| Round 21–23（full21） | 44/62 批次 + 10 条复跑修复 ≈ 54/62 |
+| **Round 25（full24）** | **58/62 批次 + 1 条复跑修复 = 59/62** |
+
+提升来自：夹具参数自动化（VNC 4 条）、语言默认跟随系统后的用例修正（i18n 3 条）、
+信任/删除对话框中文化后的断言对齐、地址列文本断言改 `screenRegex` 等——都是"断言/环境"层面的修正，
+没有为了变绿放宽任何业务断言。
+
