@@ -1166,3 +1166,24 @@ runner 新增动作 **`key`**（`uitest uiInput keyEvent <code>`，`code` 已进
 ⇒ 修法：把新文本放进**已有的名称列**（纵向堆叠），不增加行宽。
 **教训：在定宽 Row 里加东西先算宽度；优先往已有列的纵向空间里塞，而不是横向加兄弟节点。**
 
+---
+
+## Round 71 追加：网格视图补齐「图标 + 最近连接」
+
+### 改动
+在网格卡片（`host-card/<id>`）的名称列里加一行：
+```
+Row { Text(iconGlyph).id('host-icon-card/<id>')  Text(lastUsedText).id('host-lastused-card/<id>') }
+```
+放在 **名称列的纵向空间**里（不增加卡片宽度），与列表行保持同样的信息。
+
+### 用例
+`host.grid-meta` **PASS**：建一台选 ⚡ 图标的主机 → 切网格视图 → 断言 `⚡` 与「未连接」同时出现。
+
+### 回归
+`host.icon / host.lastused / host.proto-filter / hosts.search => 4/4 PASS`
+
+### 说明
+卡片高度仍是 64，三行信息在测试里能显示，但**视觉上可能偏挤**；
+如果后续要更接近官方卡片，应该把卡片高度调到 72~76 并重新核对网格间距（需要新的布局用例）。
+

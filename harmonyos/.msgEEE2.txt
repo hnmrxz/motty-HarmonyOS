@@ -1,0 +1,11 @@
+﻿feat(harmonyos/ui): 网格视图补齐"图标 + 最近连接" + 用例 PASS
+
+改动: 在网格卡片(host-card/<id>)名称列里加一行
+  Row { Text(iconGlyph).id('host-icon-card/<id>')  Text(lastUsedText).id('host-lastused-card/<id>') }
+放在名称列的纵向空间里(不增加卡片宽度), 与列表行保持同样信息
+
+用例 host.grid-meta PASS: 建一台选闪电图标的主机 -> 切网格视图 -> 断言 ⚡ 与"未连接"同时出现
+回归: host.icon / host.lastused / host.proto-filter / hosts.search => 4/4 PASS
+
+说明: 卡片高度仍是 64, 三行信息在测试里能显示, 但视觉上可能偏挤;
+  后续若要更接近官方卡片, 应把卡片高度调到 72-76 并重新核对网格间距(需要新的布局用例)

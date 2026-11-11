@@ -3088,6 +3088,10 @@ struct Index {
                       Text(h.label).fontSize(14).fontColor('#E8EAED').maxLines(1)
                         .textOverflow({ overflow: TextOverflow.Ellipsis })
                       Text(h.user).fontSize(11).fontColor('#8A8F98')
+                      Row({ space: 4 }) {
+                        Text(this.iconGlyph(h.icon)).id('host-icon-card/' + h.id).fontSize(11).fontColor('#E0A458')
+                        Text(this.lastUsedText(h)).id('host-lastused-card/' + h.id).fontSize(10).fontColor('#6B7078')
+                      }.width('100%')
                     }.alignItems(HorizontalAlign.Start).layoutWeight(1)
                   }.width('100%')
                   Row({ space: 6 }) {
