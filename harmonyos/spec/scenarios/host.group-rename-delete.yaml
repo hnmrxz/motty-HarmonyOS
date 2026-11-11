@@ -1,0 +1,109 @@
+schema: 1
+id: host.group-rename-delete
+title: 分组管理：重命名分组后表头与主机跟随；删除分组后主机回到默认组
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1000
+  - action: click
+    target: id:diag/tab-debug
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:catalog/reset-hosts
+  - action: wait
+    ms: 1500
+  - action: click
+    target: id:diag/close
+  - action: wait
+    ms: 800
+  # 建一台在 G1 组的主机
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: rn-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.5.5.1
+  - action: type
+    target: id:shell/dialog-group
+    text: G1
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "G1"
+      withinMs: 8000
+  # 打开分组菜单 -> 重命名
+  # bindMenu 弹层不在 uitest dump 里，所以走表头上的 ✎ 图标
+  - action: click
+    target: id:group/rename/G1
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "重命名分组|Rename group"
+      withinMs: 6000
+  - action: type
+    target: id:grouprename/input
+    text: G2
+  - action: click
+    target: id:grouprename/confirm
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "G2"
+      withinMs: 8000
+  # 删除分组
+  - action: click
+    target: id:group/del/G2
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "删除分组"
+      withinMs: 6000
+  - action: click
+    target: id:groupdel/confirm
+  - action: wait
+    ms: 1500
+asserts:
+  - kind: screenRegex
+    regex: "rn-a"
+    withinMs: 8000
+  - kind: absent
+    value: "G2"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：分组菜单里「重命名分组」改表头且主机跟随；「删除分组」后主机回到默认组（不删主机）。
+    **不覆盖**：重命名成空名/同名（错误提示文案未断言）、分组嵌套、菜单在网格视图的表现。
+deviations:
+  - 删除分组后默认组表头文案随语言，不显式断言。
+  - 分组菜单（bindMenu）弹层不在 uitest dump 里，所以用例点表头的 ✎/🗑 图标；菜单项本身是给用户用的。
+notes: >-
+  删除分组只把 grp 清空，不动 hosts 行；这是"分组是视图而非容器"的语义。

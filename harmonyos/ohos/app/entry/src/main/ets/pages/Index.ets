@@ -249,6 +249,11 @@ struct Index {
   @State groupFilter: string = '';
   @State protoFilter: string = '';
   @State pinnedGroups: string[] = [];
+  @State groupRenameOpen: boolean = false;
+  @State groupRenameOld: string = '';
+  @State groupRenameText: string = '';
+  @State groupRenameError: string = '';
+  @State groupDelName: string = '';
   @State knownDelKey: string = '';
   @State vaultDelKey: string = '';
   @State hoverRow: number = -1;
@@ -2616,6 +2621,10 @@ struct Index {
               .fontColor(this.isPinned(g) ? '#E0A458' : '#4A4F57')
               .onClick(() => { this.togglePin(g); })
             Text(this.sectionLabel(g)).fontSize(13).fontColor('#C7CBD1').fontWeight(FontWeight.Medium)
+            Text('✎').id('group/rename/' + g).fontSize(12).fontColor('#8A8F98')
+              .onClick(() => { this.openRenameGroup(g); })
+            Text('🗑').id('group/del/' + g).fontSize(12).fontColor('#8A8F98')
+              .onClick(() => { this.askDeleteGroup(g); })
             Text('(' + this.countGroup(g) + ')').fontSize(12).fontColor('#6B7078')
             Blank()
             Image($r('app.media.ic_more')).id('group/menu/' + g).width(16).height(16)
@@ -2936,6 +2945,54 @@ struct Index {
 
   private hostGroupOf(h: HostItem): string {
     return h.group.length > 0 ? h.group : '';
+  }
+
+
+  private openRenameGroup(g: string): void {
+    this.groupRenameOld = g;
+    // 不预填旧名：预填后用户/用例直接输入会变成"旧名+新名"（实测 G1 -> G1G2）。
+    // 旧名放在 placeholder 里，输入框保持空的"重命名"语义。
+    this.groupRenameText = '';
+    this.groupRenameError = '';
+    this.groupRenameOpen = true;
+  }
+
+  private async submitRenameGroup(): Promise<void> {
+    const next: string = this.groupRenameText.trim();
+    if (next.length === 0) {
+      this.groupRenameError = this.lang === 'zh' ? '分组名不能为空' : 'group name required';
+      return;
+    }
+    if (next === this.sectionLabel(this.groupRenameOld)) {
+      this.groupRenameOpen = false;
+      return;
+    }
+    this.groupRenameError = '';
+    if (this.store === null) { return; }
+    const pred = new relationalStore.RdbPredicates('hosts');
+    pred.equalTo('grp', this.groupRenameOld);
+    await this.store.update({ 'grp': next }, pred);
+    this.groupRenameOpen = false;
+    await this.settleStore();
+    await this.reload();
+  }
+
+  private askDeleteGroup(g: string): void {
+    this.groupDelName = g;
+  }
+
+  private async confirmDeleteGroup(): Promise<void> {
+    const g: string = this.groupDelName;
+    this.groupDelName = '';
+    if (g.length === 0 || this.store === null) { return; }
+    // 删除分组 = 把组内主机移回默认组（主机本身不删）
+    const pred = new relationalStore.RdbPredicates('hosts');
+    pred.equalTo('grp', g);
+    await this.store.update({ 'grp': '' }, pred);
+    this.pinnedGroups = this.pinnedGroups.filter((x: string) => x !== g);
+    this.collapsedGroups = this.collapsedGroups.filter((x: string) => x !== g);
+    await this.settleStore();
+    await this.reload();
   }
 
   private isPinned(g: string): boolean {
@@ -4378,6 +4435,54 @@ struct Index {
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
 
+
+  // 重命名分组
+  @Builder
+  groupRenameDialog() {
+    Column({ space: 10 }) {
+      Text(this.lang === 'zh' ? '重命名分组' : 'Rename group')
+        .id('grouprename/title').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED').width('100%')
+      TextInput({ text: this.groupRenameText, placeholder: this.sectionLabel(this.groupRenameOld) })
+        .id('grouprename/input').width('100%')
+        .onChange((v: string) => { this.groupRenameText = v; })
+      if (this.groupRenameError.length > 0) {
+        Text(this.groupRenameError).id('grouprename/error').fontSize(11).fontColor('#E08A8A').width('100%')
+      }
+      Row({ space: 12 }) {
+        Button(this.t('hostkey.cancel')).id('grouprename/cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.groupRenameOpen = false; })
+        Button(this.lang === 'zh' ? '重命名' : 'Rename').id('grouprename/confirm')
+          .backgroundColor('#3DDC97').fontColor('#12141A')
+          .onClick(() => { this.submitRenameGroup(); })
+      }.width('100%').justifyContent(FlexAlign.End)
+    }
+    .id('grouprename/dialog').width(460).padding(20).backgroundColor('#1C1F24').borderRadius(12)
+    .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
+  }
+
+  // 删除分组（组内主机移回默认组，主机不删）
+  @Builder
+  groupDeleteDialog() {
+    Column({ space: 10 }) {
+      Text(this.lang === 'zh' ? '删除分组？' : 'Delete group?')
+        .id('groupdel/title').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED').width('100%')
+      Text(this.lang === 'zh'
+        ? '组内主机会回到默认组，主机本身不会被删除。'
+        : 'Hosts in this group move to the default group; the hosts themselves are kept.')
+        .fontSize(12).fontColor('#8A8F98').width('100%')
+      Text(this.sectionLabel(this.groupDelName)).fontSize(11).fontColor('#C7CBD1').width('100%')
+      Row({ space: 12 }) {
+        Button(this.t('hostkey.cancel')).id('groupdel/cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.groupDelName = ''; })
+        Button(this.lang === 'zh' ? '删除分组' : 'Delete group').id('groupdel/confirm')
+          .backgroundColor('#C62828').fontColor(Color.White)
+          .onClick(() => { this.confirmDeleteGroup(); })
+      }.width('100%').justifyContent(FlexAlign.End)
+    }
+    .id('groupdel/dialog').width(460).padding(20).backgroundColor('#1C1F24').borderRadius(12)
+    .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -4469,6 +4574,14 @@ struct Index {
       if (this.showDialog) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
         this.hostForm()
+      }
+      if (this.groupRenameOpen) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
+        this.groupRenameDialog()
+      }
+      if (this.groupDelName.length > 0) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
+        this.groupDeleteDialog()
       }
       if (this.knownDelKey.length > 0) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})

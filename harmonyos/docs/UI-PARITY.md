@@ -1187,3 +1187,28 @@ Row { Text(iconGlyph).id('host-icon-card/<id>')  Text(lastUsedText).id('host-las
 卡片高度仍是 64，三行信息在测试里能显示，但**视觉上可能偏挤**；
 如果后续要更接近官方卡片，应该把卡片高度调到 72~76 并重新核对网格间距（需要新的布局用例）。
 
+---
+
+## Round 74 追加：分组管理（重命名 / 删除）
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 入口 | 分组表头的 **✎ / 🗑**（id `group/rename/<g>`、`group/del/<g>`）；分组 `⋯` 菜单里也加了「重命名分组 / 固定本组 / 取消固定 / 删除分组」 |
+| 重命名 | 对话框 `grouprename/dialog`（`input`/`cancel`/`confirm`/`error`）；`UPDATE hosts SET grp=new WHERE grp=old` |
+| 删除 | 确认框 `groupdel/dialog`（`cancel`/`confirm`）；**只把组内主机的 grp 清空（回默认组），不删主机** |
+| 语义 | 分组是"视图"不是"容器"：删组不丢数据 |
+
+### 两个坑（都是"看起来能用但语义错"）
+1. **重命名预填旧名**：把旧名填进 `TextInput`，用户/用例再输入就变成 `G1G2`（实测确实生成了一个 `G1G2` 组）。
+   ⇒ 改成**打开时清空输入框**，旧名只放在 `placeholder` 里。
+2. **`bindMenu` 弹层不进 `uitest dump`**：菜单项无法被自动化点击（这是早就记录过的限制）。
+   ⇒ 在表头加了可点的 ✎/🗑 图标专门给自动化与鼠标用户用，菜单仍然保留。
+
+### 用例
+`host.group-rename-delete` **PASS**：建 G1 → 点 ✎ 重命名为 G2（表头与主机跟随）→ 点 🗑 确认删除 →
+主机仍在（回到默认组），`G2` 消失。
+
+### 回归
+`host.group-pin / host.group-collapse / host.group-filter / host.manage => 4/4 PASS`
+

@@ -1,0 +1,18 @@
+﻿feat(harmonyos/ui): 分组管理(重命名/删除) + 用例 PASS
+
+实现:
+- 入口: 分组表头 ✎/🗑 (id group/rename/<g>、group/del/<g>); 分组 ⋯ 菜单也加了
+  "重命名分组 / 固定本组 / 取消固定 / 删除分组"
+- 重命名: grouprename/dialog(input/cancel/confirm/error); UPDATE hosts SET grp=new WHERE grp=old
+- 删除: groupdel/dialog(cancel/confirm); 只把组内主机的 grp 清空(回默认组), 不删主机
+- 语义: 分组是"视图"不是"容器", 删组不丢数据
+
+两个坑:
+1) 重命名预填旧名: 旧名填进 TextInput, 再输入变 G1G2(实测真生成了 G1G2 组)
+   => 改成打开时清空输入框, 旧名只放 placeholder
+2) bindMenu 弹层不进 uitest dump: 菜单项无法自动化点击
+   => 表头加可点的 ✎/🗑 图标给自动化与鼠标用户, 菜单仍保留
+
+用例 host.group-rename-delete PASS: 建 G1 -> ✎ 重命名为 G2(表头与主机跟随) -> 🗑 确认删除 ->
+  主机仍在(回默认组), G2 消失
+回归: host.group-pin / host.group-collapse / host.group-filter / host.manage => 4/4 PASS
