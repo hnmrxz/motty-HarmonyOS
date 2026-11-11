@@ -2004,3 +2004,32 @@ dump 里 `fwd/start`/`fwd/stop` 从"不存在"变为"存在"）。
 
 ### 五、状态
 用例 50 → **51**；E1 能力 16。
+---
+
+## Round 71：客户端渲染管线（未达成：收不到位图更新）
+
+### 一、做了什么
+新增 `rdpRender(host,port,user,password,cb)`：连接后泵事件（`freerdp_check_fds`），
+挂 `context->update->BitmapUpdate` 回调，统计桌面更新的尺寸/像素数/颜色聚类，回传摘要。
+UI 加 `rdp/render` 按钮（诊断面板）。
+
+### 二、结果（诚实：失败）
+```
+rdp-render: frames=0 size=0x0 pixels=0 colors=00000000
+```
+连接是通的（Round 70 已证 `connected`），但**一个位图更新都没收到**。
+
+### 三、为什么（本轮定位到的原因）
+只链 `libfreerdp` 时，`freerdp_new()` + `freerdp_context_new()` 建出的 `rdpContext`
+**没有完整的客户端 update/gdi 管线**；`freerdp_client_context_new(nullptr)` 又返回 NULL
+（需要客户端入口点）。所以 `context->update->BitmapUpdate` 虽然赋值了，
+但服务端的桌面更新没有被路由到我们的回调。
+
+### 四、下一步（需要一次专门的改造）
+1. 用 `freerdp_client_context_new(&entryPoints)`，entryPoints 由 `freerdp_client_get_entry_points`
+   或自建（需要 client 库的正确用法，不是简单 nullptr）
+2. 或者走 `freerdp_client_settings_parse_command_line` + `freerdp_client_context_new` 的官方客户端路径
+3. 拿到更新后再谈渲染（Canvas `fillRect` 307k 次不可行，需要 `putImageData`——而它之前崩过，要重查）
+
+### 五、状态
+用例数保持 **51**（没有为失败的功能加用例）；`rdp.render` 属 **E3**。

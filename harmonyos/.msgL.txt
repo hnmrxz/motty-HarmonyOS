@@ -1,0 +1,17 @@
+﻿feat(harmonyos): 客户端渲染管线尝试（未达成：收不到位图更新）
+
+做了什么:
+- rdpRender(host,port,user,pw,cb): 连接后 freerdp_check_fds 泵事件，
+  挂 context->update->BitmapUpdate，统计尺寸/像素/颜色聚类后回传摘要
+- 诊断面板加 rdp/render 按钮
+
+结果(失败): rdp-render: frames=0 size=0x0 pixels=0 colors=00000000
+- 连接是通的(Round 70 已证 connected)，但一个位图更新都没收到
+- 原因: 只链 libfreerdp 时 freerdp_new+freerdp_context_new 的 rdpContext 没有完整客户端
+  update/gdi 管线；freerdp_client_context_new(nullptr) 又返回 NULL(需客户端入口点)
+  => BitmapUpdate 赋了但更新没路由到回调
+
+下一步: 用 freerdp_client_context_new(&entryPoints) 官方客户端路径；
+渲染本身还要重查 putImageData 崩溃问题
+
+诚实: 用例数保持 51（不为失败功能加用例）；rdp.render 属 E3

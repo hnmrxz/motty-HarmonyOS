@@ -13,6 +13,8 @@
 #include <freerdp/client.h>
 #include <freerdp/freerdp.h>
 #include <freerdp/settings.h>
+#include <freerdp/update.h>
+#include <freerdp/primary.h>
 
 #include <atomic>
 #include <cstdio>
@@ -22,6 +24,52 @@
 #include <vector>
 
 namespace {
+
+// 位图更新统计：只用来证明"客户端真的收到并解析了服务端画面"。
+// 不做像素级渲染（UI 用 fillRect 画整屏代价太大），只统计尺寸与颜色聚类。
+struct RenderStats {
+    int width = 0;
+    int height = 0;
+    int updates = 0;
+    int pixels = 0;
+    // 简单聚类：把像素按 R/G/B 是否高于中值分成 8 类
+    int buckets[8] = {0};
+};
+
+static RenderStats g_stats;
+static std::mutex g_statsMtx;
+
+static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
+    if (context == nullptr || bitmap == nullptr) {
+        return TRUE;
+    }
+    std::lock_guard<std::mutex> lock(g_statsMtx);
+    for (UINT32 i = 0; i < bitmap->number; i++) {
+        const BITMAP_DATA &d = bitmap->rectangles[i];
+        if (g_stats.width == 0 && d.width > 0) {
+            g_stats.width = static_cast<int>(d.width);
+        }
+        if (g_stats.height == 0 && d.height > 0) {
+            g_stats.height = static_cast<int>(d.height);
+        }
+        g_stats.updates++;
+        const int px = static_cast<int>(d.width) * static_cast<int>(d.height);
+        g_stats.pixels += px;
+        // 采样 bitmapData 里的字节做粗聚类（BGRA）
+        if (d.bitmapDataStream != nullptr && d.bitmapLength >= 4) {
+            const int step = (static_cast<int>(d.bitmapLength) / 4) / 64 + 1;
+            for (UINT32 off = 0; off + 3 < d.bitmapLength; off += 4 * step) {
+                const int b = d.bitmapDataStream[off];
+                const int g = d.bitmapDataStream[off + 1];
+                const int r = d.bitmapDataStream[off + 2];
+                int idx = ((r > 127) ? 4 : 0) + ((g > 127) ? 2 : 0) + ((b > 127) ? 1 : 0);
+                if (idx < 0 || idx > 7) idx = 0;
+                g_stats.buckets[idx]++;
+            }
+        }
+    }
+    return TRUE;
+}
 
 struct RdpJob {
     std::string host;
@@ -108,6 +156,71 @@ std::string rdpTryConnect(const RdpJob &job) {
     return result;
 }
 
+// rdpRender(host, port, user, password, cb)：连接 → 泵事件若干秒 → 回调画面上传统计
+void renderWorker(RdpJob *job) {
+    std::string result;
+    // 与 rdpTryConnect 一致：只链 libfreerdp 时用 freerdp_new + freerdp_context_new
+    freerdp *instance = freerdp_new();
+    if (instance == nullptr || !freerdp_context_new(instance)) {
+        result = "error context";
+    } else {
+        rdpContext *context = instance->context;
+        rdpSettings *settings = context->settings;
+        freerdp_settings_set_string(settings, FreeRDP_ServerHostname, job->host.c_str());
+        freerdp_settings_set_uint32(settings, FreeRDP_ServerPort, static_cast<uint32_t>(job->port));
+        freerdp_settings_set_string(settings, FreeRDP_Username, job->user.c_str());
+        freerdp_settings_set_string(settings, FreeRDP_Password, job->password.c_str());
+        instance->VerifyCertificateEx = VerifyCertEx;
+        freerdp_settings_set_bool(settings, FreeRDP_NlaSecurity, FALSE);
+        freerdp_settings_set_bool(settings, FreeRDP_TlsSecurity, TRUE);
+        if (context->update != nullptr) {
+            context->update->BitmapUpdate = OnBitmapUpdate;
+        }
+        {
+            std::lock_guard<std::mutex> lock(g_statsMtx);
+            g_stats = RenderStats();
+        }
+        if (!freerdp_connect(instance)) {
+            result = std::string("connect failed: ") +
+                     freerdp_get_last_error_string(freerdp_get_last_error(context));
+        } else {
+            // 泵事件：让 shadow 把桌面更新送上来
+            for (int i = 0; i < 200; i++) {   // ~10s 上限
+                if (!freerdp_check_fds(instance)) {
+                    break;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                RenderStats snapshot;
+                {
+                    std::lock_guard<std::mutex> lock(g_statsMtx);
+                    snapshot = g_stats;
+                }
+                if (snapshot.updates >= 3) {
+                    break;
+                }
+            }
+            RenderStats st;
+            {
+                std::lock_guard<std::mutex> lock(g_statsMtx);
+                st = g_stats;
+            }
+            char buf[256];
+            snprintf(buf, sizeof(buf), "frames=%d size=%dx%d pixels=%d colors=%d%d%d%d%d%d%d%d",
+                     st.updates, st.width, st.height, st.pixels, st.buckets[0], st.buckets[1],
+                     st.buckets[2], st.buckets[3], st.buckets[4], st.buckets[5], st.buckets[6],
+                     st.buckets[7]);
+            result = buf;
+            freerdp_disconnect(instance);
+        }
+        freerdp_context_free(instance);
+        freerdp_free(instance);
+    }
+    auto *payload = new std::string(result);
+    napi_call_threadsafe_function(job->cb, payload, napi_tsfn_blocking);
+    napi_release_threadsafe_function(job->cb, napi_tsfn_release);
+    delete job;
+}
+
 void worker(RdpJob *job) {
     std::string result = rdpTryConnect(*job);
     auto *payload = new std::string(result);
@@ -169,11 +282,40 @@ napi_value RdpProbe(napi_env env, napi_callback_info info) {
     return out;
 }
 
+// rdpRender(host, port, user, password, cb)
+napi_value RdpRender(napi_env env, napi_callback_info info) {
+    size_t argc = 5;
+    napi_value args[5] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 5) {
+        napi_throw_type_error(env, nullptr, "rdpRender(host, port, user, password, cb)");
+        return nullptr;
+    }
+    auto *job = new RdpJob();
+    job->host = getString(env, args[0]);
+    int32_t port = 3389;
+    napi_get_value_int32(env, args[1], &port);
+    job->port = port;
+    job->user = getString(env, args[2]);
+    job->password = getString(env, args[3]);
+    napi_value name = nullptr;
+    napi_create_string_utf8(env, "motty.rdp.render", NAPI_AUTO_LENGTH, &name);
+    if (napi_create_threadsafe_function(env, args[4], nullptr, name, 0, 1, nullptr, nullptr, nullptr,
+                                        callJs, &job->cb) != napi_ok) {
+        delete job;
+        napi_throw_error(env, nullptr, "tsfn failed");
+        return nullptr;
+    }
+    std::thread(renderWorker, job).detach();
+    return nullptr;
+}
+
 }  // namespace
 
 void RegisterRdpFunctions(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
         {"rdpProbe", nullptr, RdpProbe, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"rdpRender", nullptr, RdpRender, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
 }

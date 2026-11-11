@@ -667,6 +667,14 @@ struct Index {
   // 真实产品接外部模型；这里把"请求构造 / 超时 / 错误处理 / 结果呈现"验证到可断言，
   // 模型质量本身不在验证范围内（见 spec 的 evidence.limits）。
   // ---------------- RDP 服务端（诊断用：给客户端一个真实协议的对端）----------------
+  // 客户端渲染管线（最小）：连接后泵事件，把收到的位图更新统计回来
+  private startRdpRender(): void {
+    this.rdpResult = 'rdp-render: connecting...';
+    mottynapi.rdpRender('127.0.0.1', this.rdpSrvPort, 'tester', 'secret', (result: string) => {
+      this.rdpResult = 'rdp-render: ' + result;
+    });
+  }
+
   private startRdpServer(): void {
     // OHOS 没有 XDG 配置目录：shadow_server_init 需要一个可写目录来放自签证书
     const ctx = getContext(this) as common.UIAbilityContext;
@@ -1899,6 +1907,8 @@ struct Index {
       Row({ space: 8 }) {
         Button('RDP local :13389').id('rdp/probe-local').backgroundColor('#1A6DD0').fontColor(Color.White)
           .onClick(() => { this.rdpProbe(13389, 'tester', 'secret'); })
+        Button('RDP render').id('rdp/render').backgroundColor('#1A6DD0').fontColor(Color.White)
+          .onClick(() => { this.startRdpRender(); })
         Button('RDP :3390').id('rdp/probe-closed').backgroundColor('#37474F').fontColor(Color.White)
           .onClick(() => { this.rdpProbe(3390); })
         Button('RDP :2222').id('rdp/probe-ssh').backgroundColor('#37474F').fontColor(Color.White)
