@@ -22,6 +22,7 @@ import { BusinessError, pasteboard } from '@kit.BasicServicesKit';
 import { asset } from '@kit.AssetStoreKit';
 import { util } from '@kit.ArkTS';
 import mottynapi from 'libmottynapi.so';
+import { picker, fileIo } from '@kit.CoreFileKit';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'MOTTY';
@@ -126,6 +127,29 @@ interface HostRow {
   index: number;
 }
 
+interface CatalogHost {
+  id: string;
+  label: string;
+  group: string;
+  tags: string[];
+  color: string;
+  address: string;
+  user: string;
+  port: number;
+}
+
+interface CatalogGroup {
+  name: string;
+  collapsed: boolean;
+}
+
+interface CatalogDoc {
+  format: string;
+  version: number;
+  hosts: CatalogHost[];
+  groups: CatalogGroup[];
+}
+
 interface Cred {
   address: string;
   port: number;
@@ -171,6 +195,7 @@ struct Index {
   @State hoverRow: number = -1;
   @State selectAll: boolean = false;
   @State selectedIds: string[] = [];
+  @State catalogResult: string = '(catalog: idle)';
   @State hostView: string = 'list';
   @State hostSort: string = 'manual';
   @State aiAnswer: string = '';
@@ -2065,6 +2090,19 @@ struct Index {
           .onChange((v: boolean) => { this.rdpUseNla = v; })
         Text('NLA').fontSize(11)
       }.width('100%')
+      Row({ space: 8 }) {
+        Button('catalog export').id('catalog/export-file').fontSize(11).height(28)
+          .backgroundColor('#1E2127').fontColor('#C7CBD1')
+          .onClick(() => { this.exportCatalogToSandbox(); })
+        Button('catalog import').id('catalog/import-file').fontSize(11).height(28)
+          .backgroundColor('#1E2127').fontColor('#C7CBD1')
+          .onClick(() => { this.importCatalogFromSandbox(); })
+      }.width('100%')
+      Button('catalog reset hosts').id('catalog/reset-hosts').fontSize(11).height(26)
+        .backgroundColor('#3A2226').fontColor('#E08A8A')
+        .onClick(() => { this.resetAllHosts(); })
+      Text(this.catalogResult).id('catalog/result').fontSize(11).fontFamily('monospace')
+        .fontColor('#0A6C00').width('100%')
       Text(this.t('rdp.experimental'))
         .id('rdp/experimental').fontSize(10).fontColor('#C62828').width('100%')
       Text(this.rdpResult.length > 0 ? this.rdpResult : 'rdp: (not probed)')
@@ -2399,6 +2437,10 @@ struct Index {
         })
       Button(this.lang === 'zh' ? '导入/导出' : 'Import/Export').id('hosts/import-export')
         .height(38).fontSize(14).backgroundColor('#1E2127').fontColor('#C7CBD1')
+        .bindMenu([
+          { value: this.lang === 'zh' ? '导入目录…' : 'Import catalog…', action: () => { this.importCatalog(); } },
+          { value: this.lang === 'zh' ? '导出目录…' : 'Export catalog…', action: () => { this.exportCatalog(); } }
+        ])
       Button(this.t('top.newHost')).id('shell/add-host').height(38).fontSize(14)
         .fontWeight(FontWeight.Medium)
         .backgroundColor('#E8EAED').fontColor('#12141A')
@@ -2711,6 +2753,212 @@ struct Index {
 
 
 
+
+
+  // ---------------- 主机目录导入/导出（官方格式 motty-host-catalog v4） ----------------
+  private catalogJson(): string {
+    const hosts: CatalogHost[] = [];
+    for (let i = 0; i < this.hosts.length; i++) {
+      const h = this.hosts[i];
+      const tags: string[] = this.tagList(h);
+      hosts.push({
+        id: h.id, label: h.label, group: h.group, tags: tags,
+        color: h.color, address: h.address, user: h.user,
+        port: Number.parseInt(h.port, 10) || 0
+      } as CatalogHost);
+    }
+    const groups: CatalogGroup[] = [];
+    const seen: string[] = this.sections();
+    for (let i = 0; i < seen.length; i++) {
+      groups.push({ name: this.sectionLabel(seen[i]), collapsed: this.isCollapsed(seen[i]) } as CatalogGroup);
+    }
+    const doc: CatalogDoc = {
+      format: 'motty-host-catalog', version: 4, hosts: hosts, groups: groups
+    };
+    return JSON.stringify(doc, null, 2);
+  }
+
+  private async exportCatalog(): Promise<void> {
+    try {
+      const ctx = getContext(this) as common.UIAbilityContext;
+      const p = new picker.DocumentViewPicker(ctx);
+      const opts = new picker.DocumentSaveOptions();
+      opts.newFileNames = ['motty-hosts.json'];
+      opts.fileSuffixChoices = ['.json'];
+      const uris = await p.save(opts);
+      if (uris.length === 0) { return; }
+      const f = fileIo.openSync(uris[0], fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
+      fileIo.writeSync(f.fd, this.catalogJson());
+      fileIo.closeSync(f);
+      this.probeText = (this.lang === 'zh' ? '已导出 ' : 'Exported ') + this.hosts.length + ' -> ' + uris[0];
+      hilog.info(DOMAIN, TAG, 'catalog exported to %{public}s', uris[0]);
+    } catch (e) {
+      this.probeText = 'export failed: ' + JSON.stringify(e);
+      hilog.error(DOMAIN, TAG, 'catalog export failed: %{public}s', JSON.stringify(e));
+    }
+  }
+
+  private async importCatalog(): Promise<void> {
+    try {
+      const ctx = getContext(this) as common.UIAbilityContext;
+      const p = new picker.DocumentViewPicker(ctx);
+      const opts = new picker.DocumentSelectOptions();
+      opts.maxSelectNumber = 1;
+      opts.fileSuffixFilters = ['.json'];
+      const uris = await p.select(opts);
+      if (uris.length === 0) { return; }
+      const f = fileIo.openSync(uris[0], fileIo.OpenMode.READ_ONLY);
+      const stat = fileIo.statSync(f.fd);
+      const buf = new ArrayBuffer(stat.size);
+      fileIo.readSync(f.fd, buf);
+      fileIo.closeSync(f);
+      const text: string = util.TextDecoder.create('utf-8').decodeToString(new Uint8Array(buf));
+      const doc: Record<string, Object> = JSON.parse(text) as Record<string, Object>;
+      const fmt: string = String(doc['format'] ?? '');
+      const ver: number = Number(doc['version'] ?? 0);
+      if (fmt !== 'motty-host-catalog') {
+        this.probeText = this.lang === 'zh' ? '不是 Motty 主机目录文件' : 'not a Motty catalog file';
+        return;
+      }
+      if (ver > 4) {
+        this.probeText = this.lang === 'zh' ? '目录版本过新，请先升级' : 'catalog version too new';
+        return;
+      }
+      const list: object[] = (doc['hosts'] ?? []) as object[];
+      let added = 0;
+      let dup = 0;
+      for (let i = 0; i < list.length; i++) {
+        const it: Record<string, Object> = list[i] as Record<string, Object>;
+        const label: string = String(it['label'] ?? '');
+        const address: string = String(it['address'] ?? '');
+        const port: string = String(it['port'] ?? 22);
+        if (label.length === 0 || address.length === 0 || this.store === null) { continue; }
+        let exists = false;
+        for (let k = 0; k < this.hosts.length; k++) {
+          if (this.hosts[k].label === label && this.hosts[k].address === address &&
+              this.hosts[k].port === port) { exists = true; break; }
+        }
+        if (exists) { dup++; continue; }
+        const tagsRaw: object[] = (it['tags'] ?? []) as object[];
+        let tags: string = '';
+        for (let t = 0; t < tagsRaw.length; t++) {
+          tags = tags.length === 0 ? String(tagsRaw[t]) : (tags + ',' + String(tagsRaw[t]));
+        }
+        const bucket: relationalStore.ValuesBucket = {
+          'id': String(Date.now()) + '_' + i,
+          'label': label, 'address': address,
+          'usr': String(it['user'] ?? ''),
+          'port': port, 'proto': 'ssh',
+          'grp': String(it['group'] ?? ''),
+          'tags': tags,
+          'color': String(it['color'] ?? '')
+        };
+        await this.store.insert('hosts', bucket);
+        added++;
+      }
+      await this.reload();
+      this.probeText = (this.lang === 'zh' ? '导入完成：新增 ' : 'imported: ') + added +
+        (this.lang === 'zh' ? '，重复 ' : ', duplicates ') + dup;
+    } catch (e) {
+      this.probeText = 'import failed: ' + JSON.stringify(e);
+      hilog.error(DOMAIN, TAG, 'catalog import failed: %{public}s', JSON.stringify(e));
+    }
+  }
+
+
+  // 可自动化版本：直接读写应用沙箱文件（供用例驱动），与 UI 版共用同一份 JSON 结构
+  private async exportCatalogToSandbox(): Promise<void> {
+    try {
+      const ctx = getContext(this) as common.UIAbilityContext;
+      const path: string = ctx.cacheDir + '/motty-hosts.json';
+      const f = fileIo.openSync(path, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
+      fileIo.writeSync(f.fd, this.catalogJson());
+      fileIo.closeSync(f);
+      const stat = fileIo.statSync(path);
+      this.catalogResult = 'catalog-export: ' + path + ' (' + stat.size + ' bytes, ' + this.hosts.length + ' hosts)';
+    } catch (e) {
+      this.catalogResult = 'catalog-export failed: ' + JSON.stringify(e);
+    }
+  }
+
+  private async importCatalogFromSandbox(): Promise<void> {
+    try {
+      const ctx = getContext(this) as common.UIAbilityContext;
+      const path: string = ctx.cacheDir + '/motty-hosts.json';
+      const f = fileIo.openSync(path, fileIo.OpenMode.READ_ONLY);
+      const stat = fileIo.statSync(f.fd);
+      const buf = new ArrayBuffer(stat.size);
+      fileIo.readSync(f.fd, buf);
+      fileIo.closeSync(f);
+      const text: string = util.TextDecoder.create('utf-8').decodeToString(new Uint8Array(buf));
+      const doc: Record<string, Object> = JSON.parse(text) as Record<string, Object>;
+      const fmt: string = String(doc['format'] ?? '');
+      const ver: number = Number(doc['version'] ?? 0);
+      if (fmt !== 'motty-host-catalog') {
+        this.catalogResult = 'catalog-import: bad format ' + fmt;
+        return;
+      }
+      if (ver > 4) {
+        this.catalogResult = 'catalog-import: version too new ' + ver;
+        return;
+      }
+      const list: object[] = (doc['hosts'] ?? []) as object[];
+      let added = 0;
+      let dup = 0;
+      for (let i = 0; i < list.length; i++) {
+        const it: Record<string, Object> = list[i] as Record<string, Object>;
+        const label: string = String(it['label'] ?? '');
+        const address: string = String(it['address'] ?? '');
+        const port: string = String(it['port'] ?? 22);
+        if (label.length === 0 || address.length === 0 || this.store === null) { continue; }
+        let exists = false;
+        for (let k = 0; k < this.hosts.length; k++) {
+          if (this.hosts[k].label === label && this.hosts[k].address === address &&
+              this.hosts[k].port === port) { exists = true; break; }
+        }
+        if (exists) { dup++; continue; }
+        const tagsRaw: object[] = (it['tags'] ?? []) as object[];
+        let tags: string = '';
+        for (let t = 0; t < tagsRaw.length; t++) {
+          tags = tags.length === 0 ? String(tagsRaw[t]) : (tags + ',' + String(tagsRaw[t]));
+        }
+        const bucket: relationalStore.ValuesBucket = {
+          'id': 'imp_' + Date.now() + '_' + i,
+          'label': label, 'address': address,
+          'usr': String(it['user'] ?? ''),
+          'port': port, 'proto': 'ssh',
+          'grp': String(it['group'] ?? ''),
+          'tags': tags,
+          'color': String(it['color'] ?? '')
+        };
+        await this.store.insert('hosts', bucket);
+        added++;
+      }
+      await this.reload();
+      this.catalogResult = 'catalog-import: added=' + added + ' dup=' + dup + ' total=' + this.hosts.length;
+    } catch (e) {
+      this.catalogResult = 'catalog-import failed: ' + JSON.stringify(e);
+    }
+  }
+
+  private async resetAllHosts(): Promise<void> {
+    if (this.store === null) { return; }
+    for (let i = 0; i < this.hosts.length; i++) {
+      const h = this.hosts[i];
+      const key = this.hostKey(h.address, h.port);
+      const hp = new relationalStore.RdbPredicates('hosts');
+      hp.equalTo('id', h.id);
+      await this.store.delete(hp);
+      const kp = new relationalStore.RdbPredicates('known_hosts');
+      kp.equalTo('host', key);
+      await this.store.delete(kp);
+      await Vault.remove(key);
+      this.creds.delete(key);
+    }
+    this.selectedIds = [];
+    await this.reload();
+    this.catalogResult = 'catalog-reset: hosts=' + this.hosts.length;
+  }
 
   build() {
     Stack({ alignContent: Alignment.TopStart }) {

@@ -65,9 +65,12 @@ def check(path, schema, caps, errors):
 
     # 1. 双画像
     prof = set(doc['profile'])
-    if not {'2in1', 'tablet'} <= prof:
-        errors.append(f'{rel}: profile 必须同时含 2in1 与 tablet，实际 {sorted(prof)}')
-
+    if doc.get('pcOnly'):
+        # PC 端目标：只要求 2in1（平板特性暂停）
+        if prof != {'2in1'}:
+            errors.append(f'{rel}: pcOnly 规格的 profile 必须只有 2in1，实际 {sorted(prof)}')
+    elif not {'2in1', 'tablet'} <= prof:
+        errors.append(f'{rel}: profile 必须同时含 2in1 与 tablet（或用 pcOnly: true），实际 {sorted(prof)}')
     # 2+5. 选择器与可判定断言
     for i, step in enumerate(doc['steps']):
         tgt = step.get('target')

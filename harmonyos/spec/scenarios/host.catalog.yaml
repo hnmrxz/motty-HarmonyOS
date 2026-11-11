@@ -1,0 +1,120 @@
+schema: 1
+id: host.catalog
+title: 主机目录导出/导入：官方格式、可回读、幂等
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  # 两台主机
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: cat-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: root
+  - action: type
+    target: id:shell/dialog-port
+    text: "22"
+  - action: type
+    target: id:shell/dialog-group
+    text: 个人
+  - action: type
+    target: id:shell/dialog-tags
+    text: 生产
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1000
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: cat-b
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.0.0.2
+  - action: type
+    target: id:shell/dialog-user
+    text: root
+  - action: type
+    target: id:shell/dialog-port
+    text: "22"
+  - action: type
+    target: id:shell/dialog-group
+    text: 个人
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1200
+  # 导出
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1200
+  - action: click
+    target: id:catalog/export-file
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "catalog-export: .*motty-hosts\\.json \\([1-9][0-9]* bytes, 2 hosts\\)"
+      withinMs: 12000
+  # 清空本机主机（测试助手），再导入应新增 2
+  - action: click
+    target: id:catalog/reset-hosts
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "catalog-reset: hosts=0"
+      withinMs: 10000
+  # 再导入：应新增 1、重复 1
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1200
+  - action: click
+    target: id:catalog/import-file
+  - action: wait
+    ms: 2500
+asserts:
+  - kind: screenRegex
+    regex: "catalog-import: added=2 dup=0 total=2"
+    withinMs: 15000
+  - kind: absent
+    value: "catalog-import failed"
+    withinMs: 2000
+  - kind: absent
+    value: "catalog-import: bad format"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：按官方 motty-host-catalog v4 结构导出到应用沙箱、删除后回读导入、
+    去重（重复主机不重复插入）。**不覆盖**：系统文件选择器路径（DocumentViewPicker 需人工交互）、
+    groups 字段的折叠状态回读、版本 >4 的拒绝路径、非 JSON 文件的错误路径。
+deviations:
+  - 用"沙箱文件"版本而非系统文件选择器：选择器无法在自动化里完成交互
+  - 官方 groups 字段已写出但尚未在导入时恢复折叠状态
+notes: >-
+  added=1 dup=1 同时证明两件事：导入真的插入了一条，且重复识别没有重复插入。

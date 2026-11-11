@@ -1,0 +1,21 @@
+﻿feat(harmonyos): 主机目录导入/导出（官方 motty-host-catalog v4）+ PC-only 用例机制
+
+照官方源码实现格式(internal/workbench/host_catalog_transfer.go + persist.go):
+  {format:"motty-host-catalog", version:4, hosts:[{id,label,group,tags,color,address,user,port}], groups:[{name,collapsed}]}
+
+已实现:
+- 系统选择器版本: hosts/import-export 菜单 -> DocumentViewPicker.save/select
+- 沙箱可自动化版本: 诊断面板 catalog/export-file / catalog/import-file (写读 cacheDir/motty-hosts.json)
+- 去重: 按 label+address+port; 版本 >4 与非法 format 有拒绝分支
+- 测试助手: catalog/reset-hosts 清空主机; 结果常显 catalog/result(放折叠区会被 dump 漏掉)
+
+实测:
+  catalog-export: .../motty-hosts.json (615 bytes, 2 hosts)
+  catalog-import: added=0 dup=2 total=2   (幂等)
+  用例 host.catalog: export -> reset(hosts=0) -> import -> added=2 dup=0 total=2  PASS
+
+测试基础设施:
+- lint 新增 pcOnly 分支(只要求 2in1) + schema 允许 pcOnly 字段
+- 目标已改为只做 PC 端, 双画像不再是无条件要求; pcOnly 让 PC 专用用例合法且不假装平板已验证
+
+限制: 系统选择器不可自动化(证据用沙箱版本); groups 折叠状态未回读; 版本>4/非法 JSON 未入用例

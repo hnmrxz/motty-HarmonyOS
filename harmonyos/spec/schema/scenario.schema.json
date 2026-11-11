@@ -216,6 +216,9 @@
         "type": "string"
       },
       "description": "与原版脚本行为不同之处，逐条写明；空数组表示无差异"
+    },
+    "pcOnly": {
+      "type": "boolean"
     }
   },
   "$defs": {

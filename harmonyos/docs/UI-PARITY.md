@@ -178,3 +178,43 @@ host-check/0 点击      -> 批量操作条出现 (True)
   虽未导致编译失败，但会让 `Text(...)` 字面量退化。**含非 ASCII 符号的代码行必须用 Python 以 UTF-8 写入**，
   写完后用 `dump`/编译双重确认。
 
+---
+
+## Round 6 追加：主机目录导入/导出（官方 `motty-host-catalog` v4）+ PC-only 用例机制
+
+### 照官方源码实现的格式
+`internal/workbench/host_catalog_transfer.go` + `persist.go`：
+
+```json
+{ "format": "motty-host-catalog", "version": 4,
+  "hosts": [ { "id","label","group","tags":[],"icon?","color?","address","user","port","system?" } ],
+  "groups": [ { "name","collapsed?","explicit?","pinned?","order?" } ] }
+```
+
+### 已实现
+| 能力 | 入口 | 说明 |
+|---|---|---|
+| 导出（系统文件选择器） | `hosts/import-export` → 导出目录… | `DocumentViewPicker.save` 写 `.json` |
+| 导入（系统文件选择器） | `hosts/import-export` → 导入目录… | `DocumentViewPicker.select` 读，校验 format/version≤4，按 label+address+port 去重 |
+| 导出（沙箱，可自动化） | 诊断面板 `catalog/export-file` | 写 `cacheDir/motty-hosts.json`，结果行显示路径/字节数/主机数 |
+| 导入（沙箱，可自动化） | 诊断面板 `catalog/import-file` | 回读同一文件，结果 `added=/dup=/total=` |
+| 清空主机（仅测试助手） | 诊断面板 `catalog/reset-hosts` | 便于验证"导入新增"，正式 UI 不暴露 |
+| 结果常显 | `catalog/result` | 放在按钮旁边（不放进折叠区，否则 dump 抓不到） |
+
+### 实测（脚本 + 用例）
+```
+catalog-export: /data/storage/el2/base/haps/entry/cache/motty-hosts.json (615 bytes, 2 hosts)
+catalog-import: added=0 dup=2 total=2        # 幂等
+用例 host.catalog：export -> reset(hosts=0) -> import -> added=2 dup=0 total=2  PASS
+```
+
+### 新增的测试基础设施
+- `spec/scenarios/host.catalog.yaml` 标 `pcOnly: true`；
+- `spec/lint.py` 增加 `pcOnly` 分支（只要求 2in1）+ `schema/scenario.schema.json` 增加 `pcOnly` 字段；
+- 原因：目标已改为"只做 PC 端"，但双画像规则仍是默认要求，pcOnly 让 PC 专用用例合法且不假装平板已验证。
+
+### 已知限制
+- 系统文件选择器路径无法自动化（需要人工交互），所以证据用的是沙箱版本；
+- `groups` 字段已写出但导入时未恢复折叠状态；
+- `version > 4` 与非法 JSON 的拒绝路径未加入用例（有代码分支）。
+
