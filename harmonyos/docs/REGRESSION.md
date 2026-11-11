@@ -47,11 +47,24 @@ C:\Python315\python.exe harmonyos\tools\run-all.py
 新增 `harmonyos/tools/run-all.py`：一次跑完 `spec/scenarios/*.yaml`，每条用例单独输出目录，
 最后写 `spec/evidence/runs/full<N>/summary.json`。
 
-首轮（Round 21）实测到中途的抽样结果（写在提交信息里，完成后补 `summary.json`）：
-- 已完成 22/62，PASS 15 / FAIL 6 / 5 条未落盘
-- 失败样本：`host.persist`（找不到 `10.9.9.9` 文本）、`hostkey.changed`（`host-open/0` 未命中）、
-  `hosts.search`（`no matching hosts` 文案）、`infra.host-create-by-id`、`net.reachability`、`rdp.client-input`
+首轮（Round 21）**部分基线**：跑到 34/62 后停止（全量约 60–75 分钟），结果在
+`spec/evidence/runs/full21/summary-partial.json`：
 
-**注意**：这批失败里有些是"文案/选择器过时"（例如空搜索提示词改过），有些是真实缺陷，
+```
+done 34 / 62    PASS 24    FAIL 9
+```
+
+失败清单（附 error 摘要）：
+| 用例 | 失败点 | 初步判断 |
+|---|---|---|
+| `host.persist` | 断言文本 `10.9.9.9` | 地址列现在渲染成 `地址:端口`，断言用了精确文本 → **断言过时** |
+| `infra.host-create-by-id` | 断言文本 `10.0.0.2` | 同上 |
+| `hosts.search` | 期望 `no matching hosts` | 我们搜索无结果时**没有这条文案** → 真实缺文案 |
+| `hostkey.changed` | `host-open/0` 未命中 | 上一步已进会话（视图切到终端）→ 用例缺"回列表"步骤 |
+| `net.reachability` | 期望 `SSH-2.0-` | 需要夹具 banner 探测路径，待查 |
+| `rdp.client-input` / `rdp.client-render` / `rdp.connect` | RDP 断言 | RDP 仍是实验态（见 RDP.md），**不算通过** |
+| `rdp.server-peer` | 期望 `No hosts yet` | 空态文案已改（跟随语言）→ 断言过时 |
+
+**注意**：这批失败里有些是"文案/选择器过时"，有些是真实缺陷（如 `hosts.search` 缺空结果文案），
 必须逐条看 `result.json` 的 `error` 与 `final.png` 再下结论，不能一概当作环境问题。
 
