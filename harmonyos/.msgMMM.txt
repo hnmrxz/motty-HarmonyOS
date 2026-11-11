@@ -1,0 +1,20 @@
+﻿chore(harmonyos/rdp): 布局溢出修复尝试失败已回退; 根因钉死(面板固定高不可滚动)
+
+做了什么: 想把 10 个按钮的大行拆成 4 行修 rdp/srv-stop 点不到的缺陷, 顺手删两个重复 onClick
+拆完 dump 确认 rdp/srv-stop [1209,666]、srv-status、probe-closed、probe-ssh 都回来了,
+  rdp.srv-stop 用例也 PASS(启动->停止->状态不再 running)
+
+但出现新回归: 拆行后 rdp.client-render / rdp.client-input 连续 3 次失败(断言时面板已不见);
+  回退布局后立刻 5/5 PASS(render/input/preview/preview-idle/server-peer)
+=> 在这个"单文件+面板内容比窗口高"的结构里改布局, 回归风险远大于收益
+
+根因(结构问题): 诊断面板是固定高度、不可滚动的 Column, 内容总高度超过窗口
+- 排在后面的控件既不显示、也不在 dump 里(rdp/srv-stop 就是这样消失)
+- 任何"让内容更高"的改动都会把别的控件挤出可视区
+- 用例点不到控件 -> 表现为"渲染/输入回归"
+
+下一轮正确做法: 1) 诊断面板抽成独立组件 DiagPanel, 内容放 Scroll, 高度固定为窗口高
+  2) 抽完先跑 5 条 RDP 用例确认滚动没破坏点击(滚动后坐标会变, 需 swipe 配合)
+  3) 再修 rdp/srv-stop 可达性, 并把 rdp.srv-stop 用例加回来
+
+净收益: 确认"面板溢出"是 rdp/srv-stop 点不到的根因(有回退前后 5/5 对照证据); 两处重复 onClick 已定位
