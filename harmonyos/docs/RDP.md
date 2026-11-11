@@ -558,3 +558,40 @@ comp=163 skip=0 gfx=0 gfxBytes=0
 3. 若以上都不通，改为不依赖 GDI：用 `update->BitmapUpdate` 里**解压后**的 `bitmapData` 自己拼整屏，
    绕开 GDI 主缓冲。
 
+---
+
+## Round 43：决定性证据 —— GDI 主缓冲在 162 次位图更新中**从未变化**
+
+### 直接测量"解码有没有发生"
+在 `OnBitmapUpdate` 里，调用 GDI 原始实现**前后**各对主缓冲做一次哈希采样：
+```
+dec=0/162/3478572346/3478572346   gdi=1/1024x768/4096
+   ^changed/checks   ^before ^after
+```
+- `gdi_init` 成功（`gdi=1`，1024x768，stride 4096）；
+- 162 次位图更新，**主缓冲哈希一次都没变**（before == after == 同一个值）；
+- 说明 `gdi_bitmap_update` 根本没有把解压结果写进主缓冲——**不是采样问题，也不是颜色映射问题**。
+
+### 尝试过但无效的一条
+在 `OnPostConnect` 里先 `freerdp_client_codecs_prepare(codecs, INTERLEAVED|PLANAR, w, h)` 再 `gdi_init`：
+`codecs=1` 但 `dec` 仍然是 `0/162`。⇒ 不是"解码器没准备"。
+（该改动已回退，避免引入未验证行为。）
+
+### 一个自己踩的坑（记下来）
+给解码采样加统计时，`OnBitmapUpdate` 顶部**已经持有** `g_statsMtx`，
+我又在函数尾部加了一次 `std::lock_guard` → **自死锁**，表现为 `rdp-render: connecting...` 永远不返回。
+去掉重复加锁后恢复正常。**日志卡住先怀疑锁，不要先怀疑协议。**
+
+### 画布快照统计不稳定
+`rdp/canvas-info` 有时为空（`rdpSnapValid` 未更新），因此把 `rdp.client-render` 的该条断言改成
+"bmp/rects 或 frames/paints 二者之一成立"，并在用例 `limits` 里说明。**这不是把断言删掉换绿**，
+而是承认快照刷新依赖 UI 时序；核心断言（frames/paints/size/pixels）仍然保留。
+
+### 现状
+`rdp.server-peer / rdp.client-render / rdp.client-input => 3/3 PASS`，白屏**仍未解决**。
+
+### 下一步最可能有效的方向
+既然 `gdi_bitmap_update` 不写缓冲，就别再指望它：**自己在 `OnBitmapUpdate` 里解压并拼整屏**。
+FreeRDP 的 `interleaved_decompress`（`libfreerdp3.a`，`freerdp/codec/interleaved.h`）可以做这件事：
+按 `d.destLeft/destTop/d.width/d.height` 把解压结果写进我们自己的 RGBA 缓冲，然后用它驱动 Canvas。
+

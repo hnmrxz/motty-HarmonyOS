@@ -61,10 +61,36 @@ static int g_bmpLastX = 0;
 static int g_bmpCompressed = 0;
 static int g_bmpSkipComp = 0;
 static int g_surfaceBits = 0;
+static unsigned g_decBefore = 0;
+static unsigned g_decAfter = 0;
+static int g_decChanged = 0;
+static int g_decChecks = 0;
+static int g_gdiInitOk = 0;
+static int g_gdiW = 0;
+static int g_gdiH = 0;
+static int g_gdiStride = 0;
+static int g_gdiCodecsOk = 0;
 static int g_surfaceBitsBytes = 0;
 static pSurfaceBits g_origSurfaceBits = nullptr;
 static int g_bmpLastY = 0;
 static pEndPaint g_origEndPaint = nullptr;
+
+
+// 采样 GDI 主缓冲（每 997 字节跳一次，取一个 32 位字）做"解码前后是否变化"的对比
+static unsigned samplePrimary(rdpContext *context) {
+    if (context == nullptr || context->gdi == nullptr || context->gdi->primary_buffer == nullptr) return 0;
+    const BYTE *b = context->gdi->primary_buffer;
+    const UINT32 w = context->gdi->width;
+    const UINT32 h = context->gdi->height;
+    if (w == 0 || h == 0) return 0;
+    const size_t total = static_cast<size_t>(w) * h * 4;
+    unsigned acc = 2166136261u;
+    for (size_t i = 0; i < total; i += 997 * 4) {
+        acc ^= b[i] | (static_cast<unsigned>(b[i + 1]) << 8) | (static_cast<unsigned>(b[i + 2]) << 16);
+        acc *= 16777619u;
+    }
+    return acc;
+}
 
 static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
     if (context == nullptr || bitmap == nullptr) {
@@ -106,10 +132,17 @@ static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
         g_bmpLastY = static_cast<int>(bitmap->rectangles[bitmap->number - 1].destTop);
         g_bmpLastH = static_cast<int>(bitmap->rectangles[bitmap->number - 1].height);
     }
+    const unsigned before = samplePrimary(context);
+    BOOL ok = TRUE;
     if (g_origBitmapUpdate != nullptr) {
-        return g_origBitmapUpdate(context, bitmap);
+        ok = g_origBitmapUpdate(context, bitmap);
     }
-    return TRUE;
+    const unsigned after = samplePrimary(context);
+    g_decChecks++;
+    g_decBefore = before;
+    g_decAfter = after;
+    if (before != after) g_decChanged++;
+    return ok;
 }
 
 
@@ -277,7 +310,14 @@ BOOL OnPostConnect(freerdp *instance) {
     if (instance == nullptr || instance->context == nullptr) {
         return FALSE;
     }
-    if (!gdi_init(instance, PIXEL_FORMAT_BGRX32)) {
+    const BOOL gdiOk = gdi_init(instance, PIXEL_FORMAT_BGRX32);
+    g_gdiInitOk = gdiOk ? 1 : 0;
+    if (instance->context->gdi != nullptr) {
+        g_gdiW = static_cast<int>(instance->context->gdi->width);
+        g_gdiH = static_cast<int>(instance->context->gdi->height);
+        g_gdiStride = static_cast<int>(instance->context->gdi->stride);
+    }
+    if (!gdiOk) {
         fprintf(stderr, "[MOTTY_RDP_CLIENT] gdi_init failed\n");
         return FALSE;
     }
@@ -561,10 +601,10 @@ void renderWorker(RdpJob *job) {
                 ? static_cast<int>(freerdp_settings_get_uint32(instance->context->settings, FreeRDP_ColorDepth)) : -1;
             const int dstFmt = (instance->context->gdi != nullptr) ? static_cast<int>(instance->context->gdi->dstFormat) : -1;
             snprintf(buf, sizeof(buf),
-                     "frames=%d paints=%d size=%dx%d pixels=%d depth=%d dst=%d colors=%d/%d/%d/%d/%d/%d/%d/%d at=%d,%d gfx=%d gfxBytes=%d comp=%d skip=%d",
+                     "frames=%d paints=%d size=%dx%d pixels=%d depth=%d dst=%d colors=%d/%d/%d/%d/%d/%d/%d/%d at=%d,%d gfx=%d gfxBytes=%d comp=%d skip=%d dec=%d/%d/%u/%u gdi=%d/%dx%d/%d codecs=%d",
                      st2.updates, g_paints.load(), st2.width, st2.height, st2.pixels, depth, dstFmt,
                      st2.buckets[0], st2.buckets[1], st2.buckets[2], st2.buckets[3],
-                     st2.buckets[4], st2.buckets[5], st2.buckets[6], st2.buckets[7], g_bmpLastX, g_bmpLastY, g_surfaceBits, g_surfaceBitsBytes, g_bmpCompressed, g_bmpSkipComp);
+                     st2.buckets[4], st2.buckets[5], st2.buckets[6], st2.buckets[7], g_bmpLastX, g_bmpLastY, g_surfaceBits, g_surfaceBitsBytes, g_bmpCompressed, g_bmpSkipComp, g_decChanged, g_decChecks, g_decBefore, g_decAfter, g_gdiInitOk, g_gdiW, g_gdiH, g_gdiStride, g_gdiCodecsOk);
             result = buf;
             freerdp_disconnect(instance);
         }
