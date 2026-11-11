@@ -1,0 +1,18 @@
+﻿feat(harmonyos/ui): 「笔记」页落地（侧栏 10 项全部可用）
+
+实现:
+- 表 notes(id,title,body,updated_at), initStore 建表
+- nav/notes -> notesPage(): 标题 + (N) + 新建笔记 + 列表 + 空态"还没有笔记"
+- 行: 标题 + 正文摘要(单行省略) + 编辑/删除(id note/edit|del/<idx>)
+- 弹窗 note/dialog(深色): note/dialog-title, note/dialog-body(多行 TextArea), 保存/取消
+- 排序: updated_at 倒序
+- 诊断"重置"现在也清 notes
+
+用例 notes.crud(pcOnly) PASS:
+  重置 -> 空态 -> 新建 note-a/body-first -> 列表可见 -> 编辑(回填后追加 -v2) -> note-a-v2
+  -> 删除 -> 回到空态
+
+必须写明的差异: 上游导航里没有"笔记"这一项; 这页是早期版本就提供的入口, 本轮做完,
+但它在 1:1 意义上属于扩展页(会话日志同理), 不是"照抄官方"
+
+回归: snippets.crud / host.manage / command.palette / host.form-chips => 4/4 PASS

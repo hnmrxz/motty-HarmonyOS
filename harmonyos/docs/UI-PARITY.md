@@ -751,3 +751,33 @@ hosts.search / host.persist / infra.host-create-by-id / hostkey.changed / net.re
 标签数量校验（输入 13 个标签在 UI 自动化里成本高）没有专门用例；颜色的像素级应用也没有校验。
 这两条写在这里，不当成已覆盖。
 
+---
+
+## Round 28 追加：「笔记」页落地（最后一个禁用导航项）
+
+### 现状
+侧栏 10 项现在**全部可用**（主机 / 工作区 / 密钥链 / 跳板路由 / 快捷命令 / 端口转发 / 已知主机 / 调试 / 会话日志 / 笔记），
+另有底部「本地终端 / 设置」。
+
+### 笔记页
+| 项 | 内容 |
+|---|---|
+| 表 | `notes(id, title, body, updated_at)`，`initStore()` 建表 |
+| 页面 | `nav/notes` → 标题 + `(N)` + `新建笔记` + 列表 + 空态「还没有笔记」 |
+| 行 | 标题 + 正文摘要（单行省略）+ `编辑` / `删除`（id `note/edit|del/<idx>`） |
+| 弹窗 | `note/dialog`（深色）：`note/dialog-title`、`note/dialog-body`（多行 TextArea）、保存/取消 |
+| 排序 | 按 `updated_at` 倒序 |
+| 数据隔离 | 诊断面板"重置"现在也清 `notes` |
+
+### 用例
+`notes.crud`（pcOnly）**PASS**：
+重置 → 进笔记页断言空态 → 新建 `note-a`/`body-first` → 断言列表可见 → 编辑（回填后追加 `-v2`）→ 断言 `note-a-v2` → 删除 → 断言回到空态。
+
+### 必须写明的差异
+**上游导航里没有「笔记」这一项**（官方导航是 主机/工作区/密钥链/跳板路由/快捷命令/端口转发/已知主机/调试/设置/搜索）。
+这页是早期版本就提供了入口，本轮把它做完，但它在 1:1 意义上属于**扩展页**，不是"照抄官方"。
+会话日志同理。
+
+### 回归
+`snippets.crud / host.manage / command.palette / host.form-chips => 4/4 PASS`
+

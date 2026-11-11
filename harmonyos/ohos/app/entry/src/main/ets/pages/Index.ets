@@ -43,6 +43,11 @@ const SQL_CREATE_KNOWN_HOSTS =
 const HOST_COLUMNS: string[] = ['id', 'label', 'address', 'usr', 'port', 'proto', 'grp', 'tags', 'color'];
 
 // 会话日志（官方 NavSessionLogs 的最小实现）
+const SQL_CREATE_NOTES =
+  'CREATE TABLE IF NOT EXISTS notes (' +
+  'id TEXT PRIMARY KEY, title TEXT, body TEXT, updated_at INTEGER)';
+const NOTE_COLUMNS: string[] = ['id', 'title', 'body', 'updated_at'];
+
 const SQL_CREATE_SNIPPETS =
   'CREATE TABLE IF NOT EXISTS snippets (' +
   'id TEXT PRIMARY KEY, name TEXT, cmd TEXT, grp TEXT, sort INTEGER)';
@@ -169,6 +174,13 @@ interface LogItem {
   startedAt: number;
 }
 
+interface NoteItem {
+  id: string;
+  title: string;
+  body: string;
+  updatedAt: number;
+}
+
 interface SnippetItem {
   id: string;
   name: string;
@@ -235,6 +247,11 @@ struct Index {
   @State settingsOpen: boolean = false;
   @State logs: LogItem[] = [];
   @State snippets: SnippetItem[] = [];
+  @State notes: NoteItem[] = [];
+  @State noteDialog: boolean = false;
+  @State noteTitle: string = '';
+  @State noteBody: string = '';
+  @State noteEditingId: string = '';
   @State snippetDialog: boolean = false;
   @State paletteOpen: boolean = false;
   @State paletteQuery: string = '';
@@ -337,6 +354,7 @@ struct Index {
       await this.store.executeSql(SQL_CREATE_FORWARDS);
       await this.store.executeSql(SQL_CREATE_LOGS);
       await this.store.executeSql(SQL_CREATE_SNIPPETS);
+      await this.store.executeSql(SQL_CREATE_NOTES);
       await this.migrateHosts();
       await this.reload();
       await this.reloadRules();
@@ -2568,7 +2586,7 @@ struct Index {
       this.pcNavItem('已知主机', 'known/open', $r('app.media.ic_known'), true, () => { this.openKnownHosts(); })
       this.pcNavItem('调试', 'diag/open', $r('app.media.ic_monitor'), true, () => { this.diagOpen = true; })
       this.pcNavItem('会话日志', 'nav/logs', $r('app.media.ic_logs'), true, () => { this.pcNav = '会话日志'; this.reloadLogs(); })
-      this.pcNavItem('笔记', 'nav/notes', $r('app.media.ic_notes'), false, () => {})
+      this.pcNavItem('笔记', 'nav/notes', $r('app.media.ic_notes'), true, () => { this.pcNav = '笔记'; this.reloadNotes(); })
 
       Blank()
       // 底部固定项（对照参照图：本地终端 / 设置）
@@ -3133,6 +3151,9 @@ struct Index {
     const spAll = new relationalStore.RdbPredicates('snippets');
     await this.store.delete(spAll);
     await this.reloadSnippets();
+    const npAll = new relationalStore.RdbPredicates('notes');
+    await this.store.delete(npAll);
+    await this.reloadNotes();
     this.selectedIds = [];
     await this.reload();
     this.catalogResult = 'catalog-reset: hosts=' + this.hosts.length;
@@ -3625,6 +3646,131 @@ struct Index {
     this.formTags = next.join(',');
   }
 
+
+  // ---------------- 笔记（自研扩展页：上游导航无此项） ----------------
+  private async reloadNotes(): Promise<void> {
+    if (this.store === null) { return; }
+    const pred = new relationalStore.RdbPredicates('notes');
+    pred.orderByDesc('updated_at');
+    const rs = await this.store.query(pred, NOTE_COLUMNS);
+    const out: NoteItem[] = [];
+    while (rs.goToNextRow()) {
+      out.push({ id: rs.getString(0), title: rs.getString(1), body: rs.getString(2), updatedAt: rs.getLong(3) });
+    }
+    rs.close();
+    this.notes = out;
+  }
+
+  private openNoteNew(): void {
+    this.noteEditingId = '';
+    this.noteTitle = '';
+    this.noteBody = '';
+    this.noteDialog = true;
+  }
+
+  private openNoteEdit(it: NoteItem): void {
+    this.noteEditingId = it.id;
+    this.noteTitle = it.title;
+    this.noteBody = it.body;
+    this.noteDialog = true;
+  }
+
+  private async submitNote(): Promise<void> {
+    const title: string = this.noteTitle.trim();
+    const body: string = this.noteBody.trim();
+    if (title.length === 0 || this.store === null) { return; }
+    if (this.noteEditingId.length > 0) {
+      const pred = new relationalStore.RdbPredicates('notes');
+      pred.equalTo('id', this.noteEditingId);
+      const patch: relationalStore.ValuesBucket = { 'title': title, 'body': body, 'updated_at': Date.now() };
+      await this.store.update(patch, pred);
+    } else {
+      const bucket: relationalStore.ValuesBucket = {
+        'id': 'note_' + Date.now(), 'title': title, 'body': body, 'updated_at': Date.now()
+      };
+      await this.store.insert('notes', bucket);
+    }
+    this.noteDialog = false;
+    this.noteEditingId = '';
+    await this.settleStore();
+    await this.reloadNotes();
+  }
+
+  private async deleteNote(id: string): Promise<void> {
+    if (this.store === null) { return; }
+    const pred = new relationalStore.RdbPredicates('notes');
+    pred.equalTo('id', id);
+    await this.store.delete(pred);
+    await this.reloadNotes();
+  }
+
+
+  // ---------------- 笔记页（自研扩展，上游导航无此项） ----------------
+  @Builder
+  notesPage() {
+    Column({ space: 10 }) {
+      Row({ space: 10 }) {
+        Text(this.lang === 'zh' ? '笔记' : 'Notes').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Text('(' + this.notes.length + ')').fontSize(12).fontColor('#6B7078')
+        Blank()
+        Button(this.lang === 'zh' ? '新建笔记' : 'New note').id('note/add').height(30).fontSize(12)
+          .backgroundColor('#E8EAED').fontColor('#12141A')
+          .onClick(() => { this.openNoteNew(); })
+      }.width('100%')
+      if (this.notes.length === 0) {
+        Text(this.lang === 'zh' ? '还没有笔记' : 'No notes yet').id('note/empty')
+          .fontSize(13).fontColor('#6B7078').width('100%').padding({ top: 50 })
+      }
+      List({ space: 6 }) {
+        ForEach(this.notes, (it: NoteItem, idx: number) => {
+          ListItem() {
+            Row({ space: 12 }) {
+              Column({ space: 3 }) {
+                Text(it.title).fontSize(14).fontColor('#E8EAED').maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                Text(it.body).fontSize(11).fontColor('#8A8F98').maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+              }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+              Button(this.t('host.edit')).id('note/edit/' + idx).height(28).fontSize(11)
+                .backgroundColor('#23262B').fontColor('#C7CBD1')
+                .onClick(() => { this.openNoteEdit(it); })
+              Button(this.t('snippet.delete')).id('note/del/' + idx).height(28).fontSize(11)
+                .backgroundColor('#3A2226').fontColor('#E08A8A')
+                .onClick(() => { this.deleteNote(it.id); })
+            }
+            .width('100%').height(52).padding({ left: 12, right: 12 })
+            .borderRadius(8).backgroundColor('#1C1F24')
+          }
+        }, (it: NoteItem) => it.id + '|' + it.title + '|' + it.body)
+      }.id('note/list').layoutWeight(1).width('100%')
+    }
+    .width('100%').height('100%').padding({ left: 22, right: 22, top: 10 })
+  }
+
+  @Builder
+  noteForm() {
+    Column({ space: 10 }) {
+      Text(this.noteEditingId.length > 0 ? this.t('host.edit') : (this.lang === 'zh' ? '新建笔记' : 'New note'))
+        .fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED').width('100%')
+      TextInput({ placeholder: this.lang === 'zh' ? '标题' : 'Title', text: this.noteTitle })
+        .id('note/dialog-title').width('100%')
+        .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
+        .onChange((v: string) => { this.noteTitle = v; })
+      TextArea({ placeholder: this.lang === 'zh' ? '内容' : 'Body', text: this.noteBody })
+        .id('note/dialog-body').width('100%').height(160)
+        .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
+        .onChange((v: string) => { this.noteBody = v; })
+      Row({ space: 12 }) {
+        Button(this.t('hostkey.cancel')).id('note/dialog-cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.noteDialog = false; })
+        Button(this.t('snippet.save')).id('note/dialog-save').backgroundColor('#3DDC97').fontColor('#12141A')
+          .onClick(() => { this.submitNote(); })
+      }.width('100%').justifyContent(FlexAlign.End)
+    }
+    .id('note/dialog').width(560).padding(20).backgroundColor('#1C1F24').borderRadius(14)
+    .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -3637,7 +3783,9 @@ struct Index {
           if (this.tabs.length > 0) {
             this.tabBar()
           }
-          if (this.pcNav === '快捷命令') {
+          if (this.pcNav === '笔记') {
+            this.notesPage()
+          } else if (this.pcNav === '快捷命令') {
             this.snippetsPage()
           } else if (this.pcNav === '会话日志') {
             this.logsPage()
@@ -3658,6 +3806,10 @@ struct Index {
       .layoutWeight(1).width('100%').backgroundColor('#17181C')
       }
 
+      if (this.noteDialog) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
+        this.noteForm()
+      }
       if (this.paletteOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000')
           .onClick(() => { this.paletteOpen = false; })
