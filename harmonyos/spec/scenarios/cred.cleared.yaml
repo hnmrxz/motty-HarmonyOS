@@ -72,6 +72,15 @@ steps:
     ms: 1200
   - action: click
     target: id:vault/del/127.0.0.1:2222
+  # 删除前必须确认（避免误删）
+  - action: wait
+    ms: 700
+    expect:
+      kind: screenRegex
+      regex: "删除已保存的密码|Delete saved password"
+      withinMs: 6000
+  - action: click
+    target: id:vaultdel/confirm
   - action: wait
     ms: 1200
   # 回主机列表再连接：应明确提示没有凭据

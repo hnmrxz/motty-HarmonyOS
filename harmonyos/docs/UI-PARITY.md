@@ -929,3 +929,36 @@ runner 新增动作 **`key`**（`uitest uiInput keyEvent <code>`，`code` 已进
 第一次改的时候把按钮的 `onClick` 换掉时**缩进没对上**（替换未命中），结果点批量删除仍是"直接删"，
 用例在"确认框文案"那一步就失败——这类"改了但没生效"的替换，必须靠**用例**而不是靠读代码来确认。
 
+---
+
+## Round 34 追加：已知主机 / 已保存密码的删除也加确认（官方文案）
+
+### 之前的问题
+- 已知主机页的 `Delete` 按钮**点一下就删**（`known_hosts` 记录直接消失，无法撤销）；
+- 密钥链页删除已保存凭据**也没有确认**。
+两者都是不可撤销操作，官方都有确认措辞：
+
+| 场景 | 官方文案 |
+|---|---|
+| 删除已信任主机密钥 | `删除已信任主机密钥？` + `要从 known_hosts 删除选中的 %d 条记录吗？此操作无法撤销。` + `删除记录` |
+| 删除已保存密码 | `VaultForgetTitle: 忘记全部已保存的密码?` + `VaultForgetDescription: 它们都会从这台电脑上删除。下次服务器需要时会再次询问。` |
+
+### 实现
+| 对话框 | id | 内容 |
+|---|---|---|
+| 已知主机删除 | `knowndel/dialog`（`knowndel/title`、`knowndel/cancel`、`knowndel/confirm`） | 标题 + 说明 + 具体 key（等宽字体）+ 取消/删除记录 |
+| 凭据删除 | `vaultdel/dialog`（`vaultdel/title`、`vaultdel/cancel`、`vaultdel/confirm`） | 标题 + 说明 + key + 取消/删除 |
+
+两者都是深色卡片，且**都放在 Stack 的最上层**。
+
+### 两个踩到的坑
+1. **弹窗被后面的浮层挡住**：一开始把确认框插在 build() 中间，`dump` 里能看到它，但**点击不生效**（被后声明的面板盖住）。
+   移到 Stack 末尾后正常——"能看到"不等于"能点到"。
+2. **整行 onClick 会重新打开对话框**：已知主机那一行原本整行可点（也调删除），
+   确认框关闭的点击穿透到行上又把它打开。改成只有按钮可触发，并保留行点击为空。
+
+### 用例
+- `knownhosts.manage`：删除前断言出现 `删除已信任主机密钥`，点 `knowndel/confirm`，再断言 `trusted entries: 0`。
+- `cred.cleared`：删除凭据前断言出现 `删除已保存的密码`，点 `vaultdel/confirm`，再连接提示无凭据。
+两者均 **PASS**；回归 `knownhosts.manage / cred.cleared / host.manage / host.batch-delete => 4/4 PASS`。
+

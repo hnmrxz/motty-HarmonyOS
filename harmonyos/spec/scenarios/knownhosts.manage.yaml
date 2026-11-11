@@ -67,6 +67,15 @@ steps:
       withinMs: 8000
   - action: click
     target: id:known/del/127.0.0.1:2222
+  # 删除前必须确认（官方 KnownHostsDelete*）
+  - action: wait
+    ms: 700
+    expect:
+      kind: screenRegex
+      regex: "删除已信任主机密钥|Delete trusted host key"
+      withinMs: 6000
+  - action: click
+    target: id:knowndel/confirm
   - action: wait
     ms: 1200
     expect:

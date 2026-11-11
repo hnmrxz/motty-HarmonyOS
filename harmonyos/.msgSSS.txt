@@ -1,0 +1,20 @@
+﻿fix(harmonyos/ui): 已知主机/已保存密码的删除也加确认(官方文案)
+
+问题:
+- 已知主机页 Delete 点一下就删(known_hosts 记录直接消失, 无法撤销)
+- 密钥链页删除已保存凭据也没有确认
+两者都不可撤销, 官方都有确认措辞
+
+实现:
+- knowndel/dialog: 删除已信任主机密钥？+ 说明 + 具体 key + 取消/删除记录
+- vaultdel/dialog: 删除已保存的密码？+ 说明 + key + 取消/删除
+两者深色卡片, 且都放在 Stack 最上层
+
+两个坑:
+1. 弹窗被后面的浮层挡住: 一开始插在 build() 中间, dump 能看到但点击不生效(被后声明面板盖住)
+   移到 Stack 末尾后正常 —— "能看到"不等于"能点到"
+2. 整行 onClick 会重新打开对话框: 已知主机行原本整行可点(也调删除), 确认框关闭的点击穿透到行又打开它
+   改成只有按钮可触发
+
+用例: knownhosts.manage(断言"删除已信任主机密钥"->确认->trusted entries: 0) / cred.cleared(断言"删除已保存的密码"->确认->再连无凭据) 均 PASS
+回归: knownhosts.manage / cred.cleared / host.manage / host.batch-delete => 4/4 PASS

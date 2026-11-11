@@ -242,6 +242,8 @@ struct Index {
   @State collapsedGroups: string[] = [];
   @State groupFilter: string = '';
   @State pinnedGroups: string[] = [];
+  @State knownDelKey: string = '';
+  @State vaultDelKey: string = '';
   @State hoverRow: number = -1;
   @State selectAll: boolean = false;
   @State selectedIds: string[] = [];
@@ -2213,7 +2215,7 @@ struct Index {
               }.layoutWeight(1).alignItems(HorizontalAlign.Start)
               Button('Delete').id('known/del/' + key).backgroundColor('#C62828').fontColor(Color.White)
                 .fontSize(12)
-                .onClick(() => { this.deleteKnownHost(key); })
+                .onClick(() => { this.knownDelKey = key; })
             }.width('100%').padding(6).backgroundColor('#FAFAFA').borderRadius(6)
           }, (key: string) => key)
           if (this.knownKeys.length === 0) {
@@ -3448,11 +3450,7 @@ struct Index {
               Text(k).fontSize(13).fontColor('#E8EAED').layoutWeight(1)
               Button(this.lang === 'zh' ? '删除' : 'Delete').id('vault/del/' + k).height(26).fontSize(11)
                 .backgroundColor('#3A2226').fontColor('#E08A8A')
-                .onClick(async () => {
-                  await Vault.remove(k);
-                  this.creds.delete(k);
-                  this.probeText = 'credential removed: ' + k;
-                })
+                .onClick(() => { this.vaultDelKey = k; })
             }
             .width('100%').height(44).padding({ left: 10, right: 10 })
             .borderRadius(8).backgroundColor('#1C1F24')
@@ -3894,6 +3892,59 @@ struct Index {
     this.deleteDialog = true;
   }
 
+
+  // 删除已信任主机密钥（官方 KnownHostsDelete* 文案）
+  @Builder
+  knownDeleteConfirm() {
+    Column({ space: 10 }) {
+      Text(this.lang === 'zh' ? '删除已信任主机密钥？' : 'Delete trusted host key?')
+        .id('knowndel/title').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED').width('100%')
+      Text((this.lang === 'zh'
+        ? '要从 known_hosts 删除这条记录吗？此操作无法撤销。'
+        : 'Remove this entry from known_hosts? This cannot be undone.'))
+        .fontSize(12).fontColor('#8A8F98').width('100%')
+      Text(this.knownDelKey).fontSize(11).fontFamily('monospace').fontColor('#C7CBD1').width('100%')
+      Row({ space: 12 }) {
+        Button(this.t('hostkey.cancel')).id('knowndel/cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.knownDelKey = ''; })
+        Button(this.lang === 'zh' ? '删除记录' : 'Delete entry').id('knowndel/confirm')
+          .backgroundColor('#C62828').fontColor(Color.White)
+          .onClick(() => { const k = this.knownDelKey; this.knownDelKey = ''; this.deleteKnownHost(k); })
+      }.width('100%').justifyContent(FlexAlign.End)
+    }
+    .id('knowndel/dialog').width(520).padding(20).backgroundColor('#1C1F24').borderRadius(12)
+    .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
+  }
+
+  // 删除已保存凭据（官方 Vault/Key 删除语义）
+  @Builder
+  vaultDeleteConfirm() {
+    Column({ space: 10 }) {
+      Text(this.lang === 'zh' ? '删除已保存的密码？' : 'Delete saved password?')
+        .id('vaultdel/title').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED').width('100%')
+      Text(this.lang === 'zh'
+        ? '它会从这台电脑上删除，下次需要时会再次询问。'
+        : 'It will be removed from this device; you will be asked again next time.')
+        .fontSize(12).fontColor('#8A8F98').width('100%')
+      Text(this.vaultDelKey).fontSize(11).fontFamily('monospace').fontColor('#C7CBD1').width('100%')
+      Row({ space: 12 }) {
+        Button(this.t('hostkey.cancel')).id('vaultdel/cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.vaultDelKey = ''; })
+        Button(this.lang === 'zh' ? '删除' : 'Delete').id('vaultdel/confirm')
+          .backgroundColor('#C62828').fontColor(Color.White)
+          .onClick(async () => {
+            const k = this.vaultDelKey;
+            this.vaultDelKey = '';
+            await Vault.remove(k);
+            this.creds.delete(k);
+            this.probeText = 'credential removed: ' + k;
+          })
+      }.width('100%').justifyContent(FlexAlign.End)
+    }
+    .id('vaultdel/dialog').width(520).padding(20).backgroundColor('#1C1F24').borderRadius(12)
+    .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -3985,6 +4036,14 @@ struct Index {
       if (this.showDialog) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
         this.hostForm()
+      }
+      if (this.knownDelKey.length > 0) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
+        this.knownDeleteConfirm()
+      }
+      if (this.vaultDelKey.length > 0) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
+        this.vaultDeleteConfirm()
       }
     }
     .width('100%').height('100%')
