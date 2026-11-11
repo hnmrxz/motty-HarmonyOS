@@ -766,6 +766,7 @@
       "evidence": "E1",
       "proof": [
         "spec/scenarios/sftp.browse.yaml",
+        "spec/scenarios/sftp.download.yaml",
         "spec/scenarios/sftp.manage.yaml",
         "spec/scenarios/sftp.missing.yaml",
         "spec/scenarios/sftp.navigate.yaml",
@@ -779,7 +780,7 @@
         "deps": "G1",
         "acceptance": "`sftp_*`"
       },
-      "partialCoverage": "部分：列举/读取/写入/删除/重命名/新建目录/进入与返回目录/**中文文件名上传与列举**/**缺失文件负向**已双画像实测；下载回读内容、多选、权限位、符号链接、递归操作、书签未做。"
+      "partialCoverage": "部分：列举/读取(含**下载回读内容正确**)/写入/删除/重命名/新建目录/目录导航/中文文件名上传与列举/缺失文件负向已双画像实测；大文件(>256 KiB)、二进制、多选、权限位、符号链接、递归操作未做。"
     },
     {
       "id": "C02",

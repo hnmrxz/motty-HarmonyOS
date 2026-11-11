@@ -68,7 +68,7 @@ SSH 连接与终端、SFTP 文件管理、端口转发（local/SOCKS5/HTTP CONNE
 ### 7.1 当前规模
 | 指标 | 值 |
 |---|---|
-| 用例（机器判定） | **55 条**（`harmonyos/spec/scenarios/*.yaml`） |
+| 用例（机器判定） | **56 条**（`harmonyos/spec/scenarios/*.yaml`） |
 | E1 能力（双画像实测） | **16 条**（能力表共 83 项，其余为上游功能，多数未实现） |
 | 第三方组件（SBOM） | 16 组件 / 36 份产物，`tools/gen-sbom.py --check` 通过 |
 | 模拟器 | `motty_pc`（2in1, 3120×2080）、`motty_tablet`（tablet, 2880×1920），x86_64 / API 26 |
@@ -107,7 +107,7 @@ SSH 连接与终端、SFTP 文件管理、端口转发（local/SOCKS5/HTTP CONNE
 ### 8.1 数字
 | 指标 | 值 | 证据位置 |
 |---|---|---|
-| 用例 | **55 条** | `spec/scenarios/*.yaml`，`spec/lint.py` 全绿 |
+| 用例 | **56 条** | `spec/scenarios/*.yaml`，`spec/lint.py` 全绿 |
 | E1 能力 | **16 条** | `spec/capabilities.json`（proof 字段回指用例文件） |
 | 定向回归 | **8/8 双画像通过** | `spec/matrix/regression-round82.json` |
 | SBOM | 16 组件 / 36 份产物，校验通过 | `SBOM.json` + `tools/gen-sbom.py --check` |

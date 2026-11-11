@@ -1,0 +1,89 @@
+schema: 1
+id: sftp.download
+title: 下载回读：预览里必须出现服务端文件真实内容
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - C01
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "New Host|新建主机"
+      withinMs: 20000
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: dl-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:host-files/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+    expect:
+      kind: screenRegex
+      regex: "hello.txt"
+      withinMs: 15000
+  # 下载 hello.txt（sftp/file 默认就是 hello.txt）
+  - action: click
+    target: id:sftp/download
+  - action: wait
+    ms: 2500
+asserts:
+  # 内容必须是夹具真正写盘的那一行
+  - kind: screenRegex
+    regex: "sftp-hello-marker"
+    withinMs: 15000
+  - kind: screenRegex
+    regex: "read hello.txt"
+    withinMs: 6000
+  - kind: absent
+    value: "read hello.txt (0 chars)"
+    withinMs: 3000
+  - kind: absent
+    value: "error sftpRead"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：下载读回的服务端文件内容正确（与夹具写盘内容逐字一致）。
+    **不覆盖**：大文件（>256 KiB 上限）、二进制内容、断线重试、下载到本地磁盘。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+notes: >-
+  断言"读到真实内容"而不是"读取成功"，才能区分"通了"与"读对了"；
+  反向断言 (0 chars) 与 error 缺席，避免把空读或失败当成功。

@@ -2293,3 +2293,21 @@ Round 61–81 动过 VNC 面板按钮顺序、转发面板滚动容器、诊断�
 这是**定向回归**，不是全量：其余 47 条用例未在本轮执行；
 `vnc.auth-hextile`/`vnc.negative`（需 `-vnc-auth secret`）与
 `vnc.desktopsize`/`vnc.adapt`（需 `-vnc-resize`）属不同夹具模式，未覆盖。
+---
+
+## Round 84：`sftp.download` 双画像通过（补上"读到的是不是对的内容"）
+
+### 一、用例
+`sftp.download`：建主机 → 信任 → 打开文件面板 → 下载默认选中的 `hello.txt` →
+断言预览里出现**夹具真正写盘的那一行** `sftp-hello-marker`，并反向断言
+`read hello.txt (0 chars)` 与 `error sftpRead` 缺席。
+
+### 二、为什么这一条重要
+之前的 `sftp.manage` 只证明"操作能返回成功"，这条证明**读到的是对的内容** ——
+两者差一个量级：前者空读也能过，后者必须真的把服务端字节读回来。
+
+### 三、双画像
+2in1 **PASS**、tablet **PASS**。
+
+### 四、状态
+用例 55 → **56**；E1 能力 16；C01 的覆盖率补上"下载回读内容正确"。

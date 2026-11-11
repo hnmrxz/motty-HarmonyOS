@@ -1,0 +1,11 @@
+﻿test(harmonyos): sftp.download 双画像通过（补上"读到的是不是对的内容"）
+
+用例: 建主机 -> 信任 -> 开文件面板 -> 下载默认选中的 hello.txt ->
+断言预览出现夹具真正写盘的那一行 sftp-hello-marker，
+反向断言 'read hello.txt (0 chars)' 与 'error sftpRead' 缺席
+
+为什么重要: 之前的 sftp.manage 只证明'操作能返回成功'，这条证明'读到的是对的内容'；
+前者空读也能过，后者必须真的把服务端字节读回来
+
+双画像: 2in1 PASS / tablet PASS
+用例 55 -> 56；E1 能力 16；C01 覆盖率补上'下载回读内容正确'
