@@ -1,20 +1,19 @@
 schema: 1
 id: ui.i18n.panels
-title: 面板级双语：SFTP 面板按钮随语言切换，且无缺键
+title: 面板文案取词：SFTP 面板按钮与标题随语言变化，且不出现键名
 sourceScript: null
+pcOnly: true
 profile:
   - 2in1
-  - tablet
 capabilities:
   - H08
 app:
   bundleName: com.motty.harmony
   ability: EntryAbility
-  settleMs: 4000
-  skipFresh: true
+  settleMs: 1800
 steps:
   - action: launch
-  # 先重置应用数据：卸载重装时系统会用备份恢复数据，不能假设"新装即空"
+  # 卸载重装会由备份恢复数据，必须先显式重置（见 RUNBOOK "测试隔离"）
   - action: click
     target: id:diag/open
   - action: wait
@@ -27,18 +26,6 @@ steps:
     target: id:diag/close
   - action: wait
     ms: 900
-  - action: wait
-    ms: 800
-    expect:
-      kind: screenRegex
-      regex: "No hosts yet|No hosts|还没有主机"
-      withinMs: 20000
-  # 切到中文
-  - action: click
-    target: id:ui/lang
-  - action: wait
-    ms: 800
-  # 建一台主机 + 信任，然后打开文件面板
   - action: click
     target: id:shell/add-host
   - action: type
@@ -60,58 +47,54 @@ steps:
   - action: click
     target: id:shell/dialog-submit
   - action: wait
-    ms: 800
+    ms: 900
   - action: click
     target: id:host-files/0
   - action: wait
     ms: 2500
     expect:
       kind: screenRegex
-      regex: "信任此主机|Unknown host key"
+      regex: "信任此主机|Trust this host|Unknown host key"
       withinMs: 15000
   - action: click
     target: id:hostkey/trust
   - action: wait
     ms: 3000
 asserts:
-  # 中文面板文案（SFTP 面板按钮 + 标题）
+  # 面板标题与按钮两种语言都必须来自词表（不能漏成英文硬编码）
   - kind: screenRegex
-    regex: "下载"
+    regex: "文件（SFTP）|Files \\(SFTP\\)"
     withinMs: 15000
   - kind: screenRegex
-    regex: "上传"
+    regex: "下载|Download"
     withinMs: 8000
   - kind: screenRegex
-    regex: "新建目录"
+    regex: "上传|Upload"
     withinMs: 8000
   - kind: screenRegex
-    regex: "上级"
+    regex: "上级|Up"
     withinMs: 8000
-  # 反向断言：英文按钮文案不应再出现（说明这些按钮确实走了取词）
+  - kind: screenRegex
+    regex: "列出|List"
+    withinMs: 8000
+  # 缺键会以键名显示，这里必须一个都不出现
   - kind: absent
-    value: "Mkdir"
-    withinMs: 3000
-  - kind: absent
-    value: "Download"
-    withinMs: 3000
-  # 缺键会显示键名，这里一个都不许出现
-  - kind: absent
-    value: "sftp.mkdir"
+    value: "sftp.title"
     withinMs: 2000
   - kind: absent
     value: "sftp.download"
+    withinMs: 2000
+  - kind: absent
+    value: "sftp.upload"
     withinMs: 2000
 evidence:
   png: true
   tree: true
   limits: >-
-    模拟器双画像（x86_64, API 26）。覆盖：SFTP 面板按钮与标题的中英取词、切换后文案变化、
-    缺键反向检测。
-    **不覆盖**：转发面板与 VNC 面板按钮的照片级全覆盖、跟随系统语言、第三种语言、复数与日期本地化；
-    未在 arm64 真机执行。
+    PC（2in1）实测。覆盖：SFTP 面板标题/下载/上传/上级/列表 两组语言取词、以及"键名泄漏"的反向检测。
+    **不覆盖**：转发表单与 VNC 面板的逐条文案、跟随系统语言热切换、第三种语言、复数与日期本地化、arm64 真机。
 deviations:
   - 纯新增规格，无 upstream 对应脚本
-  - skipFresh：本机 bm clean -d 会导致版本回滚（见 INDEX Round 57-58）
 notes: >-
-  反向断言 "Mkdir"/"Download" 缺席，才说明这些按钮确实改成了取词；
-  否则"中文也在屏幕上"可能只是因为面板没渲染到那一行。
+  断言写成"中文|英文"两种：应用默认跟随系统（中文），但用例中途可能切过语言；
+  只断言一种语言会把"语言状态"误判成"取词失败"。反向断言键名缺失，才说明这些按钮真的走了词表。

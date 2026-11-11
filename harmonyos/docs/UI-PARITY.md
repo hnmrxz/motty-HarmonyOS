@@ -542,3 +542,37 @@ terminal.vt            PASS
 **"卸载重装 = 干净环境"是错的**。测试隔离必须由应用自身提供"重置数据"的能力（我们现在有了），
 不能依赖系统卸载。
 
+---
+
+## Round 17 追加：状态列一直是假的 + SFTP 面板取词补齐
+
+### 1) 主机状态列从来没显示过真实状态（真实 bug）
+`setStatus(index, text)` 一直在写 `statuses`，但行里那一列是**硬编码**的 `○ 未连接`。
+所以"探测/连接失败的原因"从来没在界面上出现过——这也是之前诊断困难的原因之一。
+现在：`statusOf(index)` 驱动 `●/○` + 文本（有状态显示状态，没有才显示"未连接/offline"），宽度 180 且单行省略。
+
+### 2) SFTP 面板补词（1:1）
+`filesPanel()` 之前是英文硬编码，现在走词表：`sftp.title`（`文件（SFTP）`）、`sftp.download`、`sftp.upload`、
+`sftp.up`、`sftp.list`、`sftp.close`。补词时发现 **`sftp.close` 两边词表都缺**，界面一直显示键名 `sftp.close`——
+这正是"缺键会以键名显示"的最好例证。
+
+### 3) 两条"老用例"按真实语义重写
+| 用例 | 旧问题 | 现在 |
+|---|---|---|
+| `cred.cleared` | 断言"删凭据后**重启**仍提示无凭据"；但启动会从保险库预热，前提不成立 | 改为：建主机带口令 → 信任并连接成功 → 密钥链删条目（`vault/del/<host:port>`）→ 再连接提示 `no credentials in memory` |
+| `ui.i18n.panels` | 文件本身是乱码（早期用 PowerShell 写入），断言中文全是坏字节 | 用 Python 重写整份：断言"中文|英文"两可，并保留"键名不得出现"的反向断言 |
+
+顺带把 `no credentials in memory (vault not implemented yet)` 这句**过时文案**改成
+`(add a password in host settings)`——保险库早就实现了。
+
+### 4) 本轮回归
+```
+host.manage / sftp.manage / sftp.write / ui.i18n.panels
+terminal.vt / settings.persist / pages.logs-vault / host.catalog
+=> 8/8 PASS
+```
+
+### 教训
+**UI 上"看起来在显示状态"不等于真的在显示状态。** 硬编码的占位文案会长期掩盖实现缺陷，
+而且会让诊断走进死胡同（这轮之前我们一直在猜"为什么没有对话框"，其实状态列早该告诉我们）。
+

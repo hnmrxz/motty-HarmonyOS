@@ -43,7 +43,7 @@ steps:
     ms: 2500
     expect:
       kind: screenRegex
-      regex: "信任此主机|Unknown host key"
+      regex: "信任此主机|Trust this host|Unknown host key"
       withinMs: 12000
   - action: click
     target: id:hostkey/trust
@@ -71,7 +71,7 @@ asserts:
     value: "no credentials in memory"
     withinMs: 2000
   - kind: absent
-    value: "信任此主机|Unknown host key"
+    value: "信任此主机|Trust this host|Unknown host key"
     withinMs: 2000
 evidence:
   png: true

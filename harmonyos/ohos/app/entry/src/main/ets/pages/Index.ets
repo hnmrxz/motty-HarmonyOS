@@ -578,7 +578,7 @@ struct Index {
     const key = this.hostKey(h.address, h.port);
     const cred = this.creds.get(key);
     if (cred === undefined) {
-      this.setStatus(index, 'no credentials in memory (vault not implemented yet)');
+      this.setStatus(index, 'no credentials in memory (add a password in host settings)');
       return;
     }
     this.pendingLabel = label;
@@ -1039,16 +1039,18 @@ struct Index {
     const key = this.hostKey(h.address, h.port);
     const cred = this.creds.get(key);
     if (cred === undefined) {
-      this.setStatus(index, 'no credentials in memory (vault not implemented yet)');
+      this.setStatus(index, 'no credentials in memory (add a password in host settings)');
       return;
     }
     this.lookupFp(key).then((fp: string) => {
+      hilog.info(DOMAIN, TAG, 'openFiles fp=%{public}d key=%{public}s', fp.length, key);
       if (fp.length > 0) {
         this.startFiles(cred, fp);
         return;
       }
       mottynapi.probe(cred.address, cred.port, cred.user, cred.password, 'echo no-auth-yet', '',
         (first: string) => {
+          hilog.info(DOMAIN, TAG, 'openFiles probe=%{public}s', first.substring(0, 80));
           const m = new RegExp('SHA256:[A-Za-z0-9+/]+').exec(first);
           if (m === null || first.indexOf('unknown_host') !== 0) {
             this.setStatus(index, first);
@@ -1627,7 +1629,7 @@ struct Index {
     const key = this.hostKey(h.address, h.port);
     const cred = this.creds.get(key);
     if (cred === undefined) {
-      this.setStatus(index, 'no credentials in memory (vault not implemented yet)');
+      this.setStatus(index, 'no credentials in memory (add a password in host settings)');
       return;
     }
     const stored = await this.lookupFp(key);
@@ -1729,9 +1731,9 @@ struct Index {
   filesPanel() {
     Column({ space: 8 }) {
       Row() {
-        Text('Files (SFTP)').fontSize(16).fontWeight(FontWeight.Bold)
+        Text(this.t('sftp.title')).fontSize(16).fontWeight(FontWeight.Bold)
         Blank()
-        Button('Close').id('sftp/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('sftp.close')).id('sftp/close').backgroundColor('#23262B').fontColor('#C7CBD1')
           .onClick(() => { this.filesOpen = false; })
       }.width('100%')
       Text(this.sftpStatus.length > 0 ? this.sftpStatus : 'sftp: (idle)')
@@ -2335,9 +2337,12 @@ struct Index {
                        h.address + (h.port.length > 0 ? ':' + h.port : ''))
                     .fontSize(12).fontColor('#8A8F98').width(120).textAlign(TextAlign.End)
                   Row({ space: 4 }) {
-                    Text('○').fontSize(9).fontColor('#6B7078')
-                    Text(this.lang === 'zh' ? '未连接' : 'offline').fontSize(11).fontColor('#6B7078')
-                  }.id('host-status-text/' + index).width(44)
+                    Text(this.statusOf(index).length > 0 ? '●' : '○').fontSize(9)
+                      .fontColor(this.statusOf(index).length > 0 ? '#3DDC97' : '#6B7078')
+                    Text(this.statusOf(index).length > 0 ? this.statusOf(index) : (this.lang === 'zh' ? '未连接' : 'offline'))
+                      .fontSize(11).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+                      .fontColor(this.statusOf(index).length > 0 ? '#C7CBD1' : '#6B7078')
+                  }.id('host-status-text/' + index).width(180)
                   // 标签 chips（原版预设：开发/测试/生产）
                   ForEach(this.tagList(h), (tg: string) => {
                     Text(tg).fontSize(11).fontColor('#C7CBD1')
@@ -3237,7 +3242,7 @@ struct Index {
             Row({ space: 12 }) {
               Image($r('app.media.ic_keys')).width(16).height(16)
               Text(k).fontSize(13).fontColor('#E8EAED').layoutWeight(1)
-              Button(this.lang === 'zh' ? '删除' : 'Delete').height(26).fontSize(11)
+              Button(this.lang === 'zh' ? '删除' : 'Delete').id('vault/del/' + k).height(26).fontSize(11)
                 .backgroundColor('#3A2226').fontColor('#E08A8A')
                 .onClick(async () => {
                   await Vault.remove(k);
@@ -3258,6 +3263,10 @@ struct Index {
   // 统一在这里等一小段时间再刷新，避免 UI 与磁盘状态不一致。
   private async settleStore(): Promise<void> {
     await new Promise<void>((resolve: () => void) => { setTimeout(() => { resolve(); }, 150); });
+  }
+
+  private statusOf(index: number): string {
+    return index >= 0 && index < this.statuses.length ? this.statuses[index] : '';
   }
 
   build() {

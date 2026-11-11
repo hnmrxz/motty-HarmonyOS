@@ -1,0 +1,20 @@
+﻿fix(harmonyos/ui): 状态列一直是假的 + SFTP 面板取词补齐；回归 8/8
+
+1. 主机状态列从来没显示过真实状态(真实 bug)
+   setStatus 一直在写 statuses, 但行里那列硬编码 ○ 未连接 -> 探测/连接失败原因从未显示
+   现在 statusOf(index) 驱动 ●/○ + 文本, 宽度 180 单行省略
+
+2. SFTP 面板补词(1:1): filesPanel 之前英文硬编码, 现走词表
+   sftp.title(文件（SFTP）)/sftp.download/sftp.upload/sftp.up/sftp.list/sftp.close
+   补词时发现 sftp.close 两边词表都缺, 界面一直显示键名
+
+3. 两条老用例按真实语义重写:
+   - cred.cleared: 旧断言"删凭据后重启仍无凭据"不成立(启动会从保险库预热)
+     改为 建主机带口令 -> 信任连接 -> 密钥链删条目(vault/del/<host:port>) -> 再连接提示 no credentials
+   - ui.i18n.panels: 文件本身乱码(早期 PowerShell 写入), 用 Python 重写整份, 断言中英两可 + 键名不得出现
+   顺带修过时文案 no credentials in memory (vault not implemented yet) -> (add a password in host settings)
+
+4. 回归: host.manage / sftp.manage / sftp.write / ui.i18n.panels / terminal.vt /
+   settings.persist / pages.logs-vault / host.catalog => 8/8 PASS
+
+教训: UI 上"看起来在显示状态"不等于真的在显示状态; 硬编码占位会长期掩盖实现缺陷
