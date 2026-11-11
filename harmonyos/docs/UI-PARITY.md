@@ -407,3 +407,41 @@ host.catalog       PASS
 - `host.manage` 仍 **FAIL**（第 14 步），其余本轮相关用例：`sftp.manage`、`settings.persist`、`pages.logs-vault`、`host.catalog` 均 PASS。
 - 不再用"能连上/能写库"这类弱证据把这条用例标绿。
 
+---
+
+## Round 13 追加：列表不刷新的真正原因——`ForEach` 的 key 只用 id
+
+### 结论（这次靠日志+重启闭环确认）
+在 `reload()` 结尾加日志后，`host.manage` 那次运行打出：
+```
+reload count=1 first=manage-a          ← 首次创建后
+reload count=1 first=manage-amanage-b  ← 编辑保存后（内存里已经是新值！）
+```
+所以 **`reload()` 拿到的数据是对的**，是 UI 没重建。
+
+根因：`ForEach(this.hosts, …, (h) => h.id)` 用 **host id** 做 key。
+id 在编辑时不变 ⇒ ArkUI 认为 item 没变 ⇒ **复用旧子树**，Text 内容不更新。
+（这也是"重启后就好了"的原因：重启是全新构建。）
+
+### 修法
+key 加入内容指纹：
+```
+(h) => h.id + '|' + h.label + '|' + h.address + '|' + h.user + '|' + h.port + '|'
+       + h.group + '|' + h.tags + '|' + h.color + '|' + h.proto
+```
+列表与网格两处都改。
+
+### 效果
+`host.manage` 从**第 14 步失败**推进到**第 18 步失败**：
+- 第 14 步（编辑后名称出现）现在 **PASS**；
+- 新的失败点是第 18 步 `hello-from-list`（终端里的 fixture banner 没出现在 UITest 文本树里）。
+
+### 这个坑值得记住
+**`ForEach` 的 key 必须是"能标识内容"的值**。用主键当 key 时，主键不变而字段变化的更新**一定**不会反映到界面，
+而且它会被误诊成"数据库没写成功"——这次绕了三轮才定位到。
+
+### 下一步
+- 查终端视图为什么没有把行文本暴露给 UITest（`terminal.vt` 能通过，说明机制本身存在，
+  可能是本次会话没有输出，或终端行渲染有渲染时机问题）；
+- 再把 `host.manage` 剩余步骤跑通。
+

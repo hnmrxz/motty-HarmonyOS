@@ -63,7 +63,7 @@ steps:
       withinMs: 8000
   # 先信任一次，制造 known_hosts
   - action: click
-    target: id:host-row/0
+    target: id:host-open/0
   - action: wait
     ms: 2000
     expect:

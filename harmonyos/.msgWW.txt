@@ -1,0 +1,17 @@
+﻿fix(harmonyos/ui): ForEach key 只用 id 导致列表不刷新（编辑后界面不更新）
+
+结论(日志+重启闭环):
+- 在 reload() 结尾加日志: 编辑保存后 reload count=1 first=manage-amanage-b => 内存里已是新值
+- 所以数据是对的, 是 UI 没重建
+- 根因: ForEach(this.hosts, ..., (h) => h.id) 用 host id 做 key; 编辑时 id 不变 => ArkUI 复用旧子树, Text 不更新
+  (也解释了"重启后就好了": 重启是全新构建)
+
+修法: key 加入内容指纹 id|label|address|user|port|group|tags|color|proto, 列表与网格两处都改
+
+效果: host.manage 从第14步失败推进到第18步失败
+- 第14步(编辑后名称出现) 现在 PASS
+- 新失败点第18步 hello-from-list(终端 fixture banner 未出现在 UITest 文本树)
+
+教训: ForEach key 必须是能标识内容的值; 用主键当 key 时, 主键不变而字段变化的更新一定不会反映到界面,
+      而且会被误诊成"数据库没写成功"
+下一步: 查终端行为什么没暴露文本(terminal.vt 能过, 说明机制存在)

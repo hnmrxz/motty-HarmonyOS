@@ -360,6 +360,7 @@ struct Index {
     }
     rs.close();
     this.hosts = out;
+    hilog.info(DOMAIN, TAG, 'reload count=%{public}d first=%{public}s', out.length, out.length > 0 ? out[0].label : '<none>');
     // 从保险库预热：进程重启后凭据仍然可用，这是"落盘"与"只在内存"的分界
     for (let i = 0; i < out.length; i++) {
       const key = this.hostKey(out[i].address, out[i].port);
@@ -2362,7 +2363,7 @@ struct Index {
                 })
               }
             }
-          }, (h: HostItem) => h.id)
+          }, (h: HostItem) => h.id + '|' + h.label + '|' + h.address + '|' + h.user + '|' + h.port + '|' + h.group + '|' + h.tags + '|' + h.color + '|' + h.proto)
         }
       }, (g: string) => g)
       if (this.hosts.length === 0) {
@@ -2713,7 +2714,7 @@ struct Index {
                   const idx = this.hosts.findIndex((x: HostItem) => x.id === h.id);
                   if (idx >= 0) { this.openSession(h.label, idx); }
                 })
-              }, (h: HostItem) => h.id)
+              }, (h: HostItem) => h.id + '|' + h.label + '|' + h.address + '|' + h.user + '|' + h.port + '|' + h.group + '|' + h.tags + '|' + h.color + '|' + h.proto)
             }.width('100%')
           }
         }, (g: string) => 'grid-' + g)
