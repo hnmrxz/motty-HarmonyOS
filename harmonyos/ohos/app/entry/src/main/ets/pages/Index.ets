@@ -1001,6 +1001,10 @@ struct Index {
     if (this.fwdId !== 0) {
       mottynapi.forwardStop(this.fwdId);
       this.fwdId = 0;
+      // 明确回报"已停止"：否则界面上分不清"停了"和"根本没起来"
+      this.fwdEvents = this.fwdEvents + '\nstopped';
+    } else {
+      this.fwdEvents = this.fwdEvents + '\nstop: no active forward';
     }
   }
 
@@ -1657,6 +1661,16 @@ struct Index {
           .onClick(() => { this.fwdMode = 'http'; })
         Text('mode=' + this.fwdMode).id('fwd/mode').fontSize(11).fontColor('#0A6C00')
       }.width('100%')
+      Scroll() {
+        Text(this.fwdEvents.length > 0 ? this.fwdEvents : '(no events)')
+          .id('fwd/events').fontSize(11).fontFamily('monospace').width('100%')
+      }.height(110).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)
+        .align(Alignment.TopStart)
+      Scroll() {
+        Text(this.fwdResult.length > 0 ? this.fwdResult : '(tunnel not tested)')
+          .id('fwd/result').fontSize(11).fontFamily('monospace').width('100%')
+      }.height(80).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)
+        .align(Alignment.TopStart)
       Row({ space: 8 }) {
         Button('Start').id('fwd/start').onClick(() => { this.startForward(); })
         Button('Stop').id('fwd/stop').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
@@ -1695,16 +1709,6 @@ struct Index {
           Text('(no saved rules)').id('fwd/rule-empty').fontSize(11).fontColor('#999999').width('100%')
         }
       }.width('100%')
-      Scroll() {
-        Text(this.fwdEvents.length > 0 ? this.fwdEvents : '(no events)')
-          .id('fwd/events').fontSize(11).fontFamily('monospace').width('100%')
-      }.height(110).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)
-        .align(Alignment.TopStart)
-      Scroll() {
-        Text(this.fwdResult.length > 0 ? this.fwdResult : '(tunnel not tested)')
-          .id('fwd/result').fontSize(11).fontFamily('monospace').width('100%')
-      }.height(80).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)
-        .align(Alignment.TopStart)
       Text('Limits: one active connection at a time, no ACL, local forward only.')
         .fontSize(10).fontColor('#999999').width('100%')
     }
@@ -2102,7 +2106,10 @@ struct Index {
       }
       if (this.fwdOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
-        this.forwardPanel()
+        // 面板可能比屏幕高：套 Scroll，否则下半部分会被裁掉（按钮在 UI 树里都找不到）
+        Scroll() {
+          this.forwardPanel()
+        }.width('100%').height('100%').align(Alignment.Top)
       }
       if (this.filesOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})

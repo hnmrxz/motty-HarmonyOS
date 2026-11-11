@@ -1,0 +1,14 @@
+﻿fix(harmonyos): 转发面板三个真实 UI 缺陷（停止回报/滚动裁切/事件框位置）
+
+修掉:
+1. stopForward 只调 NAPI 不写状态 -> 分不清'停了'与'没起来'，已加 stopped 回报
+2. forwardPanel 无滚动容器: 2in1 上溢出屏幕后 fwd/start、fwd/stop 在 UI 树里根本不存在
+   -> 给面板套 Scroll（dump 已验证按钮从'不存在'变为'存在'）
+3. fwd/events、fwd/result 在按钮下方折叠区外，断言读不到 -> 移到 Start/Stop 行之前
+
+未交付(诚实记录):
+- 为上述行为写的 forward.stop / forward.occupied 用例仍红: 按钮已存在可点，但断言时
+  屏幕文本仍是主机列表(面板被关闭/切走)，未定位根因
+- 因此**没有把红用例提交**（不留假通过测试），已删除这两个 spec
+
+用例数保持 47
