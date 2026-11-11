@@ -1,0 +1,27 @@
+{
+  "round": 82,
+  "date": "2026-11-11",
+  "kind": "targeted regression (8 specs)",
+  "profiles": {
+    "2in1": {
+      "passed": 8,
+      "total": 8
+    },
+    "tablet": {
+      "passed": 8,
+      "total": 8
+    }
+  },
+  "specs": [
+    "host.manage",
+    "hosts.search",
+    "terminal.vt",
+    "terminal.key",
+    "sftp.manage",
+    "vnc.session",
+    "forward.persist",
+    "ai.request"
+  ],
+  "fixture": "sshfixture default mode (None auth, no resize), -ai-addr default 127.0.0.1:2297",
+  "note": "定向回归，不是全量：用来确认 Round 61-81 的布局/取词改动没有破坏既有功能。未覆盖：其余 47 条用例、vnc.auth-hextile/vnc.negative（需 -vnc-auth secret 的夹具模式）、vnc.desktopsize/adapt（需 -vnc-resize）。"
+}

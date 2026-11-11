@@ -1,0 +1,13 @@
+﻿test(harmonyos): 定向回归 8/8 双画像通过
+
+确认 Round 61-81 的布局/取词改动没有破坏既有功能，双画像各跑一遍 8 条:
+host.manage / hosts.search / terminal.vt / terminal.key / sftp.manage /
+vnc.session / forward.persist / ai.request -> 全部 PASS
+
+选择依据: 这十几轮动过 VNC 按钮顺序、转发面板滚动容器、诊断面板结构与取词表，
+这 8 条正好覆盖主机 CRUD/搜索/终端 VT 与按键/SFTP/VNC 会话/转发持久化/AI 通路
+
+记录: spec/matrix/regression-round82.json
+诚实边界: 定向回归不是全量，其余 47 条未跑；
+vnc.auth-hextile/vnc.negative(需 -vnc-auth secret)与 vnc.desktopsize/adapt(需 -vnc-resize)
+属不同夹具模式，未覆盖

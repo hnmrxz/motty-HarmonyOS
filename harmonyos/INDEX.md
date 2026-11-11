@@ -2226,3 +2226,30 @@ RDP 内容仍 **E3**；用例数保持 52（不加无法证明内容的用例）
 
 ### 四、状态
 用例 54 → **55**；E1 能力 16。
+---
+
+## Round 82：定向回归 8/8 双画像通过（确认布局/取词改动没破坏既有功能）
+
+只挑**最容易被布局改动波及**的 8 条，双画像各跑一遍：
+
+| 用例 | 2in1 | tablet |
+|---|---|---|
+| `host.manage` | PASS | PASS |
+| `hosts.search` | PASS | PASS |
+| `terminal.vt` | PASS | PASS |
+| `terminal.key` | PASS | PASS |
+| `sftp.manage` | PASS | PASS |
+| `vnc.session` | PASS | PASS |
+| `forward.persist` | PASS | PASS |
+| `ai.request` | PASS | PASS |
+
+记录在 `spec/matrix/regression-round82.json`。
+
+### 为什么是这 8 条
+Round 61–81 动过 VNC 面板按钮顺序、转发面板滚动容器、诊断面板结构与取词表——
+这 8 条正好覆盖：主机 CRUD、搜索、终端 VT/按键、SFTP、VNC 会话、转发持久化、AI 通路。
+
+### 诚实边界
+这是**定向回归**，不是全量：其余 47 条用例未在本轮执行；
+`vnc.auth-hextile`/`vnc.negative`（需 `-vnc-auth secret`）与
+`vnc.desktopsize`/`vnc.adapt`（需 `-vnc-resize`）属不同夹具模式，未覆盖。
