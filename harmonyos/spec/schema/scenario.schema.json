@@ -219,6 +219,18 @@
     },
     "pcOnly": {
       "type": "boolean"
+    },
+    "fixture": {
+      "type": "object",
+      "properties": {
+        "vncAuth": {
+          "type": "boolean"
+        },
+        "vncResize": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "$defs": {

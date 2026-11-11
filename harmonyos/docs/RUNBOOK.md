@@ -928,3 +928,18 @@ Get-Process sshfixture -ErrorAction SilentlyContinue | Stop-Process -Force
 hdc -t 127.0.0.1:10100 rport tcp:2222 tcp:2223
 Start-Process 待续
 
+### VNC 用例的夹具参数（Round 24 追加）
+
+VNC 的 4 条用例对夹具启动参数有要求，**参数不同，行为完全不同**：
+
+| 用例 | 需要的参数 | 期望的状态串 |
+|---|---|---|
+| `vnc.auth-hextile`、`vnc.negative` | `-vnc-auth secret` | `auth=vncauth` / `authentication failed` |
+| `vnc.adapt`、`vnc.desktopsize` | `-vnc-resize` | `canvas=80x60`（第 3 次请求后发 DesktopSize） |
+| 其余 `vnc.session` / `vnc.key` / `vnc.clipboard` | **不带**上述参数 | `auth=none`、`canvas=64x48` |
+
+历史坑：不按要求重启夹具时，这 4 条会全部失败，但**看起来像应用缺陷**（状态串是 `auth=none`、`64x48`）。
+
+现在 `harmonyos/tools/run-all.py` 会读用例顶层的 `fixture: { vncAuth, vncResize }` 声明，
+在需要时**自动重启夹具**并重建 `rport`，所以批量回归不再需要手工切夹具。
+

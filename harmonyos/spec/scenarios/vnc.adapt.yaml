@@ -7,6 +7,8 @@ profile:
   - tablet
 capabilities:
   - E02
+fixture:
+  vncResize: true
 app:
   bundleName: com.motty.harmony
   ability: EntryAbility

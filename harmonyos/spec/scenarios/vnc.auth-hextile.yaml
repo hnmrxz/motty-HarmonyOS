@@ -9,6 +9,8 @@ capabilities:
   - E01
   - E02
   - E03
+fixture:
+  vncAuth: true
 app:
   bundleName: com.motty.harmony
   ability: EntryAbility

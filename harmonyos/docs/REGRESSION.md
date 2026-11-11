@@ -93,3 +93,20 @@ terminal.resize / ui.i18n.diag / ui.i18n.diagnostics / ui.i18n.vnc / ui.rdp-expe
 - RDP 实验性提示原来只有"RDP: 实验"四个字，现在补了说明（`画面与输入尚未投递` / `picture/input are not delivered yet`），
   这样"是否可用"在界面上是**明说**的，而不是靠用户猜。
 
+## Round 24：VNC 4 条失败是**夹具参数**，不是应用缺陷
+
+带正确参数重启夹具后，这 4 条一次性全过：
+
+```
+vnc.auth-hextile  PASS     (夹具 -vnc-auth secret)
+vnc.negative      PASS     (夹具 -vnc-auth secret)
+vnc.adapt         PASS     (夹具 -vnc-resize)
+vnc.desktopsize   PASS     (夹具 -vnc-resize)
+```
+
+因此 Round 21–23 的"VNC 功能失败"结论是**错的**（至少这 4 条），已纠正。
+为避免再次误判，`run-all.py` 现在支持用例声明 `fixture: { vncAuth, vncResize }` 并在跑之前自动重启夹具。
+
+同时修了一个工具本身的坑：`run-all.py` 曾被 PowerShell 写入带 BOM，Python 直接 `SyntaxError`；
+已去掉 BOM（`﻿`）。
+
