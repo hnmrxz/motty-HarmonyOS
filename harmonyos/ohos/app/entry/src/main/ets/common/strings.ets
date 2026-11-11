@@ -48,6 +48,17 @@ export class Strings {
     ['common.cancel', 'Cancel'],
     ['common.save', 'Save'],
     ['common.add', 'Add Host'],
+    ['sftp.preview', 'preview'],
+    ['sftp.path', 'path'],
+    ['fwd.mode', 'mode'],
+    ['fwd.listen', 'listen port'],
+    ['fwd.target', 'target host:port'],
+    ['fwd.start', 'Start'],
+    ['fwd.stop', 'Stop'],
+    ['fwd.test', 'Test tunnel'],
+    ['vnc.stop', 'Stop'],
+    ['term.history', 'history tail'],
+
   ]);
 
   private static readonly zh: Map<string, string> = new Map<string, string>([
@@ -88,6 +99,17 @@ export class Strings {
     ['common.cancel', '取消'],
     ['common.save', '保存'],
     ['common.add', '添加主机'],
+    ['sftp.preview', '预览'],
+    ['sftp.path', '路径'],
+    ['fwd.mode', '模式'],
+    ['fwd.listen', '监听端口'],
+    ['fwd.target', '目标 主机:端口'],
+    ['fwd.start', '启动'],
+    ['fwd.stop', '停止'],
+    ['fwd.test', '测试隧道'],
+    ['vnc.stop', '停止'],
+    ['term.history', '历史尾部'],
+
   ]);
 
   static get(lang: string, key: string): string {

@@ -1473,7 +1473,7 @@ struct Index {
       Row({ space: 12 }) {
         Button('Cancel').id('shell/dialog-cancel').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.showDialog = false; this.editingId = ''; this.resetForm(); })
-        Button(this.editingId.length > 0 ? 'Save' : 'Add Host').id('shell/dialog-submit').onClick(() => { this.submit(); })
+        Button(this.editingId.length > 0 ? this.t('common.save') : this.t('common.add')).id('shell/dialog-submit').onClick(() => { this.submit(); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
     .id('host-form/dialog').width(560).padding(20).backgroundColor(Color.White).borderRadius(12)
@@ -1515,14 +1515,14 @@ struct Index {
       Row({ space: 8 }) {
         TextInput({ text: this.sftpPath, placeholder: '.' }).id('sftp/path')
           .layoutWeight(1).onChange((v: string) => { this.sftpPath = v; })
-        Button('Up').id('sftp/up').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('sftp.up')).id('sftp/up').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => {
             const cred = this.creds.get(this.fixtureKey);
             if (cred !== undefined) {
               this.lookupFp(this.fixtureKey).then((fp: string) => { this.goUp(cred, fp); });
             }
           })
-        Button('List').id('sftp/list-btn').onClick(() => {
+        Button(this.t('sftp.list')).id('sftp/list-btn').onClick(() => {
           const cred = this.creds.get(this.fixtureKey);
           if (cred !== undefined) {
             this.lookupFp(this.fixtureKey).then((fp: string) => { this.refreshListing(cred, fp); });
@@ -1566,27 +1566,27 @@ struct Index {
       Row({ space: 8 }) {
         TextInput({ text: this.sftpFile, placeholder: 'hello.txt' }).id('sftp/file')
           .layoutWeight(1).onChange((v: string) => { this.sftpFile = v; })
-        Button('Download').id('sftp/download').onClick(() => {
+        Button(this.t('sftp.download')).id('sftp/download').onClick(() => {
           const cred = this.creds.get(this.fixtureKey);
           if (cred !== undefined) {
             this.lookupFp(this.fixtureKey).then((fp: string) => { this.downloadFile(cred, fp); });
           }
         })
-        Button('Delete').id('sftp/delete').backgroundColor('#C62828').fontColor(Color.White)
+        Button(this.t('sftp.delete')).id('sftp/delete').backgroundColor('#C62828').fontColor(Color.White)
           .onClick(() => {
             const cred = this.creds.get(this.fixtureKey);
             if (cred !== undefined) {
               this.lookupFp(this.fixtureKey).then((fp: string) => { this.deleteFile(cred, fp); });
             }
           })
-        Button('Rename').id('sftp/rename').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('sftp.rename')).id('sftp/rename').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => {
             const cred = this.creds.get(this.fixtureKey);
             if (cred !== undefined) {
               this.lookupFp(this.fixtureKey).then((fp: string) => { this.renameFile(cred, fp); });
             }
           })
-        Button('Mkdir').id('sftp/mkdir').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('sftp.mkdir')).id('sftp/mkdir').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => {
             const cred = this.creds.get(this.fixtureKey);
             if (cred !== undefined) {
@@ -1598,7 +1598,7 @@ struct Index {
       Row({ space: 8 }) {
         TextInput({ text: this.sftpUploadName, placeholder: 'uploaded.txt' }).id('sftp/upload-name')
           .layoutWeight(1).onChange((v: string) => { this.sftpUploadName = v; })
-        Button('Upload').id('sftp/upload').onClick(() => {
+        Button(this.t('sftp.upload')).id('sftp/upload').onClick(() => {
           const cred = this.creds.get(this.fixtureKey);
           if (cred !== undefined) {
             this.lookupFp(this.fixtureKey).then((fp: string) => { this.uploadFile(cred, fp); });
@@ -1662,7 +1662,7 @@ struct Index {
           .onClick(() => { this.stopForward(); })
         Button('Test tunnel').id('fwd/test').backgroundColor('#1A6DD0').fontColor(Color.White)
           .onClick(() => { this.testForward(); })
-        Button('Save rule').id('fwd/save').backgroundColor('#0A6C00').fontColor(Color.White)
+        Button(this.t('fwd.save')).id('fwd/save').backgroundColor('#0A6C00').fontColor(Color.White)
           .onClick(() => { this.saveRule(); })
       }.width('100%')
       Text('saved rules: ' + this.fwdRuleCount)
@@ -1719,15 +1719,15 @@ struct Index {
         Blank()
         Button('Stop').id('vnc/stop').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.stopVnc(); })
-        Button('Close').id('vnc/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('common.close')).id('vnc/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.stopVnc(); this.vncOpen = false; })
       }.width('100%')
       Row({ space: 8 }) {
         Text(this.vncClip.length > 0 ? 'clip: ' + this.vncClip : 'clip: (empty)')
           .id('vnc/clip').fontSize(11).fontFamily('monospace').fontColor('#0A6C00').layoutWeight(1)
-        Button('Read clip').id('vnc/clip-read').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('vnc.readClip')).id('vnc/clip-read').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .fontSize(11).onClick(() => { this.refreshVncClip(); })
-        Button('Send clip').id('vnc/clip-send').backgroundColor('#1A6DD0').fontColor(Color.White)
+        Button(this.t('vnc.sendClip')).id('vnc/clip-send').backgroundColor('#1A6DD0').fontColor(Color.White)
           .fontSize(11).onClick(() => { this.sendClipToVnc(); })
       }.width('100%')
       Text(this.vncStatus.length > 0 ? this.vncStatus : 'vnc: (idle)')
@@ -1816,7 +1816,7 @@ struct Index {
       Row() {
         Text('Known hosts').fontSize(16).fontWeight(FontWeight.Bold)
         Blank()
-        Button('Close').id('known/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('common.close')).id('known/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.knownOpen = false; })
       }.width('100%')
       Text('trusted entries: ' + this.knownKeys.length)
@@ -1853,7 +1853,7 @@ struct Index {
       Row() {
         Text('Diagnostics').fontSize(16).fontWeight(FontWeight.Bold)
         Blank()
-        Button('Close').id('diag/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('common.close')).id('diag/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.diagOpen = false; })
       }.width('100%')
       Text('These entries exist to exercise protocol paths that the product UI does not expose yet.')

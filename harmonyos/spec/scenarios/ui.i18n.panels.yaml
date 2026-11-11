@@ -1,0 +1,104 @@
+schema: 1
+id: ui.i18n.panels
+title: 面板级双语：SFTP 面板按钮随语言切换，且无缺键
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - H08
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+  skipFresh: true
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "No hosts yet|No hosts|还没有主机"
+      withinMs: 20000
+  # 切到中文
+  - action: click
+    target: id:ui/lang
+  - action: wait
+    ms: 800
+  # 建一台主机 + 信任，然后打开文件面板
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: i18n-panel
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:host-files/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+asserts:
+  # 中文面板文案（SFTP 面板按钮 + 标题）
+  - kind: screenRegex
+    regex: "下载"
+    withinMs: 15000
+  - kind: screenRegex
+    regex: "上传"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "新建目录"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "上级"
+    withinMs: 8000
+  # 反向断言：英文按钮文案不应再出现（说明这些按钮确实走了取词）
+  - kind: absent
+    value: "Mkdir"
+    withinMs: 3000
+  - kind: absent
+    value: "Download"
+    withinMs: 3000
+  # 缺键会显示键名，这里一个都不许出现
+  - kind: absent
+    value: "sftp.mkdir"
+    withinMs: 2000
+  - kind: absent
+    value: "sftp.download"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：SFTP 面板按钮与标题的中英取词、切换后文案变化、
+    缺键反向检测。
+    **不覆盖**：转发面板与 VNC 面板按钮的照片级全覆盖、跟随系统语言、第三种语言、复数与日期本地化；
+    未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - skipFresh：本机 bm clean -d 会导致版本回滚（见 INDEX Round 57-58）
+notes: >-
+  反向断言 "Mkdir"/"Download" 缺席，才说明这些按钮确实改成了取词；
+  否则"中文也在屏幕上"可能只是因为面板没渲染到那一行。

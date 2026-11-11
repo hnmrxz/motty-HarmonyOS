@@ -1146,7 +1146,8 @@
       },
       "evidence": "E1",
       "proof": [
-        "spec/scenarios/rdp.connect.yaml"
+        "spec/scenarios/rdp.connect.yaml",
+        "spec/scenarios/rdp.server-peer.yaml"
       ],
       "fallback": null,
       "userText": null,
@@ -1727,6 +1728,7 @@
       },
       "evidence": "E1",
       "proof": [
+        "spec/scenarios/ui.i18n.panels.yaml",
         "spec/scenarios/ui.i18n.yaml"
       ],
       "fallback": null,
@@ -1737,7 +1739,7 @@
         "deps": "R28",
         "acceptance": "key 集合 1:1"
       },
-      "partialCoverage": "部分：中英双语切换已双画像实测（顶栏与主机区 39 条文案键、缺键回退检测）；第三种语言、资源限定符方案、系统语言自动跟随、复数与日期本地化、其余面板文案未做。"
+      "partialCoverage": "部分：顶栏/主机区/SFTP 面板按钮与标题的中英切换已双画像实测（含缺键反向检测）；转发/VNC/诊断面板未逐一覆盖、第三种语言、系统语言跟随、复数与日期本地化未做。"
     },
     {
       "id": "H09",
