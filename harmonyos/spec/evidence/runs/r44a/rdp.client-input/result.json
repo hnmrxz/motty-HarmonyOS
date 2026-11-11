@@ -1,0 +1,89 @@
+{
+  "spec": "rdp.client-input",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": false,
+      "detail": "正则 'serverSaw keys=[1-9][0-9]*' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n  \\n\\n\\n'）"
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：客户端连本机服务端后发送键盘与鼠标事件，服务端计数（keys/mouse）确实增加。 **不覆盖**：输入落到真实 Windows 桌面后的效果（无真实 RDP 对端）、组合键/Unicode 输入、 剪贴板与多显示器。"
+  },
+  "passed": false,
+  "error": "assert 0 (screenRegex) 失败: 正则 'serverSaw keys=[1-9][0-9]*' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n  \\n\\n\\n'）"
+}

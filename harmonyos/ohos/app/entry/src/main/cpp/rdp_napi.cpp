@@ -11,6 +11,8 @@
 #include <napi/native_api.h>
 
 #include <freerdp/client.h>
+#include <freerdp/codec/interleaved.h>
+#include <freerdp/codec/planar.h>
 #include <freerdp/gdi/gdi.h>
 #include <freerdp/input.h>
 #include <freerdp/freerdp.h>
@@ -92,6 +94,30 @@ static unsigned samplePrimary(rdpContext *context) {
     return acc;
 }
 
+
+// ---- 自解码：不依赖 GDI（实测 gdi_bitmap_update 从不写主缓冲）----
+static BITMAP_INTERLEAVED_CONTEXT* g_ilv = nullptr;
+static BITMAP_PLANAR_CONTEXT* g_planar = nullptr;
+static int g_planarOk = 0;
+static int g_planarFail = 0;
+static uint8_t* g_frame = nullptr;
+static int g_frameW = 0;
+static int g_frameH = 0;
+static int g_ilvOk = 0;
+static int g_ilvFail = 0;
+static int g_rawCopy = 0;
+static std::mutex g_frameMtx;
+
+static bool ensureFrame(int w, int h) {
+    if (w <= 0 || h <= 0) return false;
+    if (g_frame != nullptr && g_frameW == w && g_frameH == h) return true;
+    free(g_frame);
+    g_frameW = w; g_frameH = h;
+    g_frame = static_cast<uint8_t*>(malloc(static_cast<size_t>(w) * h * 4));
+    if (g_frame != nullptr) memset(g_frame, 0xFF, static_cast<size_t>(w) * h * 4);
+    return g_frame != nullptr;
+}
+
 static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
     if (context == nullptr || bitmap == nullptr) {
         return TRUE;
@@ -104,6 +130,56 @@ static BOOL OnBitmapUpdate(rdpContext *context, const BITMAP_UPDATE *bitmap) {
         }
         if (g_stats.height == 0 && d.height > 0) {
             g_stats.height = static_cast<int>(d.height);
+        }
+        // 自解码：压缩位图用 interleaved，未压缩直接按行拷贝
+        {
+            std::lock_guard<std::mutex> frameLock(g_frameMtx);
+            const UINT32 W = (context->gdi != nullptr) ? context->gdi->width : 1024;
+            const UINT32 H = (context->gdi != nullptr) ? context->gdi->height : 768;
+            ensureFrame(static_cast<int>(W), static_cast<int>(H));
+            if (g_frame != nullptr && d.bitmapDataStream != nullptr &&
+                d.destLeft + d.width <= W && d.destTop + d.height <= H) {
+                const UINT32 stride = W * 4;
+                if (d.compressed) {
+                    BOOL ok = FALSE;
+                    // FreeRDP 自己的 gdi 路径：bpp<32 用 interleaved，bpp==32 用 planar。
+                    if (d.bitsPerPixel >= 32) {
+                        if (g_planar == nullptr) {
+                            g_planar = freerdp_bitmap_planar_context_new(0, W, H);
+                        }
+                        if (g_planar != nullptr) {
+                            ok = planar_decompress(g_planar, d.bitmapDataStream, d.bitmapLength,
+                                d.width, d.height, g_frame, PIXEL_FORMAT_RGBA32,
+                                stride, d.destLeft, d.destTop, W, H, TRUE);
+                        }
+                        if (ok) g_planarOk++; else g_planarFail++;
+                    } else {
+                        if (g_ilv == nullptr) g_ilv = bitmap_interleaved_context_new(FALSE);
+                        if (g_ilv != nullptr) {
+                            ok = interleaved_decompress(g_ilv, d.bitmapDataStream, d.bitmapLength,
+                                d.width, d.height, d.bitsPerPixel, g_frame, PIXEL_FORMAT_RGBA32,
+                                stride, d.destLeft, d.destTop, W, H, nullptr);
+                        }
+                        if (ok) g_ilvOk++; else g_ilvFail++;
+                    }
+                } else {
+                    const UINT32 bpp = (d.bitsPerPixel > 0) ? d.bitsPerPixel / 8 : 4;
+                    const UINT32 rowBytes = d.width * bpp;
+                    for (UINT32 yy = 0; yy < d.height; yy++) {
+                        const BYTE* srcRow = d.bitmapDataStream + static_cast<size_t>(yy) * rowBytes;
+                        BYTE* dstRow = g_frame + static_cast<size_t>(d.destTop + yy) * stride + d.destLeft * 4;
+                        if (bpp == 4) {
+                            for (UINT32 xx = 0; xx < d.width; xx++) {
+                                dstRow[xx * 4 + 0] = srcRow[xx * 4 + 2];
+                                dstRow[xx * 4 + 1] = srcRow[xx * 4 + 1];
+                                dstRow[xx * 4 + 2] = srcRow[xx * 4 + 0];
+                                dstRow[xx * 4 + 3] = 255;
+                            }
+                        }
+                    }
+                    g_rawCopy++;
+                }
+            }
         }
         g_stats.updates++;
         const int px = static_cast<int>(d.width) * static_cast<int>(d.height);
@@ -213,37 +289,56 @@ static void snapshotFromGdi(rdpContext *context) {
         return;
     }
     // primary_buffer 可能指向初始化时就固定下来的旧缓冲；优先用 primary bitmap 的实际数据指针
-    const BYTE *buf = context->gdi->primary_buffer;
-    UINT32 w = context->gdi->width;
-    UINT32 h = context->gdi->height;
-    size_t stride = (context->gdi->stride > 0) ? static_cast<size_t>(context->gdi->stride)
-                                               : static_cast<size_t>(w) * 4;
-    if (context->gdi->primary != nullptr && context->gdi->primary->bitmap != nullptr &&
-        context->gdi->primary->bitmap->data != nullptr) {
-        buf = context->gdi->primary->bitmap->data;
-        if (context->gdi->primary->bitmap->width > 0) {
-            w = static_cast<UINT32>(context->gdi->primary->bitmap->width);
-        }
-        if (context->gdi->primary->bitmap->height > 0) {
-            h = static_cast<UINT32>(context->gdi->primary->bitmap->height);
-        }
-        if (context->gdi->primary->bitmap->scanline > 0) {
-            stride = static_cast<size_t>(context->gdi->primary->bitmap->scanline);
+    // 优先用自解码帧缓冲（GDI 主缓冲实测从不变化）
+    if (g_frame != nullptr && g_frameW > 0 && g_frameH > 0) {
+        std::lock_guard<std::mutex> frameLock(g_frameMtx);
+        const int sw = g_frameW, sh = g_frameH;
+        for (int y = 0; y < kSnapH; y++) {
+            const int sy = y * sh / kSnapH;
+            for (int x = 0; x < kSnapW; x++) {
+                const int sx = x * sw / kSnapW;
+                const size_t src = (static_cast<size_t>(sy) * sw + sx) * 4;
+                const size_t dst = (static_cast<size_t>(y) * kSnapW + x) * 4;
+                g_snap[dst + 0] = g_frame[src + 0];
+                g_snap[dst + 1] = g_frame[src + 1];
+                g_snap[dst + 2] = g_frame[src + 2];
+                g_snap[dst + 3] = 255;
+            }
         }
     }
-    if (w == 0 || h == 0) {
-        return;
-    }
-    for (int y = 0; y < kSnapH; y++) {
-        const UINT32 sy = static_cast<UINT32>(y) * h / static_cast<UINT32>(kSnapH);
-        for (int x = 0; x < kSnapW; x++) {
-            const UINT32 sx = static_cast<UINT32>(x) * w / static_cast<UINT32>(kSnapW);
-            const size_t src = static_cast<size_t>(sy) * stride + static_cast<size_t>(sx) * 4;
-            const size_t dst = (static_cast<size_t>(y) * kSnapW + x) * 4;
-            g_snap[dst + 0] = buf[src + 0];
-            g_snap[dst + 1] = buf[src + 1];
-            g_snap[dst + 2] = buf[src + 2];
-            g_snap[dst + 3] = 255;
+    if (g_frame == nullptr) {
+        const BYTE *buf = context->gdi->primary_buffer;
+        UINT32 w = context->gdi->width;
+        UINT32 h = context->gdi->height;
+        size_t stride = (context->gdi->stride > 0) ? static_cast<size_t>(context->gdi->stride)
+                                                   : static_cast<size_t>(w) * 4;
+        if (context->gdi->primary != nullptr && context->gdi->primary->bitmap != nullptr &&
+            context->gdi->primary->bitmap->data != nullptr) {
+            buf = context->gdi->primary->bitmap->data;
+            if (context->gdi->primary->bitmap->width > 0) {
+                w = static_cast<UINT32>(context->gdi->primary->bitmap->width);
+            }
+            if (context->gdi->primary->bitmap->height > 0) {
+                h = static_cast<UINT32>(context->gdi->primary->bitmap->height);
+            }
+            if (context->gdi->primary->bitmap->scanline > 0) {
+                stride = static_cast<size_t>(context->gdi->primary->bitmap->scanline);
+            }
+        }
+        if (w == 0 || h == 0) {
+            return;
+        }
+        for (int y = 0; y < kSnapH; y++) {
+            const UINT32 sy = static_cast<UINT32>(y) * h / static_cast<UINT32>(kSnapH);
+            for (int x = 0; x < kSnapW; x++) {
+                const UINT32 sx = static_cast<UINT32>(x) * w / static_cast<UINT32>(kSnapW);
+                const size_t src = static_cast<size_t>(sy) * stride + static_cast<size_t>(sx) * 4;
+                const size_t dst = (static_cast<size_t>(y) * kSnapW + x) * 4;
+                g_snap[dst + 0] = buf[src + 0];
+                g_snap[dst + 1] = buf[src + 1];
+                g_snap[dst + 2] = buf[src + 2];
+                g_snap[dst + 3] = 255;
+            }
         }
     }
     {
@@ -601,10 +696,10 @@ void renderWorker(RdpJob *job) {
                 ? static_cast<int>(freerdp_settings_get_uint32(instance->context->settings, FreeRDP_ColorDepth)) : -1;
             const int dstFmt = (instance->context->gdi != nullptr) ? static_cast<int>(instance->context->gdi->dstFormat) : -1;
             snprintf(buf, sizeof(buf),
-                     "frames=%d paints=%d size=%dx%d pixels=%d depth=%d dst=%d colors=%d/%d/%d/%d/%d/%d/%d/%d at=%d,%d gfx=%d gfxBytes=%d comp=%d skip=%d dec=%d/%d/%u/%u gdi=%d/%dx%d/%d codecs=%d",
+                     "frames=%d paints=%d size=%dx%d pixels=%d depth=%d dst=%d colors=%d/%d/%d/%d/%d/%d/%d/%d at=%d,%d gfx=%d gfxBytes=%d comp=%d skip=%d dec=%d/%d/%u/%u gdi=%d/%dx%d/%d codecs=%d ilv=%d/%d planar=%d/%d raw=%d",
                      st2.updates, g_paints.load(), st2.width, st2.height, st2.pixels, depth, dstFmt,
                      st2.buckets[0], st2.buckets[1], st2.buckets[2], st2.buckets[3],
-                     st2.buckets[4], st2.buckets[5], st2.buckets[6], st2.buckets[7], g_bmpLastX, g_bmpLastY, g_surfaceBits, g_surfaceBitsBytes, g_bmpCompressed, g_bmpSkipComp, g_decChanged, g_decChecks, g_decBefore, g_decAfter, g_gdiInitOk, g_gdiW, g_gdiH, g_gdiStride, g_gdiCodecsOk);
+                     st2.buckets[4], st2.buckets[5], st2.buckets[6], st2.buckets[7], g_bmpLastX, g_bmpLastY, g_surfaceBits, g_surfaceBitsBytes, g_bmpCompressed, g_bmpSkipComp, g_decChanged, g_decChecks, g_decBefore, g_decAfter, g_gdiInitOk, g_gdiW, g_gdiH, g_gdiStride, g_gdiCodecsOk, g_ilvOk, g_ilvFail, g_planarOk, g_planarFail, g_rawCopy);
             result = buf;
             freerdp_disconnect(instance);
         }

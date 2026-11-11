@@ -595,3 +595,45 @@ dec=0/162/3478572346/3478572346   gdi=1/1024x768/4096
 FreeRDP 的 `interleaved_decompress`（`libfreerdp3.a`，`freerdp/codec/interleaved.h`）可以做这件事：
 按 `d.destLeft/destTop/d.width/d.height` 把解压结果写进我们自己的 RGBA 缓冲，然后用它驱动 Canvas。
 
+---
+
+## Round 44：**自解码成功** —— 32bpp 压缩位图必须走 `planar_decompress`（GDI 靠不住）
+
+### 关键发现（这条能解释之前所有白屏现象）
+FreeRDP 自己的 GDI 路径在 `libfreerdp/gdi/graphics.c:gdi_Bitmap_Decompress` 里是这样分派的：
+```
+bpp < 32  -> interleaved_decompress
+bpp == 32 -> planar_decompress          // 我们之前只调了 interleaved，所以 163/163 全失败
+```
+我们的环境是 **32bpp**，于是：
+- `interleaved_decompress` 全部失败（`ilv=0/163`）；
+- 改用 `planar_decompress` 后 **`planar=163/0`（163 成功、0 失败）**。
+
+这也说明为什么 `gdi_bitmap_update` 不往主缓冲写：它内部同样在解 32bpp 压缩位图，解不开就静默跳过。
+
+### 现在的实现
+`OnBitmapUpdate` 里自己解压到自建帧缓冲（`g_frame`，RGBA32，1024×768）：
+| bpp | 走哪条 |
+|---|---|
+| `>= 32` 且 compressed | `planar_decompress(..., vFlip=TRUE)` |
+| `< 32` 且 compressed | `interleaved_decompress(...)` |
+| 未压缩 | 按行把 BGR 拷成 RGBA |
+
+快照 `snapshotFromGdi` 改为**优先读自解码帧缓冲**（GDI 主缓冲只作为兜底）。
+
+### 踩到的并发问题（已修）
+自解码第一次跑通后，`rdp.client-input` 又把进程搞崩（`ps` 为 0）。
+原因是位图解码在内部线程、而快照在 EndPaint 线程，两者同时读写 `g_frame` / 解码上下文。
+加 `g_frameMtx` 后：
+```
+rdp.client-input  PASS
+rdp.client-render PASS
+rdp.server-peer   PASS
+```
+**教训：自己加的共享缓冲，一上手就要锁，别等崩了再加。**
+
+### 还没验证的
+`planar=163/0` 只证明**解压函数返回成功**，不等于"像素内容正确"。
+下一步要断言"快照里颜色数 > 1 且主色不是 #FFFFFF"（`rdp/canvas-info` 里的 `colors=` 与 `dominant=`），
+在那之前**不能说 RDP 画面可用**。
+
