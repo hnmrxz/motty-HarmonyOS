@@ -735,3 +735,39 @@ rdp-render: frames=164 paints=164 size=1024x768 pixels=786432 depth=32 ... plana
 **"API 文档说能" ≠ "本机能跑"**。这次按文档写了 `createPixelMap`，结果是静默不返回；
 以后再接平台 API，先用最小尺寸跑通一次、拿到可观察的完成信号，再往上加。
 
+---
+
+## Round 48：BMP 路线**真的把画面显示出来了**（有截图），但因稳定性已回退
+
+### 成功的一步（有 E1 证据）
+按官方文档确认 `Image` 支持 **bmp/png/jpg/svg/gif**，于是：
+1. NAPI 新增 `rdpWriteBmp(path)`：把自解码帧写成 32bpp BMP（行反转 + RGBA→BGRA）；
+2. ArkTS 调它并设 `Image('file://' + path + '?v=' + Date.now())`（查询串避开图片缓存）。
+
+**实测结果**：
+```
+rdp-render: ... planar=160/0 | snap colors=1345 drawn=3072 | bmp: 1024x768 written
+BMP 文件: /data/app/el2/100/base/com.motty.harmony/haps/entry/cache/rdp-frame.bmp
+截图: spec/evidence/runs/r48-screen2.jpeg —— 面板里能看到 RDP 画面（棋盘/渐变测试图案）
+```
+⇒ **RDP 画面第一次真的显示在应用界面里**（不再只是 64×48 采样）。
+
+### 但没敢留下
+- 把预览接成"渲染后自动写 BMP + Image"后，`rdp.client-render` / `rdp.client-input` 开始**不稳定失败**；
+  期间抓到 `WLog_PrintMessageVA` 的 SIGSEGV（FreeRDP 日志路径，间歇出现）。
+- 试过改成"点画布按需预览"，仍然失败；最终**把 UI 部分全部回退**，只保留经验与截图。
+
+### 另一个真实发现（测试自身的问题）
+同一份代码在连续跑多条用例时，`rdp.client-render` 会失败；**先 `aa force-stop` 再跑就 PASS**。
+⇒ 用例之间会残留服务端/端口状态，`rdp.client-render` 需要"每次跑前彻底停掉应用"。
+这条要写进下一轮的 runner 或 case 说明里，否则会把环境问题误判成回归。
+
+### 现状
+回退后代码 = 上一版（r47）。`rdp.server-peer / rdp.client-input` PASS，
+`rdp.client-render` 在强制停止应用后 PASS（**3/3 可达成，但需要干净起点**）。
+
+### 下一轮要做的
+1. 把"预览"做成**独立入口**（不影响渲染/输入用例的断言路径），并且每次重新安装/停应用后再测；
+2. 排查 `WLog_PrintMessageVA` 崩溃：它在多条用例连续跑时出现，可能和 shadow 服务端反复启停在同进程内有关；
+3. 预览刷新要限频（BMP 3 MB/帧），并考虑增量更新。
+
