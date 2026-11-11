@@ -88,6 +88,7 @@ int g_publishGuard = 0;
 int g_publishSkipped = 0;
 int g_lastClients = 0;
 int g_publishUnstable = 0;
+int g_stableTicks = 0;
 int g_cliNull = 0;
 int g_cliSeen = 0;
 int g_paintRows = 0;
@@ -745,8 +746,29 @@ napi_value RdpServerTick(napi_env env, napi_callback_info info) {
             region16_union_rect(&surface->invalidRegion, &surface->invalidRegion, &rect);
         }
         LeaveCriticalSection(&surface->lock);
-        // publish 已停用：与客户端订阅存在不可消除的竞态（consuming 变负 -> SIGABRT）。
-        // 客户端通过 RefreshRect 主动拉取表面更新，实测仍能拿到帧。
+        // 发布策略（实测）：
+        //  FreeRDP 的 publish 与"客户端连接/断开"存在竞态（consuming 变负 -> SIGABRT）。
+        //  因此只在"恰好 1 个客户端、且该状态连续稳定 10 个 tick"时才发布；
+        //  客户端增删（含输入探针临时连入）都会把稳定计数清零，从而避开竞态窗口。
+        {
+            const int nc = (g_server->clients != nullptr) ? ArrayList_Count(g_server->clients) : 0;
+            bool act = false;
+            if (nc == 1) {
+                rdpShadowClient* c0 = (rdpShadowClient*)ArrayList_GetItem(g_server->clients, 0);
+                act = (c0 != nullptr && c0->activated);
+            }
+            if (nc == 1 && act) {
+                g_stableTicks++;
+            } else {
+                g_stableTicks = 0;
+            }
+            if (nc == 1 && act && g_stableTicks >= 10) {
+                g_publishGuard++;
+                shadow_subsystem_frame_update(g_server->subsystem);
+            } else if (nc > 0) {
+                g_publishUnstable++;
+            }
+        }
         if (g_subsystem != nullptr) {
             g_subsystem->frames.fetch_add(1);
         }

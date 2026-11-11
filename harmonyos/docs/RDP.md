@@ -381,3 +381,36 @@ srv: running port=13389 frames=322 surface=ok paint=322 ...
 `rdp/input` 按钮**从来没有 onClick**（是个死按钮），已绑定 `probeRdpInput()`；
 这也解释了此前无论怎么点 `rdp/result` 都停在 `rdp: (not probed)`。
 
+---
+
+## Round 38：发布策略定型 —— "单客户端稳定 10 tick 才发布"，三条 RDP 用例全绿
+
+### 为什么不能"完全不发布"，也不能"随便发布"
+- 完全不发布：客户端只能靠 `RefreshRect` 拉帧，实测 25 秒内拿不到 `frames>0`（渲染用例红）。
+- 随便发布：客户端连接/断开（尤其输入探针临时连入）会撞上 FreeRDP `consuming` 断言 → SIGABRT。
+
+### 采用的策略（已落地在 `RdpServerTick` 兜底分支）
+```
+只有"恰好 1 个客户端"且"它是 activated"且"该状态连续稳定 10 个 tick"时才发布；
+客户端数量变化（含探针临时连入/断开）立即把 g_stableTicks 清零。
+```
+状态串里 `pub=` 是发布次数、`pubSkip=` 是跳过的 tick 数，可直接观察策略效果。
+
+### 结果（本轮实测，连续两轮复跑）
+```
+rdp.server-peer    PASS
+rdp.client-render  PASS
+rdp.client-input   PASS   (serverSaw keys=1 mouse=6)
+```
+且修复后**没有再产生新的崩溃日志**（最新一条停留在 21:15:32，修复后是 21:22+）。
+
+### 仍然存在的缺陷（没有被这轮"通过"掩盖）
+- **画面内容仍是白的**：`colors=1`、`dominant=#FFFFFF`。三个用例证明的是
+  "能连、能收帧、能绘制、输入能到服务端"，**不是"画面正确"**；
+- 客户端与服务端都在同一进程内（本机回环），不是跨机真实 RDP。
+
+### 关于"能不能修 FreeRDP 那个断言"
+查过构建：`CMakeLists.txt` 直接链 `third_party/ohos/<arch>/lib/libfreerdp-shadow3.a` 等**预编译静态库**，
+所以无法只改 `shadow_mcevent.c` 就生效——要么整包重编 FreeRDP（工作量大），要么用现在的策略绕开。
+本轮选择了后者，并把取舍写在这里。
+
