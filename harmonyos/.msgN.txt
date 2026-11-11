@@ -1,0 +1,13 @@
+﻿fix(harmonyos): RDP 渲染第三次尝试——修 ContextSize(SIGFPE) 与 ClientNew 返回值，仍收不到位图
+
+修掉的两个真 bug:
+1. ContextSize=0 -> freerdp_context_new_ex 整数除零 SIGFPE
+   修: 定义 MottyRdpContext{rdpContext common;}, ContextSize=sizeof(...)
+2. ClientNew 返回 0 -> freerdp_client_context_new 返回 NULL('error context')
+   根因: FreeRDP 期望 TRUE，0 被当成创建失败；改为 return 1(与样例 tf_client_new 一致)
+顺带: PostConnect 里 gdi_init(PIXEL_FORMAT_BGRX32)；连接后发一次鼠标事件尝试离开 shadow lobby
+
+结果(仍未达成): rdp-render: frames=0 size=0x0 pixels=0 colors=00000000
+剩余怀疑: lobby 未真正离开 / gdi_init 后需再挂一次 BitmapUpdate(顺序) / shadow 需 ClientConnect 配合
+
+诚实边界: 三个真实缺陷已修；渲染仍 E3；用例数保持 51；Round 70 的 connected 不受影响

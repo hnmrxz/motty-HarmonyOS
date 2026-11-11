@@ -2056,3 +2056,29 @@ rdp-render: frames=0 size=0x0 pixels=0 colors=00000000
 - 崩溃已修（不再 SIGFPE），但**渲染仍 E3**
 - 用例数保持 51，没有为失败功能加用例
 - Round 70 的 `connected` 结论不受影响（那条用的是另一条上下文路径，且双画像通过）
+---
+
+## Round 73：渲染管线第三次尝试——修掉两个真实 bug，仍收不到位图
+
+### 一、修掉的两个真 bug（都是"照直觉写 C 参数"的典型）
+| bug | 现象 | 根因 | 修法 |
+|---|---|---|---|
+| `ContextSize = 0` | `freerdp_context_new_ex` 里**整数除零 → SIGFPE** | 未设上下文尺寸 | 定义 `MottyRdpContext { rdpContext common; }`，`ContextSize = sizeof(...)` |
+| `ClientNew` 返回 0 | `freerdp_client_context_new` **返回 NULL**（`error context`） | FreeRDP 期望 **TRUE**，0 被视为"上下文创建失败" | 改为 `return 1`（与样例 `tf_client_new` 一致） |
+
+顺带补上：`PostConnect` 里 `gdi_init(instance, PIXEL_FORMAT_BGRX32)`（位图解码需要 GDI 表面），
+以及连接后发一次鼠标事件尝试离开 shadow 的 **lobby** 界面。
+
+### 二、结果（仍未达成）
+`rdp-render: frames=0 size=0x0 pixels=0 colors=00000000`
+上下文能建、能连，但**位图更新仍未到回调**。
+
+### 三、剩余怀疑点（按可能性排序）
+1. **lobby 未真正离开**：shadow 可能要求特定输入序列或 `mayView` 授权；我们的鼠标事件也许没被接受
+2. `context->update->BitmapUpdate` 被 gdi 内部覆盖：gdi_init 之后要**再**挂一次回调（顺序问题）
+3. shadow 的帧只发给"已激活客户端"，需要 `ClientConnect`/`ClientCapabilities` 回调配合
+
+### 四、诚实边界
+- 三个真实缺陷已修（其中两个曾导致崩溃/空上下文）
+- **渲染仍 E3**；用例数保持 51
+- Round 70 的 `connected` 不受影响（那条用 `freerdp_new` 路径，双画像通过）

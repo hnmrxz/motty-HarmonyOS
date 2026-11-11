@@ -11,10 +11,14 @@
 #include <napi/native_api.h>
 
 #include <freerdp/client.h>
+#include <freerdp/gdi/gdi.h>
+#include <freerdp/input.h>
 #include <freerdp/freerdp.h>
 #include <freerdp/settings.h>
 #include <freerdp/update.h>
 #include <freerdp/client.h>
+#include <freerdp/gdi/gdi.h>
+#include <freerdp/input.h>
 #include <freerdp/primary.h>
 
 #include <atomic>
@@ -118,10 +122,33 @@ struct MottyRdpContext {
 };
 int ClientGlobalInit(void) { return 0; }
 void ClientGlobalUninit(void) { }
+// PostConnect：位图更新需要 GDI 表面来解码，否则更新会被丢弃（实测 frames=0）
+BOOL OnPostConnect(freerdp *instance) {
+    if (instance == nullptr || instance->context == nullptr) {
+        return FALSE;
+    }
+    if (!gdi_init(instance, PIXEL_FORMAT_BGRX32)) {
+        fprintf(stderr, "[MOTTY_RDP_CLIENT] gdi_init failed\n");
+        return FALSE;
+    }
+    return TRUE;
+}
+
+void OnPostDisconnect(freerdp *instance) {
+    if (instance != nullptr) {
+        gdi_free(instance);
+    }
+}
+
 int ClientNew(freerdp *instance, rdpContext *context) {
-    (void)instance;
     (void)context;
-    return 0;   // 用默认客户端上下文（不需要自定义子类）
+    if (instance != nullptr) {
+        instance->PostConnect = OnPostConnect;
+        instance->PostDisconnect = OnPostDisconnect;
+    }
+    // 必须是 TRUE：返回 0 会被当成"上下文创建失败"，于是 freerdp_client_context_new 返回 NULL
+    // （样例 tf_client_new 也是 return TRUE）
+    return 1;
 }
 void ClientFree(freerdp *instance, rdpContext *context) { (void)instance; (void)context; }
 int ClientStart(rdpContext *context) { (void)context; return 0; }
@@ -224,6 +251,15 @@ void renderWorker(RdpJob *job) {
             result = std::string("connect failed: ") +
                      freerdp_get_last_error_string(freerdp_get_last_error(context));
         } else {
+            // shadow 服务端有"lobby"：客户端必须发一次输入才会进入桌面，否则永远收不到位图
+            auto leaveLobby = []() {};
+            (void)leaveLobby;
+            if (context->input != nullptr) {
+                freerdp_input_send_mouse_event(context->input, PTR_FLAGS_MOVE, 10, 10);
+                freerdp_input_send_mouse_event(context->input,
+                                               PTR_FLAGS_BUTTON1 | PTR_FLAGS_DOWN, 10, 10);
+                freerdp_input_send_mouse_event(context->input, PTR_FLAGS_BUTTON1, 10, 10);
+            }
             // 泵事件：让 shadow 把桌面更新送上来
             for (int i = 0; i < 200; i++) {   // ~10s 上限
                 if (!freerdp_check_fds(instance)) {
