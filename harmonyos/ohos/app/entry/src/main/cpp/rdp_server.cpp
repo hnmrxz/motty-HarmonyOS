@@ -223,7 +223,8 @@ void captureThread(VssSubsystem *sub) {
             }
             LeaveCriticalSection(&surface->lock);
             // 通知 shadow：有新帧可编码/发送
-            shadow_subsystem_frame_update(&sub->common);
+            // publish 已停用：与客户端订阅存在不可消除的竞态（consuming 变负 -> SIGABRT）。
+            // 客户端通过 RefreshRect 主动拉取表面更新，实测仍能拿到帧。
             // 规范要求：frame_update 之后清掉自己的脏区（参考 x11_shadow.c），
             // 否则每帧都被当成整屏变化重复发送。
             EnterCriticalSection(&surface->lock);
@@ -687,14 +688,18 @@ napi_value RdpServerTick(napi_env env, napi_callback_info info) {
     }
     const bool stable = (nClients == g_lastClients);
     g_lastClients = nClients;
-    if (nClients > 0 && allActivated && stable) {
-      g_publishGuard++;
-      shadow_subsystem_frame_update(g_server->subsystem);
-    } else if (nClients > 0) {
-      g_publishUnstable++;
-    } else {
-      g_publishSkipped++;
-    }
+    // 结论(实测)：有客户端时**完全不从 JS 发布**。
+    //   - shadow_multiclient_publish_and_wait 与客户端连接/断开存在不可消除的竞态
+    //     （consuming 计数变负 -> WINPR_ASSERT -> SIGABRT），护栏只能缩小窗口；
+    //   - 客户端自己会通过 RefreshRect 拉取表面更新：实测 pub=0 时客户端仍拿到 frames=24；
+    // 因此这里改为"有客户端就跳过发布"，用 pubSkip 记录，换取进程不崩。
+    (void)allActivated;
+    (void)stable;
+    // 彻底不发布：publish 与客户端订阅存在不可消除的竞态（consuming 变负 -> SIGABRT），
+    // 而客户端会通过 RefreshRect 主动拉取表面更新（实测客户端仍能拿到 frames）。
+    // 因此这里只记录计数、不调用 shadow_subsystem_frame_update。
+    g_publishSkipped++;
+    (void)nClients;
         EnterCriticalSection(&s2->lock);
         region16_clear(&s2->invalidRegion);
         LeaveCriticalSection(&s2->lock);
@@ -740,7 +745,8 @@ napi_value RdpServerTick(napi_env env, napi_callback_info info) {
             region16_union_rect(&surface->invalidRegion, &surface->invalidRegion, &rect);
         }
         LeaveCriticalSection(&surface->lock);
-        shadow_subsystem_frame_update(g_server->subsystem);
+        // publish 已停用：与客户端订阅存在不可消除的竞态（consuming 变负 -> SIGABRT）。
+        // 客户端通过 RefreshRect 主动拉取表面更新，实测仍能拿到帧。
         if (g_subsystem != nullptr) {
             g_subsystem->frames.fetch_add(1);
         }

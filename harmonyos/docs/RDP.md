@@ -344,3 +344,40 @@ srv: running port=13389 surface=ok paint=400 inM=3 unstable=0
 诊断面板的 RDP 目标字段默认值改为 `127.0.0.1 / 13389 / tester / secret`（本机自测），
 否则"点 render 但 host 为空"会永远连不上（这也是之前该用例一直失败的原因之一）。
 
+---
+
+## Round 37：去掉 publish 后**崩溃消失、输入回传打通**（渲染仍需 push）
+
+### 关键发现：publish 有三处，不只一处
+之前只改了 `RdpServerTick` 里的那处，另外两处仍在调用 `shadow_subsystem_frame_update`：
+1. **tick 的兜底分支**（`g_capStarted != 1` 时走的那段）；
+2. **captureThread**（采集线程里的发布）。
+只要任何一处还在发，客户端一连就会触发 FreeRDP 的 `consuming` 断言 → SIGABRT。
+把三处全部去掉后：
+
+```
+进程存活: 1
+rdp-input: input: sent key+mouse; serverSaw keys=1 mouse=6 sync=0 (before 0/3/0)
+srv: running port=13389 frames=322 surface=ok paint=322 ...
+```
+
+### 结果
+| 用例 | 结果 | 说明 |
+|---|---|---|
+| `rdp.client-input` | ✅ **PASS** | 客户端连上后发键鼠，**服务端计数确实增加**（`serverSaw keys=1 mouse=6`） |
+| `rdp.client-render` | ❌ FAIL | 没有 push 之后客户端只靠 RefreshRect 拉帧，12–25 秒内拿不到 `frames>0`；要让它通过就必须恢复 publish，而 publish 正是崩溃来源 |
+
+### 现在的取舍（写在代码注释里）
+**进程不崩 > 主动推送帧**。
+没有 publish 时：服务端照常绘制（`paint` 递增）、客户端能连上、输入能到、但**画面更新推不过去**。
+
+### 下一步（清晰）
+1. 若要恢复推送，必须让 FreeRDP 的 `shadow_multiclient_publish_and_wait` 容忍订阅者抖动——
+   我们的 `native/third_party/src/FreeRDP` 里有源码（`shadow_mcevent.c` 的 `WINPR_ASSERT(event->consuming >= 0)`），
+   可以尝试把 `consuming` 钳到 0 并跳过断言（需要确认构建确实用这份源码重编，而不是链预编译 .a）；
+2. 或者保持"无推送"，改用客户端定时 `RefreshRect`（需要让客户端刷新间隔足够短）。
+
+### 顺带修掉的真实缺陷
+`rdp/input` 按钮**从来没有 onClick**（是个死按钮），已绑定 `probeRdpInput()`；
+这也解释了此前无论怎么点 `rdp/result` 都停在 `rdp: (not probed)`。
+

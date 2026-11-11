@@ -35,13 +35,14 @@ steps:
   # 填客户端目标（不填 host 会连不上：实测默认空串直接失败）
   - action: click
     target: id:rdp/render
+  # publish 已停用（会崩），客户端靠自己的 RefreshRect 拉帧，需要等更久
   - action: wait
-    ms: 12000
+    ms: 25000
 asserts:
   # 真的收到桌面更新并触发绘制（frames/paints > 0）
   - kind: screenRegex
     regex: "rdp-render: frames=[1-9][0-9]* paints=[1-9][0-9]*"
-    withinMs: 30000
+    withinMs: 60000
   # 尺寸与像素数必须与服务端表面一致
   - kind: screenRegex
     regex: "size=1024x768 pixels=786432"

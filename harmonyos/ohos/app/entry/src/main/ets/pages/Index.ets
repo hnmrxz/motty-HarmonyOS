@@ -2269,6 +2269,7 @@ struct Index {
         Button('RDP render').id('rdp/render').backgroundColor('#1A6DD0').fontColor(Color.White)
           .onClick(() => { this.startRdpRender(); })
         Button('RDP input').id('rdp/input').backgroundColor('#1A6DD0').fontColor(Color.White)
+            .onClick(() => { this.probeRdpInput(); })
         Button('TCP').id('rdp/tcpprobe').backgroundColor('#37474F').fontColor(Color.White)
           .onClick(() => {
             const p2: number = Number.parseInt(this.rdpTargetPort, 10);
