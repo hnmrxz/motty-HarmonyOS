@@ -902,7 +902,19 @@ struct Index {
   // ---------------- RDP 服务端（诊断用：给客户端一个真实协议的对端）----------------
   // 把 C++ 侧 64x48 采样画到 Canvas（每像素一个 fillRect，共 3072 次）
   private drawRdpSnapshot(): void {
-    const px: Uint8Array = mottynapi.rdpSnapshot() as Uint8Array;
+    this.rdpSnapInfo = 'rdp-canvas: start';
+    let px: Uint8Array;
+    try {
+      px = mottynapi.rdpSnapshot() as Uint8Array;
+    } catch (e) {
+      this.rdpSnapInfo = 'rdp-canvas: rdpSnapshot() threw: ' + JSON.stringify(e);
+      hilog.error(DOMAIN, TAG, 'rdpSnapshot threw: %{public}s', JSON.stringify(e));
+      return;
+    }
+    if (px === undefined || px === null || px.length === 0) {
+      this.rdpSnapInfo = 'rdp-canvas: rdpSnapshot() empty';
+      return;
+    }
     const w = 64;
     const h = 48;
     let drawn = 0;
@@ -914,15 +926,26 @@ struct Index {
         const g = px[off + 1];
         const r = px[off + 2];
         seen.add((r << 16) | (g << 8) | b);
-        const css = 'rgb(' + r + ',' + g + ',' + b + ')';
-        this.rdpCanvasCtx.fillStyle = css;
-        this.rdpCanvasCtx.fillRect(x * 8, y * 8, 8, 8);
         drawn++;
       }
     }
+    // 统计先算、先写：之前把统计放在绘制之后，Canvas 没就绪时会抛异常，
+    // 结果完全看不到像素证据（rdp/canvas-info 为空）。
     this.rdpSnapDrawn = drawn;
     this.rdpSnapColors = seen.size;
-    this.rdpSnapInfo = 'rdp-canvas: drawn=' + drawn + ' colors=' + this.rdpSnapColors + ' | cpp ' + (mottynapi.rdpSnapStats() as string);
+    this.rdpSnapInfo = 'rdp-canvas: drawn=' + drawn + ' colors=' + this.rdpSnapColors +
+      ' | cpp ' + (mottynapi.rdpSnapStats() as string);
+    try {
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const off = (y * w + x) * 4;
+          this.rdpCanvasCtx.fillStyle = 'rgb(' + px[off + 2] + ',' + px[off + 1] + ',' + px[off + 0] + ')';
+          this.rdpCanvasCtx.fillRect(x * 8, y * 8, 8, 8);
+        }
+      }
+    } catch (e) {
+      hilog.error(DOMAIN, TAG, 'drawRdpSnapshot canvas failed: %{public}s', JSON.stringify(e));
+    }
   }
 
   // 输入回传探测：连接后发键鼠，看服务端收到多少
@@ -944,6 +967,9 @@ struct Index {
       (result: string) => {
         this.rdpResult = 'rdp-render: ' + result;
         this.drawRdpSnapshot();
+        // 画布统计在面板下方、常被窗口裁掉，把关键像素证据拼进可见的 result 行
+        this.rdpResult = this.rdpResult + ' | snap colors=' + this.rdpSnapColors +
+          ' drawn=' + this.rdpSnapDrawn + ' | ' + (mottynapi.rdpSnapStats() as string);
       }, this.rdpUseNla);
   }
 

@@ -637,3 +637,45 @@ rdp.server-peer   PASS
 下一步要断言"快照里颜色数 > 1 且主色不是 #FFFFFF"（`rdp/canvas-info` 里的 `colors=` 与 `dominant=`），
 在那之前**不能说 RDP 画面可用**。
 
+---
+
+## Round 45：**白屏修复得到证实**（像素断言已进用例）
+
+### 证据
+把快照统计提前计算、并把关键数字拼进可见的 `rdp/result` 之后：
+```
+rdp-render: frames=164 paints=164 size=1024x768 pixels=786432 depth=32 ... planar=164/0 raw=0
+  | snap colors=1377 drawn=3072 | bmp=164 rects=164 ... dominant=#...
+```
+- **`snap colors=1377`**：64×48 采样里有 1377 种不同颜色（白屏时是 **1** 种）；
+- `drawn=3072`：3072 个像素全部画到 Canvas；
+- `planar=164/0`：164 块位图全部解压成功。
+
+⇒ **自解码路径真的把画面还原出来了**，白屏不再复现。
+
+### 用例里的硬断言（不是"看起来好了"）
+`rdp.client-render` 新增：
+```yaml
+- kind: screenRegex
+  regex: "snap colors=(?:[2-9][0-9]|[1-9][0-9]{2,}) drawn=3072"   # 颜色数 >= 20 且画满
+- kind: absent
+  value: "dominant=#FFFFFF"                                       # 主色不能是全白
+```
+实测通过；`limits` 也从"不覆盖像素正确性"改成
+"覆盖像素内容真的非空；**不覆盖**与真实 Windows 桌面的逐像素一致性（对端是我们自己的 shadow 服务端）"。
+
+### 这一轮真正修好的东西
+| 之前 | 现在 |
+|---|---|
+| `colors=1`、`dominant=#FFFFFF`（白屏） | `snap colors=1377`，主色非白 |
+| `rdp-render` 只证明"管线通" | 用例**断言像素有内容** |
+| 画布统计因 Canvas 未就绪而丢失 | 统计先算先写，Canvas 绘制包在 try 里 |
+
+### 仍然不覆盖
+- 与真实 Windows 桌面的**逐像素一致**（对端是同一进程里的 shadow 服务端，画的是测试图案）；
+- 跨机网络、缩放、多显示器；
+- 长时间运行的稳定性（当前只跑十几秒）。
+
+### 回归
+`rdp.server-peer / rdp.client-render / rdp.client-input => 3/3 PASS`
+

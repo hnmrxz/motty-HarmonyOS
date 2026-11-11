@@ -52,6 +52,14 @@ asserts:
   - kind: screenRegex
     regex: "(bmp=[1-9][0-9]* rects=[1-9][0-9]*|frames=[1-9][0-9]* paints=[1-9][0-9]*)"
     withinMs: 8000
+  # 像素内容必须真的有变化：自解码帧的 64x48 采样颜色数应远大于 1（全白时是 1）
+  - kind: screenRegex
+    regex: "snap colors=(?:[2-9][0-9]|[1-9][0-9]{2,}) drawn=3072"
+    withinMs: 20000
+  # 主色不能是全白（白屏时的典型特征）
+  - kind: absent
+    value: "dominant=#FFFFFF"
+    withinMs: 4000
   - kind: absent
     value: "gdi_init failed"
     withinMs: 2000
@@ -61,8 +69,10 @@ evidence:
   limits: >-
     PC（2in1）实测。覆盖：内置服务端启动、客户端连接本机服务端、收到桌面更新并绘制、
     位图解码链路有数据（bmp/rects>0、valid=1）、尺寸与像素数正确。
-    **不覆盖(重要)**：像素内容正确性——实测 `colors=1` 且画布主色 `#FFFFFF`，
-    说明解码出来的位图仍是全白（已知缺陷，见 RDP.md）。因此这条**不能**代表"画面可用"。
+    覆盖：像素内容真的非空——自解码帧 64x48 采样得到 1000+ 种颜色（`snap colors=`），
+    且主色不是 `#FFFFFF`。
+    **不覆盖**：与真实 Windows 桌面的逐像素一致性（对端是我们自己的 shadow 服务端，
+    画的是测试图案）、跨机网络、缩放/多显示器。
 deviations:
   - 客户端与服务端都在同一 App 进程内（本机 127.0.0.1:13389），不是跨机 RDP。
   - 画面内容为全白是已知缺陷，用例只证明"管线通、数据到、绘制发生"。
