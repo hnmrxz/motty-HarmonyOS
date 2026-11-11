@@ -68,7 +68,7 @@ SSH 连接与终端、SFTP 文件管理、端口转发（local/SOCKS5/HTTP CONNE
 ### 7.1 当前规模
 | 指标 | 值 |
 |---|---|
-| 用例（机器判定） | **50 条**（`harmonyos/spec/scenarios/*.yaml`） |
+| 用例（机器判定） | **55 条**（`harmonyos/spec/scenarios/*.yaml`） |
 | E1 能力（双画像实测） | **16 条**（能力表共 83 项，其余为上游功能，多数未实现） |
 | 第三方组件（SBOM） | 16 组件 / 36 份产物，`tools/gen-sbom.py --check` 通过 |
 | 模拟器 | `motty_pc`（2in1, 3120×2080）、`motty_tablet`（tablet, 2880×1920），x86_64 / API 26 |
@@ -99,4 +99,38 @@ SSH 连接与终端、SFTP 文件管理、端口转发（local/SOCKS5/HTTP CONNE
 3. **arm64 真机**：全部 E1 仍来自 x86_64 模拟器
 4. **i18n 剩余**：VNC/诊断面板逐条、第三种语言、系统语言跟随
 5. **上架**：release 证书、隐私政策 URL、渗透测试
+
+---
+
+## 8. 最终状态（Round 83 对齐）
+
+### 8.1 数字
+| 指标 | 值 | 证据位置 |
+|---|---|---|
+| 用例 | **55 条** | `spec/scenarios/*.yaml`，`spec/lint.py` 全绿 |
+| E1 能力 | **16 条** | `spec/capabilities.json`（proof 字段回指用例文件） |
+| 定向回归 | **8/8 双画像通过** | `spec/matrix/regression-round82.json` |
+| SBOM | 16 组件 / 36 份产物，校验通过 | `SBOM.json` + `tools/gen-sbom.py --check` |
+| RDP 自检 | 3/3 通过 | `tools/rdp-selfcheck.py` |
+
+### 8.2 证据分级（当前口径）
+| 级别 | 含义 | 典型例子 |
+|---|---|---|
+| **E1** | 模拟器双画像（2in1 + tablet）实测通过 | i18n 六块面板、SFTP 中文名、forward.stop/double-start、RDP 连接与解码 |
+| **E2** | 仅编译/静态验证 | arm64 双 ABI 三方库、FreeRDP server 组件、SBOM 清单 |
+| **E3** | 未验证 | RDP 画面内容、输入回传、NLA、真实 Windows 互通、arm64 真机 |
+
+### 8.3 本轮结束时的老实话
+这个复刻**不是**"RDP 能用了"的状态：
+- 终端、SFTP、转发、VNC、i18n、AI 通路、SBOM 与上架材料：**有双画像机器判定**
+- RDP：**服务端能监听出帧、客户端能协商并解码**，但**画面内容停在 shadow 的 lobby 白屏**，
+  输入回传与 NLA 未做，界面上已常显"实验性"提示且有用例守着
+- arm64：**只有编译证据**，真机一行都没跑过（`ARM64-REAL-DEVICE.md` 附录 B 给了自检入口）
+
+### 8.4 若要继续（给接手者的最短路径）
+1. **RDP 画面**：追 `shadow_client_activate` 的触发（`RDP_PDU_CLIENT_SYNCHRONIZE`），
+   或放弃 shadow 自己实现最小 RDP 服务端以完全控制画面
+2. **RDP 输入**：`freerdp_input_send_keyboard_event`/鼠标事件 → 服务端 `pVirtualChannel` 路径
+3. **arm64**：按 `verify-arm64.ps1` 跑 41 项，先跑 `rdp-selfcheck.py` 分辨"arm64 特有问题"与"功能本来只到这一步"
+4. **上架**：release 证书、隐私政策 URL、渗透测试（见 `STORE-READINESS.md`）
 

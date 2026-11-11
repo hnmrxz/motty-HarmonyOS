@@ -69,6 +69,15 @@ Go       1.27.3    Viva E:\viva @95802a9    Python C:\Python315\python.exe
 - spec 工具链依赖 `pyyaml` + `jsonschema`（已装：6.0.3 / 4.26.0）
 ---
 
+---
+
+## Round 1（补记）：起点
+
+- 从 `t8y2/motty`（Go，Apache-2.0）fork 出 `E:\\motty-HarmonyOS`，所有新工作在 `harmonyos/` 下
+- 结论：Go 无法在 OHOS 上直接落地 → 确定路线 **A′**（ArkTS/ArkUI + C/C++ 协议库经 NAPI）
+- 建立模拟器基线：`motty_pc`（2in1, :10100）与 `motty_tablet`（tablet, :10101），x86_64 / API 26
+- 建立证据分级：**E1** 双画像实测 / **E2** 编译静态 / **E3** 未验证
+
 ## Round 2：spec runner 双画像跑通（2026-11-10）
 
 | 产物 | 作用 |
@@ -1979,6 +1988,16 @@ dump 里 `fwd/start`/`fwd/stop` 从"不存在"变为"存在"）。
 用例 49 → **50**；E1 能力 16；D01 覆盖率补上"同端口重复启动的错误路径"。
 ---
 
+---
+
+## Round 69（补记）：文档对齐
+
+- 修正 `COMPLETION-REPORT.md` 长期停留在 Round 50 的过时数字（当时 50 条用例 / 16 项 E1），
+  追加 §7 状态更新，并把 5 个已修的真实产品缺陷写进报告
+- `spec/RUNBOOK.md` 新增 §34（布局类假失败：`width('100%')` 挤占 / 面板无滚动 / 断言目标在折叠区）
+  与 §35（夹具与环境坑：`bm clean` 回滚版本、`build` 跳过打包、状态行是快照、`type` 是插入不是替换）
+- 说明：本轮只做文档，未改代码
+
 ## Round 70：**RDP 客户端连上真实服务端实现**（重大进展）
 
 ### 一、破了三道关口（每一步都有实测依据）
@@ -2115,6 +2134,27 @@ rdp-render: frames=3 paints=3 size=1024x768 pixels=786432 colors=...
 ### 五、状态
 用例 51 → **52**；E1 能力 16。
 ---
+
+---
+
+## Round 76：把"纯色"定位为 shadow 的 **lobby 白屏**（#FFFFFF）
+
+- 增加 dominant 颜色统计后测出：`dominant=#FFFFFF (3072 px)` —— 全部采样点纯白
+- 排除三类猜测（都有实测）：`mayView` 默认就是 TRUE；关闭 GFX/H264/RemoteFX/NS 无变化；
+  直接绘制 `server->lobby` 表面也无变化
+- 结论：客户端停在 lobby，`shadow_client_activate` 没有把它推进桌面
+- 诚实边界：内容正确仍 **E3**；只把范围收窄到 lobby
+
+---
+
+## Round 75：像素到 Canvas 的通路打通，但**内容是纯色**（lobby）
+
+- 新增 `rdpSnapshot()`：把最近一帧 GDI 缓冲降采样成 64×48 RGBA 交给 ArkTS
+- ArkTS 逐像素 `fillRect` 画出 `drawn=3072`（64×48），Canvas 通路可用
+- 关键坑：NAPI 必须返回 **`Uint8Array`**；返回裸 `ArrayBuffer` 时 ArkTS 侧读出来全是 0
+- 实测 `colors=1 nonBlack=3072`：整屏同一种非黑颜色 —— 内容不是我们的图案
+- 已试 `mayView/mayInteract=TRUE`、连接后发鼠标事件，均无变化
+- 诚实边界：**不新增用例**（`colors=1` 不能证明"能看到画面内容"），仍属 **E3**
 
 ## Round 77：lobby 确认"画了但没刷新"；把 RDP 标成实验性（上架要求）
 
