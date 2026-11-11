@@ -1793,10 +1793,10 @@ struct Index {
           .id('vnc/canvas-size').fontSize(11).fontColor('#1A6DD0')
       Text('drawn=' + this.vncDrawn + ' (fillRect grid)')
           .id('vnc/drawn').fontSize(11).fontColor('#0A6C00')
-        Button('Send pointer (10,10)')
+        Button(this.t('vnc.pointer'))
           .id('vnc/tap')
           .onClick(() => { this.sendVncPointer(10, 10, 1); this.sendVncPointer(10, 10, 0); })
-        Button('Send key a')
+        Button(this.t('vnc.key'))
           .id('vnc/key')
           .onClick(() => {
             if (this.vncId !== 0) {

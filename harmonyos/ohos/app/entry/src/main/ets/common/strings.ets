@@ -58,6 +58,11 @@ export class Strings {
     ['fwd.test', 'Test tunnel'],
     ['rdp.experimental', 'RDP is experimental: connect works, picture/input are not delivered yet.'],
     ['vnc.stop', 'Stop'],
+    ['vnc.pointer', 'Send pointer (10,10)'],
+    ['vnc.key', 'Send key a'],
+    ['vnc.clipEmpty', 'clip: (empty)'],
+    ['vnc.send', 'Send'],
+
     ['term.history', 'history tail'],
 
   ]);
@@ -110,6 +115,11 @@ export class Strings {
     ['fwd.test', '测试隧道'],
     ['rdp.experimental', 'RDP 为实验性功能：可连接，但画面与输入尚未打通。'],
     ['vnc.stop', '停止'],
+    ['vnc.pointer', '发送指针 (10,10)'],
+    ['vnc.key', '发送按键 a'],
+    ['vnc.clipEmpty', '剪贴板: (空)'],
+    ['vnc.send', '发送'],
+
     ['term.history', '历史尾部'],
 
   ]);
