@@ -191,6 +191,7 @@ struct Index {
   @State showDialog: boolean = false;
   @State formLabel: string = '';
   // seed* 只在对话框创建时提供初值，之后不再变化：避免 text: 绑定在重渲染时把用户输入回灌覆盖
+  @State formError: string = '';
   @State seedLabel: string = '';
   @State seedAddress: string = '';
   @State seedUser: string = '';
@@ -445,6 +446,7 @@ struct Index {
   }
 
   private resetForm(): void {
+    this.formError = '';
     this.seedLabel = '';
     this.seedAddress = '';
     this.seedUser = '';
@@ -526,6 +528,29 @@ struct Index {
       return;
     }
     const port = this.formPort.trim().length > 0 ? this.formPort.trim() : '22';
+    this.formError = '';
+    // 官方校验：颜色必须是 #RRGGBB 或留空（ErrHostColorInvalid）
+    const color: string = this.formColor.trim();
+    if (color.length > 0 && !/^#[0-9A-Fa-f]{6}$/.test(color)) {
+      this.formError = '请输入 #3B82F6 这样的颜色值，或留空使用默认颜色';
+      return;
+    }
+    // 官方校验：最多 12 个标签，每个不超过 32 个字符，且不含换行（ErrHostTagsInvalid）
+    const tagsRaw: string = this.formTags.trim();
+    if (tagsRaw.length > 0) {
+      const parts: string[] = tagsRaw.split(',');
+      if (parts.length > 12) {
+        this.formError = '最多 12 个标签，每个不超过 32 个字符，且不包含逗号或换行';
+        return;
+      }
+      for (let ti = 0; ti < parts.length; ti++) {
+        const one: string = parts[ti].trim();
+        if (one.length > 32 || one.indexOf('\n') >= 0) {
+          this.formError = '最多 12 个标签，每个不超过 32 个字符，且不包含逗号或换行';
+          return;
+        }
+      }
+    }
     if (this.editingId.length > 0) {
       // 编辑：更新既有行（id 不变，避免规则/引用失联）
       const pred = new relationalStore.RdbPredicates('hosts');
@@ -1761,6 +1786,9 @@ struct Index {
           .layoutWeight(1).backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
           .onChange((v: string) => { this.formColor = v; })
       }.width('100%')
+      if (this.formError.length > 0) {
+        Text(this.formError).id('shell/dialog-error').fontSize(11).fontColor('#E08A8A').width('100%')
+      }
       Row({ space: 12 }) {
         Button(this.t('hostkey.cancel')).id('shell/dialog-cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
           .onClick(() => { this.showDialog = false; this.editingId = ''; this.resetForm(); })

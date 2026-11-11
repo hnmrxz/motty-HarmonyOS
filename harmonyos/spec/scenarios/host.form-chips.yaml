@@ -46,6 +46,15 @@ steps:
     target: id:shell/dialog-submit
   - action: wait
     ms: 1500
+  # 编辑态回显：打开编辑直接保存，标签必须保留（说明 chips 的选中态是从数据回显的）
+  - action: click
+    target: id:host-edit/0
+  - action: wait
+    ms: 1000
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
 asserts:
   # 列表里出现新主机与它的标签
   - kind: screenRegex
