@@ -1,0 +1,109 @@
+schema: 1
+id: forward.stop
+title: 转发停止与重启：停止后端口释放，重启后隧道仍可通
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - D01
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "New Host|新建主机"
+      withinMs: 20000
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: fwdstop-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+  - action: click
+    target: id:fwd/open
+  - action: click
+    target: id:fwd/mode-local
+  - action: click
+    target: id:fwd/start
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "listening on 127.0.0.1:"
+      withinMs: 15000
+  - action: click
+    target: id:fwd/stop
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "stopped"
+      withinMs: 8000
+  - action: click
+    target: id:fwd/start
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "listening on 127.0.0.1:"
+      withinMs: 15000
+  - action: click
+    target: id:fwd/test
+  - action: wait
+    ms: 3000
+asserts:
+  - kind: screenRegex
+    regex: "SSH-2.0-"
+    withinMs: 15000
+  - kind: screenRegex
+    regex: "stopped"
+    withinMs: 6000
+  - kind: absent
+    value: "error bind/listen"
+    withinMs: 3000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：停止转发、停止后端口释放（重启能再次监听）、
+    重启后隧道仍能拿到 SSH banner、事件历史不被重置。
+    **不覆盖**：停止时已有连接的处置、并发多规则、远程转发、SOCKS5 有认证；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 停止状态文案与"事件历史不重置"是本轮为可断言而改的
+notes: >-
+  只断言 stopped 不够：必须重启并验证隧道仍通，否则"停掉后端口一直占着"也会通过。

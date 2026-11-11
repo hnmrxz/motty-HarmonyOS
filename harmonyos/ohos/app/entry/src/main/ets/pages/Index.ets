@@ -986,7 +986,8 @@ struct Index {
         this.fwdEvents = 'host key not trusted yet (use Test on the host row first)';
         return;
       }
-      this.fwdEvents = 'starting...';
+      // 追加而不是重置：重置会把刚才的 'stopped' 抹掉，导致"停止后又启动"这段历史读不到
+      this.fwdEvents = this.fwdEvents.length > 0 ? (this.fwdEvents + '\nstarting...') : 'starting...';
       this.fwdResult = '';
       this.fwdId = mottynapi.forwardStart(cred.address, cred.port, cred.user, cred.password, fp,
         Number.parseInt(this.fwdListen, 10), this.fwdTargetHost, Number.parseInt(this.fwdTargetPort, 10),
