@@ -1738,6 +1738,7 @@
       "evidence": "E1",
       "proof": [
         "spec/scenarios/ui.i18n.diag.yaml",
+        "spec/scenarios/ui.i18n.diagnostics.yaml",
         "spec/scenarios/ui.i18n.panels.yaml",
         "spec/scenarios/ui.i18n.vnc.yaml",
         "spec/scenarios/ui.i18n.yaml"
@@ -1750,7 +1751,7 @@
         "deps": "R28",
         "acceptance": "key 集合 1:1"
       },
-      "partialCoverage": "部分：顶栏/主机区/SFTP/转发/VNC 面板的中英切换已双画像实测（含缺键反向断言）；诊断面板文案未逐条覆盖、第三种语言、系统语言跟随、复数与日期本地化未做。"
+      "partialCoverage": "部分：顶栏/主机区/SFTP/转发/VNC/诊断面板的中英切换已双画像实测（含缺键反向断言）；第三种语言、系统语言跟随、复数与日期本地化未做。"
     },
     {
       "id": "H09",

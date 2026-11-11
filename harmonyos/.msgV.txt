@@ -1,0 +1,11 @@
+﻿feat(harmonyos): ui.i18n.diagnostics 双画像通过 —— 面板覆盖收口
+
+- strings.ets: 补 8 键(diag.title/tcpProbe/sshProbe/hostkeyCheck、
+  rdp.srvStart/srvStop/srvStatus/local)中英
+- Index.ets: 诊断面板标题 + TCP/SSH/主机密钥/RDP 服务三按钮 + RDP local 共 8 处改取词
+- spec ui.i18n.diagnostics: 切中文 -> 开诊断面板 -> 断言 诊断/TCP 探测/主机密钥检查/RDP 服务启动，
+  反向断言英文与键名缺席
+
+双画像: 2in1 PASS / tablet PASS
+H08 已覆盖: 顶栏/主机区/SFTP/转发/VNC/诊断；未做: 第三语言、系统语言跟随、复数与日期本地化
+用例 54 -> 55；E1 能力 16

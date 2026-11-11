@@ -1907,7 +1907,7 @@ struct Index {
   diagPanel() {
     Column({ space: 10 }) {
       Row() {
-        Text('Diagnostics').fontSize(16).fontWeight(FontWeight.Bold)
+        Text(this.t('diag.title')).fontSize(16).fontWeight(FontWeight.Bold)
         Blank()
         Button(this.t('common.close')).id('diag/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.diagOpen = false; })
@@ -1927,16 +1927,16 @@ struct Index {
           .onClick(() => { this.diagOpen = false; this.startVnc('secret'); })
         Button('VNC bad pw').id('vnc/session-bad').backgroundColor('#C62828').fontColor(Color.White)
           .onClick(() => { this.diagOpen = false; this.startVnc('wrong-password'); })
-        Button('RDP srv start').id('rdp/srv-start').backgroundColor('#0A6C00').fontColor(Color.White)
+        Button(this.t('rdp.srvStart')).id('rdp/srv-start').backgroundColor('#0A6C00').fontColor(Color.White)
           .onClick(() => { this.startRdpServer(); })
-        Button('RDP srv stop').id('rdp/srv-stop').backgroundColor('#C62828').fontColor(Color.White)
+        Button(this.t('rdp.srvStop')).id('rdp/srv-stop').backgroundColor('#C62828').fontColor(Color.White)
           .onClick(() => { this.stopRdpServer(); })
-        Button('RDP srv status').id('rdp/srv-status').backgroundColor('#37474F').fontColor(Color.White)
+        Button(this.t('rdp.srvStatus')).id('rdp/srv-status').backgroundColor('#37474F').fontColor(Color.White)
           .onClick(() => { this.refreshRdpServer(); })
       }.width('100%')
       // 6 个按钮排一行会超出面板宽度（后面的按钮因此不渲染）-> 拆成两行
       Row({ space: 8 }) {
-        Button('RDP local :13389').id('rdp/probe-local').backgroundColor('#1A6DD0').fontColor(Color.White)
+        Button(this.t('rdp.local') + ' :13389').id('rdp/probe-local').backgroundColor('#1A6DD0').fontColor(Color.White)
           .onClick(() => { this.rdpProbe(13389, 'tester', 'secret'); })
         Button('RDP render').id('rdp/render').backgroundColor('#1A6DD0').fontColor(Color.White)
           .onClick(() => { this.startRdpRender(); })
@@ -1948,11 +1948,11 @@ struct Index {
       Text('These entries exist to exercise protocol paths that the product UI does not expose yet.')
         .fontSize(11).fontColor('#666666').width('100%')
       Row({ space: 8 }) {
-        Button('TCP probe').id('net/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('diag.tcpProbe')).id('net/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.probeNet(); })
-        Button('SSH probe').id('ssh/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('diag.sshProbe')).id('ssh/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.probeSsh(); })
-        Button('Hostkey check').id('ssh/hostkey-check').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('diag.hostkeyCheck')).id('ssh/hostkey-check').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.hostkeyCheck(); })
       }.width('100%')
       Text(this.vncResult.length > 0 ? this.vncResult : 'vnc: (not probed)')

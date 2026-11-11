@@ -1,0 +1,69 @@
+schema: 1
+id: ui.i18n.diagnostics
+title: 面板级双语（四）：诊断面板标题与按钮随语言切换，且无缺键
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - H08
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "New Host|新建主机"
+      withinMs: 20000
+  - action: click
+    target: id:ui/lang
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "诊断"
+      withinMs: 10000
+asserts:
+  - kind: screenRegex
+    regex: "TCP 探测"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "主机密钥检查"
+    withinMs: 6000
+  - kind: screenRegex
+    regex: "RDP 服务启动"
+    withinMs: 6000
+  - kind: absent
+    value: "TCP probe"
+    withinMs: 3000
+  - kind: absent
+    value: "Hostkey check"
+    withinMs: 3000
+  - kind: absent
+    value: "RDP srv start"
+    withinMs: 3000
+  - kind: absent
+    value: "diag.title"
+    withinMs: 2000
+  - kind: absent
+    value: "rdp.srvStart"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：诊断面板标题与 TCP/主机密钥/RDP 服务按钮的中英取词、
+    切换后文案变化、缺键反向检测。
+    **不覆盖**：RDP :3390 / :2222 两个探测按钮、第三条结果与状态行、第三语言、系统语言跟随。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+notes: >-
+  反向断言英文原文与键名同时缺席，才说明这些按钮确实走了取词表。

@@ -2206,3 +2206,23 @@ RDP 内容仍 **E3**；用例数保持 52（不加无法证明内容的用例）
 
 ### 四、状态
 用例 53 → **54**；E1 能力 16。
+---
+
+## Round 81：`ui.i18n.diagnostics` 双画像通过 —— 面板覆盖收口
+
+### 一、本轮
+| 产物 | 说明 |
+|---|---|
+| `strings.ets` | 补 8 个键：`diag.title/tcpProbe/sshProbe/hostkeyCheck`、`rdp.srvStart/srvStop/srvStatus/local`（中英） |
+| `Index.ets` | 诊断面板标题 + TCP/SSH/主机密钥/RDP 服务三按钮 + `RDP local` 共 8 处改取词 |
+| `spec/ui.i18n.diagnostics.yaml` | 切中文 → 开诊断面板 → 断言 `诊断`/`TCP 探测`/`主机密钥检查`/`RDP 服务启动`，反向断言英文与键名缺席 |
+
+### 二、双画像
+2in1 **PASS**、tablet **PASS**。
+
+### 三、H08 现状（收口）
+已覆盖：顶栏、主机区、SFTP、转发、VNC、诊断面板。
+仍未做：第三种语言、系统语言跟随、复数与日期本地化（这些是**能力缺口**，不是遗漏）。
+
+### 四、状态
+用例 54 → **55**；E1 能力 16。
