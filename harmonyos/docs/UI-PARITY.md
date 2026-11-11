@@ -576,3 +576,33 @@ terminal.vt / settings.persist / pages.logs-vault / host.catalog
 **UI 上"看起来在显示状态"不等于真的在显示状态。** 硬编码的占位文案会长期掩盖实现缺陷，
 而且会让诊断走进死胡同（这轮之前我们一直在猜"为什么没有对话框"，其实状态列早该告诉我们）。
 
+---
+
+## Round 18 追加：新页面「快捷命令」（官方 NavSnippets）
+
+### 实现
+| 项 | 内容 |
+|---|---|
+| 表 | `snippets(id, name, cmd, grp, sort)`，`initStore()` 里建表 |
+| 页面 | 侧栏 `nav/snippets` → `snippetsPage()`：标题 + `(N 条快捷命令)` + `添加命令` + 列表 + 空态 |
+| 列表行 | 名称 + 命令（等宽字体）+ `发送到终端` / `编辑` / `删除` |
+| 空态 | `还没有快捷命令` + `保存一条常用命令，再给它设一个快捷键，一键发送到终端。`（官方原文） |
+| 添加/编辑 | `snippetForm()` 弹窗（深色），`snippet/dialog-name`、`snippet/dialog-cmd`、`snippet/dialog-save` |
+| 发送 | 有会话时写入 `terminal/input` 并调用 `sendTermInput()`；无会话时给出明确提示 |
+| 数据隔离 | 诊断面板的"重置"现在也清空 `snippets`，用例可以重复跑 |
+
+### 用例
+`spec/scenarios/snippets.crud.yaml`（pcOnly）**PASS**：
+重置 → 进快捷命令页断言空态 → 添加 `nginx-restart` / `systemctl restart nginx` → 断言列表里名称与命令都出现 → 断言不出现键名 `snippet.title`。
+
+### 尚未做（下一步）
+- 删除/编辑的用例：条目 id 是插入时间戳，**硬编码 id 无法断言**；
+  下一步要把 id 改成稳定值（例如按名称哈希），或者给"最新一条"一个可预测的 id；
+- 快捷键绑定（官方 `SnippetShortcutRecording`）、分组筛选、排序、右键调序。
+
+### 回归
+```
+host.manage / ui.i18n.panels / settings.persist / pages.logs-vault => 4/4 PASS
+snippets.crud => PASS
+```
+

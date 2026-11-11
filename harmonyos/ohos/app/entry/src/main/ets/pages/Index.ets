@@ -43,6 +43,11 @@ const SQL_CREATE_KNOWN_HOSTS =
 const HOST_COLUMNS: string[] = ['id', 'label', 'address', 'usr', 'port', 'proto', 'grp', 'tags', 'color'];
 
 // 会话日志（官方 NavSessionLogs 的最小实现）
+const SQL_CREATE_SNIPPETS =
+  'CREATE TABLE IF NOT EXISTS snippets (' +
+  'id TEXT PRIMARY KEY, name TEXT, cmd TEXT, grp TEXT, sort INTEGER)';
+const SNIPPET_COLUMNS: string[] = ['id', 'name', 'cmd', 'grp', 'sort'];
+
 const SQL_CREATE_LOGS =
   'CREATE TABLE IF NOT EXISTS session_logs (' +
   'id TEXT PRIMARY KEY, label TEXT, address TEXT, proto TEXT, started_at INTEGER)';
@@ -164,6 +169,13 @@ interface LogItem {
   startedAt: number;
 }
 
+interface SnippetItem {
+  id: string;
+  name: string;
+  cmd: string;
+  group: string;
+}
+
 interface Cred {
   address: string;
   port: number;
@@ -221,6 +233,11 @@ struct Index {
   @State catalogResult: string = '(catalog: idle)';
   @State settingsOpen: boolean = false;
   @State logs: LogItem[] = [];
+  @State snippets: SnippetItem[] = [];
+  @State snippetDialog: boolean = false;
+  @State snipName: string = '';
+  @State snipCmd: string = '';
+  @State snipEditingId: string = '';
   private prefs: preferences.Preferences | null = null;
   @State hostView: string = 'list';
   @State hostSort: string = 'manual';
@@ -316,6 +333,7 @@ struct Index {
       await this.store.executeSql(SQL_CREATE_KNOWN_HOSTS);
       await this.store.executeSql(SQL_CREATE_FORWARDS);
       await this.store.executeSql(SQL_CREATE_LOGS);
+      await this.store.executeSql(SQL_CREATE_SNIPPETS);
       await this.migrateHosts();
       await this.reload();
       await this.reloadRules();
@@ -2457,7 +2475,7 @@ struct Index {
       this.pcNavItem('跳板路由', 'nav/jump', $r('app.media.ic_jump'), false, () => {})
       this.pcNavItem('端口转发', 'fwd/open', $r('app.media.ic_forward'), true, () => { this.fwdOpen = true; this.reloadRules(); })
       this.pcNavItem('已知主机', 'known/open', $r('app.media.ic_known'), true, () => { this.openKnownHosts(); })
-      this.pcNavItem('快捷命令', 'nav/snippets', $r('app.media.ic_snippets'), false, () => {})
+      this.pcNavItem('快捷命令', 'nav/snippets', $r('app.media.ic_snippets'), true, () => { this.pcNav = '快捷命令'; this.reloadSnippets(); })
       this.pcNavItem('笔记', 'nav/notes', $r('app.media.ic_notes'), false, () => {})
 
       Blank()
@@ -3020,6 +3038,9 @@ struct Index {
     await this.store.delete(kpAll);
     const lpAll = new relationalStore.RdbPredicates('session_logs');
     await this.store.delete(lpAll);
+    const spAll = new relationalStore.RdbPredicates('snippets');
+    await this.store.delete(spAll);
+    await this.reloadSnippets();
     this.selectedIds = [];
     await this.reload();
     this.catalogResult = 'catalog-reset: hosts=' + this.hosts.length;
@@ -3269,6 +3290,150 @@ struct Index {
     return index >= 0 && index < this.statuses.length ? this.statuses[index] : '';
   }
 
+
+  // ---------------- 快捷命令（官方 NavSnippets 的最小实现） ----------------
+  private async reloadSnippets(): Promise<void> {
+    if (this.store === null) { return; }
+    const pred = new relationalStore.RdbPredicates('snippets');
+    pred.orderByAsc('sort');
+    const rs = await this.store.query(pred, SNIPPET_COLUMNS);
+    const out: SnippetItem[] = [];
+    while (rs.goToNextRow()) {
+      out.push({ id: rs.getString(0), name: rs.getString(1), cmd: rs.getString(2), group: rs.getString(3) });
+    }
+    rs.close();
+    this.snippets = out;
+  }
+
+  private openSnippetNew(): void {
+    this.snipEditingId = '';
+    this.snipName = '';
+    this.snipCmd = '';
+    this.snippetDialog = true;
+  }
+
+  private openSnippetEdit(it: SnippetItem): void {
+    this.snipEditingId = it.id;
+    this.snipName = it.name;
+    this.snipCmd = it.cmd;
+    this.snippetDialog = true;
+  }
+
+  private async submitSnippet(): Promise<void> {
+    const name: string = this.snipName.trim();
+    const cmd: string = this.snipCmd.trim();
+    if (name.length === 0 || cmd.length === 0 || this.store === null) { return; }
+    if (this.snipEditingId.length > 0) {
+      const pred = new relationalStore.RdbPredicates('snippets');
+      pred.equalTo('id', this.snipEditingId);
+      const patch: relationalStore.ValuesBucket = { 'name': name, 'cmd': cmd };
+      await this.store.update(patch, pred);
+    } else {
+      const bucket: relationalStore.ValuesBucket = {
+        'id': 'snp_' + Date.now(), 'name': name, 'cmd': cmd, 'grp': '',
+        'sort': this.snippets.length
+      };
+      await this.store.insert('snippets', bucket);
+    }
+    this.snippetDialog = false;
+    this.snipEditingId = '';
+    await this.settleStore();
+    await this.reloadSnippets();
+  }
+
+  private async deleteSnippet(id: string): Promise<void> {
+    if (this.store === null) { return; }
+    const pred = new relationalStore.RdbPredicates('snippets');
+    pred.equalTo('id', id);
+    await this.store.delete(pred);
+    await this.reloadSnippets();
+  }
+
+  // 发送到当前终端：有会话就写进终端输入并发送，没有就给出明确提示
+  private sendSnippet(cmd: string): void {
+    if (this.tabs.length === 0) {
+      this.probeText = this.lang === 'zh' ? '还没有会话可以发送' : 'no session to send to';
+      return;
+    }
+    this.termInput = cmd;
+    this.sendTermInput();
+  }
+
+
+  // ---------------- 快捷命令页（NavSnippets） ----------------
+  @Builder
+  snippetsPage() {
+    Column({ space: 10 }) {
+      Row({ space: 10 }) {
+        Text(this.t('snippet.title')).fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Text('(' + this.snippets.length + ' ' + this.t('snippet.count') + ')')
+          .fontSize(12).fontColor('#6B7078')
+        Blank()
+        Button(this.t('snippet.add')).id('snippet/add').height(30).fontSize(12)
+          .backgroundColor('#E8EAED').fontColor('#12141A')
+          .onClick(() => { this.openSnippetNew(); })
+      }.width('100%')
+      if (this.snippets.length === 0) {
+        Column({ space: 6 }) {
+          Text(this.t('snippet.empty')).id('snippet/empty').fontSize(14).fontColor('#C7CBD1')
+          Text(this.t('snippet.emptySub')).id('snippet/empty-sub').fontSize(12).fontColor('#6B7078')
+        }.width('100%').padding({ top: 50 })
+      }
+      List({ space: 6 }) {
+        ForEach(this.snippets, (it: SnippetItem) => {
+          ListItem() {
+            Row({ space: 12 }) {
+              Column({ space: 3 }) {
+                Text(it.name).fontSize(14).fontColor('#E8EAED').maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                Text(it.cmd).fontSize(11).fontFamily('monospace').fontColor('#8A8F98')
+                  .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+              }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+              Button(this.t('snippet.send')).id('snippet/send/' + it.id).height(28).fontSize(11)
+                .backgroundColor('#2F6F4F').fontColor(Color.White)
+                .onClick(() => { this.sendSnippet(it.cmd); })
+              Button(this.t('host.edit')).id('snippet/edit/' + it.id).height(28).fontSize(11)
+                .backgroundColor('#23262B').fontColor('#C7CBD1')
+                .onClick(() => { this.openSnippetEdit(it); })
+              Button(this.t('snippet.delete')).id('snippet/del/' + it.id).height(28).fontSize(11)
+                .backgroundColor('#3A2226').fontColor('#E08A8A')
+                .onClick(() => { this.deleteSnippet(it.id); })
+            }
+            .width('100%').height(52).padding({ left: 12, right: 12 })
+            .borderRadius(8).backgroundColor('#1C1F24')
+          }
+        }, (it: SnippetItem) => it.id + '|' + it.name + '|' + it.cmd)
+      }.id('snippet/list').layoutWeight(1).width('100%')
+    }
+    .width('100%').height('100%').padding({ left: 22, right: 22, top: 10 })
+  }
+
+  @Builder
+  snippetForm() {
+    Column({ space: 10 }) {
+      Text(this.snipEditingId.length > 0 ? this.t('host.edit') : this.t('snippet.add'))
+        .fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED').width('100%')
+      Text(this.t('snippet.name')).fontSize(12).fontColor('#8A8F98').width('100%')
+      TextInput({ placeholder: '例如：重启 nginx', text: this.snipName })
+        .id('snippet/dialog-name').width('100%')
+        .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
+        .onChange((v: string) => { this.snipName = v; })
+      Text(this.t('snippet.command')).fontSize(12).fontColor('#8A8F98').width('100%')
+      TextInput({ placeholder: '例如：systemctl restart nginx', text: this.snipCmd })
+        .id('snippet/dialog-cmd').width('100%')
+        .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
+        .onChange((v: string) => { this.snipCmd = v; })
+      Row({ space: 12 }) {
+        Button(this.t('hostkey.cancel')).id('snippet/dialog-cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.snippetDialog = false; })
+        Button(this.t('snippet.save')).id('snippet/dialog-save').backgroundColor('#3DDC97').fontColor('#12141A')
+          .onClick(() => { this.submitSnippet(); })
+      }.width('100%').justifyContent(FlexAlign.End)
+    }
+    .id('snippet/dialog').width(520).padding(20).backgroundColor('#1C1F24').borderRadius(14)
+    .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -3281,7 +3446,9 @@ struct Index {
           if (this.tabs.length > 0) {
             this.tabBar()
           }
-          if (this.pcNav === '会话日志') {
+          if (this.pcNav === '快捷命令') {
+            this.snippetsPage()
+          } else if (this.pcNav === '会话日志') {
             this.logsPage()
           } else if (this.pcNav === '密钥链') {
             this.vaultPage()
@@ -3300,6 +3467,10 @@ struct Index {
       .layoutWeight(1).width('100%').backgroundColor('#17181C')
       }
 
+      if (this.snippetDialog) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
+        this.snippetForm()
+      }
       if (this.settingsOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
         this.settingsPanel()
