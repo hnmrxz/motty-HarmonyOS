@@ -270,6 +270,17 @@ class Runner:
             if re.search(pat, blob):
                 return True, None
             return False, f'正则 {pat!r} 未命中（屏幕文本: {blob[:120]!r}）'
+        if kind == 'before':
+            # a 必须出现在 b 上方（同一屏内的 y 比较）：用于验证分组固定/排序
+            na = self.resolve(layout, a['a'])
+            nb = self.resolve(layout, a['b'])
+            if na is None or nb is None:
+                return False, "before 断言节点未命中: %s / %s" % (a['a'], a['b'])
+            ya = self.center(na)[1]
+            yb = self.center(nb)[1]
+            if ya >= yb:
+                return False, "before 断言失败: %s(y=%d) 不在 %s(y=%d) 上方" % (a['a'], ya, a['b'], yb)
+            return True, None
         if kind == 'layout':
             # 保守版：所有带文本的节点必须有正的宽高，且落在屏幕内。
             # 这不能代替人工目检，但能抓住"文字被裁成 0 宽"这类硬故障。

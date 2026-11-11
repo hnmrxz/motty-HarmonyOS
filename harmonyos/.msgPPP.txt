@@ -1,0 +1,18 @@
+﻿feat(harmonyos/ui): 分组固定(官方 savedHostGroup.Pinned) + runner 新增 before 断言
+
+实现:
+- 固定入口: 分组表头 ★/☆(id group/pin/<组名>) 点击切换; 分组 ⋯ 菜单也有"固定本组/取消固定"
+- 排序: sections() 里固定分组排到前面, 不改组内与原相对顺序(与官方 Pinned 语义一致)
+- 持久化: pinnedGroups 与折叠状态一样存 preferences(\u0001 分隔), 启动读回
+
+测试基础设施: 新增断言 kind=before(比较两个节点 y 坐标), schema 允许 a/b 字段
+  排序类行为无法用文本断言证明, 否则只能靠猜
+
+用例 host.group-pin PASS:
+  建 G1 -> 建 G2(自然顺序 G1 在前) -> 点 group/pin/G2 -> 断言 G2 的 y 小于 G1
+
+回归: host.manage / host.group-filter / host.group-collapse / host.catalog => 4/4 PASS
+未做: 取消固定后的顺序回退、多固定组相对顺序、固定状态跨重启用例
+
+细节: 固定标记最初写成 Text(isPinned ? '📌' : ''), 空字符串的 Text 不进 dump, 自动化点不到;
+  改成始终有字符的 ★/☆(弱化未固定态颜色)后稳定

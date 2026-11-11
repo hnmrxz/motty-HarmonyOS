@@ -843,3 +843,38 @@ runner 新增动作 **`key`**（`uitest uiInput keyEvent <code>`，`code` 已进
 ### 回归
 `command.palette / command.palette-keys / ui.i18n.panels => 3/3 PASS`
 
+---
+
+## Round 31 追加：分组固定（官方 `savedHostGroup.Pinned`）+ 顺序断言能力
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 固定入口 | 分组表头的 `★/☆`（id `group/pin/<组名>`），点击切换；分组 `⋯` 菜单里也有「固定本组 / 取消固定」 |
+| 排序 | `sections()` 里固定分组排到前面，**不改组内与原相对顺序**（与官方 `Pinned` 语义一致） |
+| 持久化 | `pinnedGroups` 与折叠状态一样存进 preferences（`\u0001` 分隔），启动读回 |
+
+### 测试基础设施：新增 `before` 断言
+排序类行为无法用文本断言证明，所以给 runner 加了断言 kind **`before`**：
+```yaml
+- kind: before
+  a: "id:group/header/G2"
+  b: "id:group/header/G1"
+```
+实现是"取两个节点的 y 坐标并比较"，失败时把两边 y 都打出来。schema 已允许 `a`/`b` 字段。
+
+### 用例
+`host.group-pin`（pcOnly）**PASS**：
+建 G1 → 建 G2（自然顺序 G1 在前）→ 点 `group/pin/G2` 固定 → 断言 **G2 的 y 小于 G1**（固定生效）。
+
+### 回归
+`host.manage / host.group-filter / host.group-collapse / host.catalog => 4/4 PASS`
+
+### 未做
+- 取消固定后的顺序回退（反向操作同一路径）、多固定组之间的相对顺序；
+- 固定状态跨重启（折叠状态已有同类持久化用例，固定暂时只是同机制）。
+
+### 一个细节
+固定标记一开始写成 `Text(this.isPinned(g) ? '📌' : '')`，**空字符串的 Text 不进 dump**，所以自动化点不到；
+改成始终有字符的 `★/☆`（弱化未固定态颜色）后即可稳定选中。
+

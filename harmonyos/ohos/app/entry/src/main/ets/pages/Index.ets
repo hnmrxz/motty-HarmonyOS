@@ -241,6 +241,7 @@ struct Index {
   @State pcNav: string = '主机';
   @State collapsedGroups: string[] = [];
   @State groupFilter: string = '';
+  @State pinnedGroups: string[] = [];
   @State hoverRow: number = -1;
   @State selectAll: boolean = false;
   @State selectedIds: string[] = [];
@@ -2414,6 +2415,9 @@ struct Index {
               .opacity(this.selectAll ? 1 : 0.45)
             Image(this.isCollapsed(g) ? $r('app.media.ic_chevron_right') : $r('app.media.ic_chevron_down'))
               .width(14).height(14)
+            Text(this.isPinned(g) ? '★' : '☆').id('group/pin/' + g).fontSize(11)
+              .fontColor(this.isPinned(g) ? '#E0A458' : '#4A4F57')
+              .onClick(() => { this.togglePin(g); })
             Text(this.sectionLabel(g)).fontSize(13).fontColor('#C7CBD1').fontWeight(FontWeight.Medium)
             Text('(' + this.countGroup(g) + ')').fontSize(12).fontColor('#6B7078')
             Blank()
@@ -2714,12 +2718,31 @@ struct Index {
     return h.group.length > 0 ? h.group : '';
   }
 
+  private isPinned(g: string): boolean {
+    return this.pinnedGroups.indexOf(g) >= 0;
+  }
+
+  private togglePin(g: string): void {
+    if (this.isPinned(g)) {
+      this.pinnedGroups = this.pinnedGroups.filter((x: string) => x !== g);
+    } else {
+      this.pinnedGroups = this.pinnedGroups.concat([g]);
+    }
+    this.savePrefs();
+  }
+
   private sections(): string[] {
     const out: string[] = [];
     for (let i = 0; i < this.hosts.length; i++) {
       const g = this.hostGroupOf(this.hosts[i]);
       if (!out.includes(g)) { out.push(g); }
     }
+    // 官方 savedHostGroup.Pinned：固定分组排在前面（组内保持原有顺序）
+    out.sort((a: string, b: string) => {
+      const pa: number = this.isPinned(a) ? 0 : 1;
+      const pb: number = this.isPinned(b) ? 0 : 1;
+      return pa - pb;
+    });
     return out;
   }
 
@@ -3185,6 +3208,9 @@ struct Index {
       const collapsed: string = this.prefs.getSync('collapsedGroups', '') as string;
       this.collapsedGroups = collapsed.length === 0 ? []
         : collapsed.split('\u0001').filter((x: string) => x.length > 0);
+      const pinned: string = this.prefs.getSync('pinnedGroups', '') as string;
+      this.pinnedGroups = pinned.length === 0 ? []
+        : pinned.split('\u0001').filter((x: string) => x.length > 0);
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'loadPrefs failed: %{public}s', JSON.stringify(e));
     }
@@ -3197,6 +3223,7 @@ struct Index {
       this.prefs.putSync('hostView', this.hostView);
       this.prefs.putSync('hostSort', this.hostSort);
       this.prefs.putSync('collapsedGroups', this.collapsedGroups.join('\u0001'));
+      this.prefs.putSync('pinnedGroups', this.pinnedGroups.join('\u0001'));
       await this.prefs.flush();
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'savePrefs failed: %{public}s', JSON.stringify(e));
