@@ -235,6 +235,8 @@ struct Index {
   @State logs: LogItem[] = [];
   @State snippets: SnippetItem[] = [];
   @State snippetDialog: boolean = false;
+  @State paletteOpen: boolean = false;
+  @State paletteQuery: string = '';
   @State snipName: string = '';
   @State snipCmd: string = '';
   @State snipEditingId: string = '';
@@ -1675,51 +1677,63 @@ struct Index {
   @Builder
   hostForm() {
     Column({ space: 10 }) {
-      Text(this.editingId.length > 0 ? 'Edit Host' : 'New Host').fontSize(20).fontWeight(FontWeight.Bold).width('100%')
-      Text('Label').fontSize(12).fontColor('#666666').width('100%')
-      Text('state=[' + this.formLabel + ']').id('dbg/form-label').fontSize(10).fontColor('#E0A458')
-      TextInput({ placeholder: 'my server', text: this.formLabel }).id('shell/dialog-label').width('100%')
+      Text(this.editingId.length > 0 ? '编辑主机' : '新建主机')
+        .id('hostform/title').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#E8EAED').width('100%')
+      Text('名称').fontSize(12).fontColor('#8A8F98').width('100%')
+      TextInput({ placeholder: '显示在主机列表中', text: this.formLabel }).id('shell/dialog-label').width('100%')
+        .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
         .onChange((v: string) => { this.formLabel = v; })
-      Text('Address').fontSize(12).fontColor('#666666').width('100%')
-      TextInput({ placeholder: '10.0.0.1', text: this.formAddress }).id('shell/dialog-address').width('100%')
+      Text('地址').fontSize(12).fontColor('#8A8F98').width('100%')
+      TextInput({ placeholder: '主机名或 IP', text: this.formAddress }).id('shell/dialog-address').width('100%')
+        .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
         .onChange((v: string) => { this.formAddress = v; })
       Row({ space: 10 }) {
-        Column({ space: 6 }) {
-          Text('User').fontSize(12).fontColor('#666666').width('100%')
-          TextInput({ placeholder: 'root', text: this.formUser }).id('shell/dialog-user').width('100%')
+        Column({ space: 4 }) {
+          Text('用户').fontSize(12).fontColor('#8A8F98').width('100%')
+          TextInput({ placeholder: '登录账户', text: this.formUser }).id('shell/dialog-user').width('100%')
+            .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
             .onChange((v: string) => { this.formUser = v; })
-        }.layoutWeight(1)
-        Column({ space: 6 }) {
-          Text('Port').fontSize(12).fontColor('#666666').width('100%')
+        }.layoutWeight(2)
+        Column({ space: 4 }) {
+          Text('端口').fontSize(12).fontColor('#8A8F98').width('100%')
           TextInput({ placeholder: '22', text: this.formPort }).id('shell/dialog-port').width('100%').type(InputType.Number)
+            .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
             .onChange((v: string) => { this.formPort = v; })
         }.layoutWeight(1)
       }.width('100%')
+      Text('密码').fontSize(12).fontColor('#8A8F98').width('100%')
+      TextInput({ placeholder: this.editingId.length > 0 ? '留空则保留' : '可选 · 加密保存', text: this.formPassword })
+        .id('shell/dialog-password').width('100%').type(InputType.Password)
+        .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
+        .onChange((v: string) => { this.formPassword = v; })
       Row({ space: 10 }) {
-        Column({ space: 6 }) {
-          Text('分组（Group）').fontSize(12).fontColor('#666666').width('100%')
-          TextInput({ placeholder: '个人', text: this.formGroup }).id('shell/dialog-group').width('100%')
+        Column({ space: 4 }) {
+          Text('分组').fontSize(12).fontColor('#8A8F98').width('100%')
+          TextInput({ placeholder: '选择或创建分组', text: this.formGroup }).id('shell/dialog-group').width('100%')
+            .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
             .onChange((v: string) => { this.formGroup = v; })
         }.layoutWeight(1)
-        Column({ space: 6 }) {
-          Text('标签（Tags）').fontSize(12).fontColor('#666666').width('100%')
+        Column({ space: 4 }) {
+          Text('标签').fontSize(12).fontColor('#8A8F98').width('100%')
           TextInput({ placeholder: '开发,测试,生产', text: this.formTags }).id('shell/dialog-tags').width('100%')
+            .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
             .onChange((v: string) => { this.formTags = v; })
         }.layoutWeight(1)
       }.width('100%')
-      Text('颜色（Color，#RRGGBB，可选）').fontSize(12).fontColor('#666666').width('100%')
-      TextInput({ placeholder: '#22c55e', text: this.formColor }).id('shell/dialog-color').width('100%')
+      Text('颜色').fontSize(12).fontColor('#8A8F98').width('100%')
+      TextInput({ placeholder: '#3B82F6（留空使用默认）', text: this.formColor }).id('shell/dialog-color').width('100%')
+        .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
         .onChange((v: string) => { this.formColor = v; })
-      Text('Password (memory only, not stored)').fontSize(12).fontColor('#666666').width('100%')
-      TextInput({ placeholder: 'password', text: this.formPassword }).id('shell/dialog-password').width('100%')
-        .type(InputType.Password).onChange((v: string) => { this.formPassword = v; })
       Row({ space: 12 }) {
-        Button('Cancel').id('shell/dialog-cancel').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('hostkey.cancel')).id('shell/dialog-cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
           .onClick(() => { this.showDialog = false; this.editingId = ''; this.resetForm(); })
-        Button(this.editingId.length > 0 ? this.t('common.save') : this.t('common.add')).id('shell/dialog-submit').onClick(() => { this.submit(); })
+        Button(this.editingId.length > 0 ? this.t('common.save') : this.t('common.add'))
+          .id('shell/dialog-submit').backgroundColor('#3DDC97').fontColor('#12141A')
+          .onClick(() => { this.submit(); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
     .id('host-form/dialog').width(620).padding(20).backgroundColor('#1C1F24').borderRadius(12)
+    .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
 
@@ -2446,6 +2460,7 @@ struct Index {
       Image($r('app.media.ic_columns')).id('top/paste').width(16).height(16)
       Image($r('app.media.ic_terminal')).id('top/terminal').width(16).height(16)
       Image($r('app.media.ic_search')).id('top/search').width(16).height(16)
+        .onClick(() => { this.paletteOpen = true; this.paletteQuery = ''; })
       Image($r('app.media.ic_sparkles')).id('top/ai').width(16).height(16)
       Image($r('app.media.ic_bell')).id('top/notice').width(16).height(16)
       Image($r('app.media.ic_settings')).id('top/settings').width(16).height(16)
@@ -3434,6 +3449,87 @@ struct Index {
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 
+
+  // ---------------- 命令面板（官方 CommandPalette） ----------------
+  private paletteLabels(): string[] {
+    const base: string[] = [
+      '新建主机', '导入目录…', '导出目录…', '会话日志', '密钥链', '快捷命令',
+      '端口转发', '已知主机', '调试', '设置', '主机'
+    ];
+    const out: string[] = [];
+    const q: string = this.paletteQuery.trim();
+    for (let i = 0; i < base.length; i++) {
+      if (q.length === 0 || base[i].indexOf(q) >= 0) { out.push(base[i]); }
+    }
+    for (let i = 0; i < this.snippets.length; i++) {
+      const label: string = '快捷命令：' + this.snippets[i].name;
+      if (q.length === 0 || label.indexOf(q) >= 0) { out.push(label); }
+    }
+    return out;
+  }
+
+  private runPalette(label: string): void {
+    this.paletteOpen = false;
+    this.paletteQuery = '';
+    if (label.indexOf('快捷命令：') === 0) {
+      const name: string = label.substring('快捷命令：'.length);
+      for (let i = 0; i < this.snippets.length; i++) {
+        if (this.snippets[i].name === name) { this.sendSnippet(this.snippets[i].cmd); return; }
+      }
+      return;
+    }
+    if (label === '新建主机') { this.resetForm(); this.showDialog = true; return; }
+    if (label === '会话日志') { this.pcNav = '会话日志'; this.reloadLogs(); return; }
+    if (label === '密钥链') { this.pcNav = '密钥链'; return; }
+    if (label === '快捷命令') { this.pcNav = '快捷命令'; this.reloadSnippets(); return; }
+    if (label === '主机') { this.pcNav = '主机'; this.showHosts = true; return; }
+    if (label === '端口转发') { this.fwdOpen = true; this.reloadRules(); return; }
+    if (label === '已知主机') { this.openKnownHosts(); return; }
+    if (label === '调试') { this.diagOpen = true; return; }
+    if (label === '设置') { this.settingsOpen = true; return; }
+    if (label === '导入目录…') { this.importCatalog(); return; }
+    if (label === '导出目录…') { this.exportCatalog(); return; }
+  }
+
+
+  @Builder
+  commandPalette() {
+    Column({ space: 8 }) {
+      Row() {
+        Text('命令面板').id('palette/title').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Blank()
+        Button('✕').id('palette/close').height(26).width(30).fontSize(12)
+          .backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.paletteOpen = false; this.paletteQuery = ''; })
+      }.width('100%')
+      TextInput({ placeholder: '输入命令…', text: this.paletteQuery })
+        .id('palette/input').width('100%').height(36)
+        .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
+        .onChange((v: string) => { this.paletteQuery = v; })
+      if (this.paletteLabels().length === 0) {
+        Text('没有匹配的命令').id('palette/empty').fontSize(12).fontColor('#6B7078')
+          .width('100%').padding({ top: 12 })
+      }
+      List({ space: 2 }) {
+        ForEach(this.paletteLabels(), (label: string, idx: number) => {
+          ListItem() {
+            Row() {
+              Text(label).fontSize(13).fontColor('#E8EAED').layoutWeight(1)
+                .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+            .id('palette/item/' + idx)
+            .width('100%').height(34).padding({ left: 10, right: 10 })
+            .borderRadius(6)
+            .onClick(() => { this.runPalette(label); })
+          }
+        }, (label: string) => label)
+      }.id('palette/list').layoutWeight(1).width('100%')
+    }
+    .id('palette/panel')
+    .width(560).height(420).padding(16).backgroundColor('#1C1F24').borderRadius(12)
+    .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -3467,6 +3563,11 @@ struct Index {
       .layoutWeight(1).width('100%').backgroundColor('#17181C')
       }
 
+      if (this.paletteOpen) {
+        Column().width('100%').height('100%').backgroundColor('#66000000')
+          .onClick(() => { this.paletteOpen = false; })
+        this.commandPalette()
+      }
       if (this.snippetDialog) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
         this.snippetForm()

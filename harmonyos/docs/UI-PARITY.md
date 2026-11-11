@@ -638,3 +638,34 @@ snippets.crud => PASS
 ### 4) 回归
 `snippets.crud / host.manage / pages.logs-vault / ui.i18n.panels => 4/4 PASS`
 
+---
+
+## Round 20 追加：命令面板（官方 CommandPalette）+ 主机表单对齐官方字段
+
+### 1) 命令面板
+官方用词：`CommandPaletteTitle: 命令面板`、`CommandPalettePlaceholder: 输入命令…`、`CommandPaletteEmpty: 没有匹配的命令`。
+实现：
+- 顶部搜索图标 `top/search` 打开；面板 `palette/panel`（深色 560×420）；
+- 输入框 `palette/input` 实时过滤；条目 `palette/item/<idx>`（导航项 + `快捷命令：<名称>`）；
+- 执行：新建主机 / 会话日志 / 密钥链 / 快捷命令 / 端口转发 / 已知主机 / 调试 / 设置 / 主机 /
+  导入目录… / 导出目录… / 发送快捷命令；
+- 无匹配显示 `palette/empty`「没有匹配的命令」。
+
+用例 `command.palette`（pcOnly）**PASS**：打开 → 过滤"设置" → 点条目打开设置面板 → 再打开输入 `zzzz` → 断言空提示。
+
+### 2) 主机表单对齐官方字段（并清掉遗留调试文本）
+之前是英文 "New Host / Label / Address"，且**表单里还留着 `dbg/form-label` 调试文本**（Round 12 的调试残留）。
+现在按官方字段重写为深色表单：
+`新建主机 / 编辑主机`、`名称`（显示在主机列表中）、`地址`（主机名或 IP）、`用户`（登录账户）、`端口`、
+`密码`（新建：可选 · 加密保存；编辑：留空则保留）、`分组`（选择或创建分组）、`标签`、`颜色`（#3B82F6（留空使用默认））。
+
+### 3) 回归
+```
+host.manage / command.palette / snippets.crud / ui.i18n.panels / pages.logs-vault / cred.cleared
+=> 6/6 PASS
+```
+
+### 说明
+命令面板目前只做"命令条目"（导航 + 快捷命令）。官方还有"新建标签页/连接到主机"分组、键盘上下键与回车执行、
+最近使用排序——这些列为后续项，不在本轮声称完成。
+
