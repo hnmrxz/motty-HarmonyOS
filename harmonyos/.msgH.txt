@@ -1,0 +1,10 @@
+﻿feat(harmonyos): i18n 收尾到转发/VNC 面板（ui.i18n.diag 双画像通过）
+
+- strings.ets: 补 fwd.start/stop/test 中英键
+- Index.ets: 转发面板标题与 Start/Stop/Test、VNC 面板标题与 Stop 共 6 处改取词
+- spec ui.i18n.diag: 切中文 -> 开转发面板 -> 断言 端口转发/启动/测试隧道/保存规则，
+  反向断言英文原文与键名不出现
+
+双画像: 2in1 PASS / tablet PASS
+H08 partialCoverage: 已覆盖顶栏/主机区/SFTP/转发；未覆盖 VNC 与诊断面板逐条、第三语言、系统语言跟随
+用例 48 -> 49；E1 能力 16

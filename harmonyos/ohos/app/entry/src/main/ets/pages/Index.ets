@@ -1630,7 +1630,7 @@ struct Index {
   forwardPanel() {
     Column({ space: 8 }) {
       Row() {
-        Text('Port forwarding (local)').fontSize(16).fontWeight(FontWeight.Bold)
+        Text(this.t('fwd.title')).fontSize(16).fontWeight(FontWeight.Bold)
         Blank()
         Button('Close').id('fwd/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.fwdOpen = false; })
@@ -1673,10 +1673,10 @@ struct Index {
       }.height(80).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)
         .align(Alignment.TopStart)
       Row({ space: 8 }) {
-        Button('Start').id('fwd/start').onClick(() => { this.startForward(); })
-        Button('Stop').id('fwd/stop').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('fwd.start')).id('fwd/start').onClick(() => { this.startForward(); })
+        Button(this.t('fwd.stop')).id('fwd/stop').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.stopForward(); })
-        Button('Test tunnel').id('fwd/test').backgroundColor('#1A6DD0').fontColor(Color.White)
+        Button(this.t('fwd.test')).id('fwd/test').backgroundColor('#1A6DD0').fontColor(Color.White)
           .onClick(() => { this.testForward(); })
         Button(this.t('fwd.save')).id('fwd/save').backgroundColor('#0A6C00').fontColor(Color.White)
           .onClick(() => { this.saveRule(); })
@@ -1721,9 +1721,9 @@ struct Index {
   vncPanel() {
     Column({ space: 8 }) {
       Row() {
-        Text('VNC (RFB 3.8)').fontSize(16).fontWeight(FontWeight.Bold)
+        Text(this.t('vnc.title')).fontSize(16).fontWeight(FontWeight.Bold)
         Blank()
-        Button('Stop').id('vnc/stop').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.t('vnc.stop')).id('vnc/stop').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.stopVnc(); })
         Button(this.t('common.close')).id('vnc/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.stopVnc(); this.vncOpen = false; })

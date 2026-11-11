@@ -1,0 +1,76 @@
+schema: 1
+id: ui.i18n.diag
+title: 面板级双语（二）：转发面板标题与按钮随语言切换，且无缺键
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - H08
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "New Host|新建主机"
+      withinMs: 20000
+  # 先切到中文，再打开转发面板
+  - action: click
+    target: id:ui/lang
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:fwd/open
+  - action: wait
+    ms: 1000
+    expect:
+      kind: screenRegex
+      regex: "端口转发"
+      withinMs: 8000
+  - action: wait
+    ms: 500
+    expect:
+      kind: screenRegex
+      regex: "启动"
+      withinMs: 6000
+asserts:
+  - kind: screenRegex
+    regex: "测试隧道"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "保存规则"
+    withinMs: 8000
+  # 反向断言：英文原文与键名都不应出现
+  - kind: absent
+    value: "Test tunnel"
+    withinMs: 3000
+  - kind: absent
+    value: "Save rule"
+    withinMs: 3000
+  - kind: absent
+    value: "Port forwarding (local)"
+    withinMs: 3000
+  - kind: absent
+    value: "fwd.test"
+    withinMs: 2000
+  - kind: absent
+    value: "fwd.save"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：转发面板标题与 Start/Stop/Test/Save 四个按钮的取词、
+    切换后文案变化、缺键反向检测。
+    **不覆盖**：VNC/诊断面板的逐条覆盖、第三种语言、系统语言跟随、复数与日期本地化；
+    未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+notes: >-
+  反向断言英文原文与键名同时缺席，才说明这些按钮确实走了取词表；
+  否则"中文出现在屏幕上"可能只是因为面板没渲染到那一行。
