@@ -1,0 +1,97 @@
+schema: 1
+id: terminal.resize
+title: 会话改尺寸：resize 到 100x30 后会话仍可正常收发
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - B09
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+  skipFresh: true
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "New Host|新建主机"
+      withinMs: 20000
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: resize-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 800
+  # 打开真实 pty 会话
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key|未知主机密钥"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 4000
+  # 改尺寸
+  - action: click
+    target: id:terminal/resize
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "resize->100x30"
+      withinMs: 8000
+  # 改完尺寸后会话仍可用：发一条命令并看到回显
+  - action: type
+    target: id:terminal/input
+    text: echo after-resize-ok
+  - action: click
+    target: id:terminal/send
+  - action: wait
+    ms: 3000
+asserts:
+  - kind: screenRegex
+    regex: "after-resize-ok"
+    withinMs: 15000
+  - kind: screenRegex
+    regex: "resize->100x30"
+    withinMs: 5000
+  - kind: absent
+    value: "resize: no session"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：resize 调用与状态回报、**改尺寸后会话仍能收发**。
+    **不覆盖**：远端是否真的按新尺寸重排（ConPTY 行为）、极小/极大尺寸、连续多次 resize、
+    窗口尺寸自动跟随；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - skipFresh：本机 bm clean -d 会导致版本回滚（INDEX Round 57-58）
+notes: >-
+  只断言 resize->100x30 不够（那只是本地状态）；必须再发一条命令看到回显，
+  才能说明 resize 没把会话弄坏。

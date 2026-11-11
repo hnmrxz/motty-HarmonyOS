@@ -1,0 +1,15 @@
+﻿test(harmonyos): 补 terminal.resize 与 vnc.key 用例（双画像通过）+ 修 VNC 面板布局 bug
+
+新增用例(均双画像通过):
+- terminal.resize: 点 Resize 断言 resize->100x30，并再发一条命令看到回显
+  (只断言状态只证明'调用了'；发命令看回显才证明 resize 没把会话弄坏)
+- vnc.key: 点 Send key a 后画面统计 magenta>0
+  (只有对端收到按键并回传新帧，客户端统计才会出现洋红，与指针绿色区分)
+
+顺手修的布局 bug:
+- vnc/key 在 2in1 上渲染不出来。dump 显示 vnc/tap 的 x=2473 已跑出面板(右边界 2225)
+- 根因: 该行 Row 里第一个 Text('canvas=...') 带 .width('100%')，把后面按钮全挤出面板
+- 去掉 100% 宽度 + 把指针/按键按钮移到画布上方 -> 2in1 与 tablet 都正常
+- tablet 屏幕更宽所以没暴露，是双画像抓到的
+
+用例 43 -> 45；E1 能力 16；B09/E02 partialCoverage 已更新

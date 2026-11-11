@@ -1732,21 +1732,9 @@ struct Index {
       }.width('100%')
       Text(this.vncStatus.length > 0 ? this.vncStatus : 'vnc: (idle)')
         .id('vnc/status').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')
-      Canvas(this.vncCtx)
-        .id('vnc/canvas')
-        .width(this.vncCanvasW).height(this.vncCanvasH)
-        .backgroundColor('#000000')
-        .onReady(() => { this.vncReady = true; })
-        .onTouch((event: TouchEvent) => {
-          if (event.touches.length > 0) {
-            const t = event.touches[0];
-            const mask = event.type === TouchType.Down || event.type === TouchType.Move ? 1 : 0;
-            this.sendVncPointer(t.x / 5, t.y / 5, mask);
-          }
-        })
       Row({ space: 8 }) {
         Text('canvas=' + this.vncCanvasW + 'x' + this.vncCanvasH)
-        .id('vnc/canvas-size').fontSize(11).fontColor('#1A6DD0').width('100%')
+          .id('vnc/canvas-size').fontSize(11).fontColor('#1A6DD0')
       Text('drawn=' + this.vncDrawn + ' (fillRect grid)')
           .id('vnc/drawn').fontSize(11).fontColor('#0A6C00')
         Button('Send pointer (10,10)')
@@ -1761,6 +1749,18 @@ struct Index {
             }
           })
       }.width('100%')
+      Canvas(this.vncCtx)
+        .id('vnc/canvas')
+        .width(this.vncCanvasW).height(this.vncCanvasH)
+        .backgroundColor('#000000')
+        .onReady(() => { this.vncReady = true; })
+        .onTouch((event: TouchEvent) => {
+          if (event.touches.length > 0) {
+            const t = event.touches[0];
+            const mask = event.type === TouchType.Down || event.type === TouchType.Move ? 1 : 0;
+            this.sendVncPointer(t.x / 5, t.y / 5, mask);
+          }
+        })
 
       Text(this.vncFrameInfo.length > 0 ? this.vncFrameInfo : 'frame: (none)')
         .id('vnc/frame').fontSize(11).fontFamily('monospace').width('100%')

@@ -647,6 +647,7 @@
         "spec/scenarios/terminal.interactive.yaml",
         "spec/scenarios/terminal.key.yaml",
         "spec/scenarios/terminal.pty.yaml",
+        "spec/scenarios/terminal.resize.yaml",
         "spec/scenarios/terminal.scrollback.yaml",
         "spec/scenarios/terminal.scrollview.yaml",
         "spec/scenarios/terminal.touchscroll.yaml",
@@ -661,7 +662,7 @@
         "deps": "—",
         "acceptance": "`host_*`"
       },
-      "partialCoverage": "部分：PTY、VT 解析、回滚/备用屏、上屏、指针与键盘（Ctrl-C、方向键 CSI 序列）、回滚滚动（按钮+触控）、选区复制已双画像实测；应用光标模式(DECCKM)、修饰键组合、鼠标滚轮、组合字符宽度未做。"
+      "partialCoverage": "部分：PTY 会话、VT 解析、回滚/备用屏、上屏、指针与键盘（Ctrl-C/方向键）、回滚滚动（按钮+触控）、选区复制、**会话 resize**已双画像实测；应用光标模式(DECCKM)、修饰键组合、鼠标滚轮、组合字符宽度未做。"
     },
     {
       "id": "B10",
@@ -1095,7 +1096,8 @@
         "spec/scenarios/vnc.adapt.yaml",
         "spec/scenarios/vnc.auth-hextile.yaml",
         "spec/scenarios/vnc.clipboard.yaml",
-        "spec/scenarios/vnc.desktopsize.yaml"
+        "spec/scenarios/vnc.desktopsize.yaml",
+        "spec/scenarios/vnc.key.yaml"
       ],
       "fallback": null,
       "userText": null,
@@ -1105,7 +1107,7 @@
         "deps": "G1",
         "acceptance": "`vnc_e2e`"
       },
-      "partialCoverage": "部分：RFB 3.8、None/VNC Auth(DES)、Raw+Hextile、fillRect 渲染、指针/键盘、剪贴板、DesktopSize、画布尺寸自适应已双画像实测；缩放后的坐标反算精度、ExtendedDesktopSize、Tight/ZRLE/Cursor 编码未做。"
+      "partialCoverage": "部分：RFB 3.8、None/VNC Auth(DES)、Raw+Hextile、fillRect 渲染、指针与**键盘事件**、剪贴板、DesktopSize、画布自适应已双画像实测；缩放后坐标反算精度、ExtendedDesktopSize、Tight/ZRLE/Cursor 未做。"
     },
     {
       "id": "E03",
