@@ -35,6 +35,12 @@ steps:
     target: id:shell/dialog-submit
   - action: wait
     ms: 700
+    expect:
+      kind: screenRegex
+      regex: "manage-a"
+      withinMs: 10000
+  - action: wait
+    ms: 800
   # 编辑：改名并保存
   - action: click
     target: id:host-edit/0

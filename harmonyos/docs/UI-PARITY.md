@@ -311,3 +311,34 @@ aa force-stop -> aa start
 **"视觉上隐藏"和"自动化可见"是两件事**。以后凡是要靠 dump 断言的控件，不能用 opacity 隐藏；
 要用 `visibility` 之外的布局手段（例如抽屉/菜单），或给测试专用 id 放在可见区域。
 
+---
+
+## Round 10 追加：新建/编辑对话框的真实缺陷（回填 + 输入同步）
+
+### 修掉的
+| 问题 | 根因 | 修法 |
+|---|---|---|
+| **编辑主机时表单不回填**（点"编辑"后名称/地址都是空，提交直接返回） | 对话框的 `TextInput` 只写了 `placeholder`，**没有绑 `text`** | 全部字段改为 `text: this.formXxx` |
+| 绑 `text` 后**输入不再进状态**（`uiInput inputText` 注入不触发 `onChange`，提交时 `formLabel` 还是旧值） | 单向 `text:` 绑定与 IME 注入的交互问题 | 改为双向绑定 `text: this.formXxx!!`（API 18+ 语法）；用调试文本验证：输入后状态确实变成 `manage-amanage-b` |
+
+### 验证方式（这次没有靠猜）
+在对话框里临时插一行 `Text('state=[' + this.formLabel + ']').id('dbg/form-label')`，逐步读 dump：
+```
+输入 manage-a 后      state=[manage-a]
+点编辑回填            state=[manage-a]
+再输入 manage-b 后    state=[manage-amanage-b]     ← 双向绑定生效
+```
+调试文本随后已移除（保留会成为噪声）。
+
+### 仍然失败的两条用例（如实记录，未修复）
+- `host.manage`：编辑后断言主机名超时
+- `sftp.manage`：第 13 步点不到 `sftp/entry/hello.txt`
+
+排查中发现两个**干扰现象**，会误导判断，记下来：
+1. runner 失败信息里的"屏幕文本"**只截取前 120 字符**，看起来像"主区整个消失"，其实只是截断；
+2. 某些时刻 dump 抓到的是**桌面（launcher）**而不是应用窗口——应用当时不在前台，
+   于是断言文本里没有任何主区内容。这条还没定位到触发条件（可能是窗口 resize 后焦点/层级变化）。
+
+### 附带确认
+`pages.logs-vault`、`settings.persist` 在本次改动后**复跑仍 PASS**，说明对话框修复没有破坏既有流程。
+
