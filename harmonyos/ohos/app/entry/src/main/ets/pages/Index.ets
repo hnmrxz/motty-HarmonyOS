@@ -170,6 +170,7 @@ struct Index {
   @State collapsedGroups: string[] = [];
   @State hoverRow: number = -1;
   @State selectAll: boolean = false;
+  @State selectedIds: string[] = [];
   @State hostView: string = 'list';
   @State hostSort: string = 'manual';
   @State aiAnswer: string = '';
@@ -2184,6 +2185,12 @@ struct Index {
             Text('(' + this.countGroup(g) + ')').fontSize(12).fontColor('#6B7078')
             Blank()
             Image($r('app.media.ic_more')).id('group/menu/' + g).width(16).height(16)
+            .bindMenu([
+              { value: this.lang === 'zh' ? '全选本组' : 'Select group', action: () => { this.selectGroup(g); } },
+              { value: this.lang === 'zh' ? '取消全选' : 'Clear selection', action: () => { this.clearSelection(); } },
+              { value: this.lang === 'zh' ? '折叠本组' : 'Collapse', action: () => { if (!this.isCollapsed(g)) { this.toggleGroup(g); } } },
+              { value: this.lang === 'zh' ? '展开本组' : 'Expand', action: () => { if (this.isCollapsed(g)) { this.toggleGroup(g); } } }
+            ])
           }
           .width('100%').height(34).padding({ left: 8, right: 8 })
           .onClick(() => { this.toggleGroup(g); })
@@ -2195,13 +2202,13 @@ struct Index {
                 Row({ space: 14 }) {
                   Image($r('app.media.ic_check')).id('host-check/' + index).width(15).height(15)
                     
-                    .opacity(this.selectAll ? 1 : 0.45)
+                    .opacity(this.isSelected(h) ? 1 : (this.selectAll ? 1 : 0.45))
                   // 颜色标记（原版 paintHostColorMark：左缘 3px 圆角竖条）
                   Column().width(3).height(40).borderRadius(2)
                     .backgroundColor(h.color.length > 0 ? h.color : Color.Transparent)
                   // 图标块：首字母
-                  if (this.osIcon(h) !== null) {
-                    Image(this.osIcon(h)).width(26).height(26)
+                  if (this.hasOsIcon(h)) {
+                    Image(this.osImage(h)).width(26).height(26)
                   } else {
                     Text(h.label.substring(0, 1).toUpperCase()).fontSize(16).fontWeight(FontWeight.Bold)
                       .fontColor(Color.White).width(40).height(40).textAlign(TextAlign.Center)
@@ -2233,6 +2240,12 @@ struct Index {
                     Button('⋯').fontSize(13).width(26).height(26)
                     .backgroundColor('#23262B').fontColor('#C7CBD1')
                     .onClick(() => { this.openSession(h.label, index); })
+                    .bindMenu([
+                      { value: this.lang === 'zh' ? '连接' : 'Connect', action: () => { this.openSession(h.label, index); } },
+                      { value: this.lang === 'zh' ? '文件' : 'Files', action: () => { this.openFiles(index); } },
+                      { value: this.lang === 'zh' ? '编辑' : 'Edit', action: () => { this.openEditHost(index); } },
+                      { value: this.lang === 'zh' ? '删除' : 'Delete', action: () => { this.askDeleteHost(index); } }
+                    ])
                   Button(this.t('host.test')).id('host-row/' + index).fontSize(11).height(28)
                     .backgroundColor('#23262B').fontColor('#C7CBD1')
                   Button(this.t('host.files')).id('host-files/' + index).fontSize(11).height(28)
@@ -2393,7 +2406,16 @@ struct Index {
       Image($r('app.media.ic_check')).id('chips/select-all').width(16).height(16)
         
         .opacity(this.selectAll ? 1 : 0.45)
-        .onClick(() => { this.selectAll = !this.selectAll; })
+        .onClick(() => {
+          this.selectAll = !this.selectAll;
+          if (this.selectAll) {
+            const ids: string[] = [];
+            for (let i = 0; i < this.hosts.length; i++) { ids.push(this.hosts[i].id); }
+            this.selectedIds = ids;
+          } else {
+            this.selectedIds = [];
+          }
+        })
       Text((this.lang === 'zh' ? '全部 ' : 'All ') + this.hosts.length).id('chip/all').fontSize(12)
         .fontColor(Color.White).padding({ left: 12, right: 12, top: 5, bottom: 5 })
         .backgroundColor('#2A2D33').borderRadius(14)
@@ -2402,6 +2424,16 @@ struct Index {
           .fontColor('#C7CBD1').padding({ left: 12, right: 12, top: 5, bottom: 5 })
           .backgroundColor('#1E2127').borderRadius(14)
       }, (g: string) => 'chip-' + g)
+      if (this.selectedIds.length > 0) {
+        Text((this.lang === 'zh' ? '已选 ' : 'Selected ') + this.selectedIds.length).fontSize(12)
+          .fontColor('#E0A458').padding({ left: 8 })
+        Button(this.lang === 'zh' ? '批量删除' : 'Delete').id('chips/delete-selected').height(24).fontSize(11)
+          .backgroundColor('#3A2226').fontColor('#E08A8A')
+          .onClick(() => { this.deleteSelected(); })
+        Button(this.lang === 'zh' ? '清除' : 'Clear').id('chips/clear-selection').height(24).fontSize(11)
+          .backgroundColor('#1E2127').fontColor('#C7CBD1')
+          .onClick(() => { this.clearSelection(); })
+      }
       Blank()
       Image($r('app.media.ic_chevron_down')).id('chips/collapse').width(15).height(15)
         .onClick(() => { this.collapsedGroups = this.sections(); })
@@ -2476,6 +2508,32 @@ struct Index {
   }
 
 
+  private osIconKey(h: HostItem): string {
+    const probe: string = (h.label + ' ' + h.address + ' ' + h.tags).toLowerCase();
+    if (probe.includes('oracle')) { return 'os_oraclelinux'; }
+    if (probe.includes('ubuntu')) { return 'os_ubuntu'; }
+    if (probe.includes('debian')) { return 'os_debian'; }
+    if (probe.includes('centos')) { return 'os_centos'; }
+    if (probe.includes('redhat') || probe.includes('rhel')) { return 'os_redhat'; }
+    if (probe.includes('windows')) { return 'os_windows'; }
+    if (probe.includes('nas') || probe.includes('synology')) { return 'os_synology'; }
+    if (probe.includes('openwrt')) { return 'os_openwrt'; }
+    if (probe.includes('alpine')) { return 'os_alpine'; }
+    if (probe.includes('arch')) { return 'os_arch'; }
+    if (probe.includes('freebsd')) { return 'os_freebsd'; }
+    if (probe.includes('esxi') || probe.includes('vmware')) { return 'os_esxi'; }
+    if (probe.includes('proxmox')) { return 'os_proxmox'; }
+    if (probe.includes('fedora')) { return 'os_fedora'; }
+    if (probe.includes('kali')) { return 'os_kali'; }
+    return '';
+  }
+
+  // ArkTS 的 @Builder 内对 Resource 判空不可靠，拆成"布尔"与"取值"两个方法
+  private hasOsIcon(h: HostItem): boolean {
+    return this.osIconKey(h).length > 0;
+  }
+
+
   private osIcon(h: HostItem): Resource | null {
     const probe: string = (h.label + ' ' + h.address + ' ' + h.tags).toLowerCase();
     if (probe.includes('oracle')) { return $r('app.media.os_oraclelinux'); }
@@ -2528,8 +2586,8 @@ struct Index {
               ForEach(this.sortedHosts(g), (h: HostItem) => {
                 Column({ space: 6 }) {
                   Row({ space: 10 }) {
-                    if (this.osIcon(h) !== null) {
-                      Image(this.osIcon(h)).width(24).height(24)
+                    if (this.hasOsIcon(h)) {
+                      Image(this.osImage(h)).width(24).height(24)
                     } else {
                       Text(h.label.substring(0, 1).toUpperCase()).fontSize(14).fontWeight(FontWeight.Bold)
                         .fontColor(Color.White).width(32).height(32).textAlign(TextAlign.Center)
@@ -2567,6 +2625,84 @@ struct Index {
       }.width('100%').padding({ left: 22, right: 22, bottom: 16 })
     }.id('host-grid/view').layoutWeight(1).width('100%').align(Alignment.Top)
   }
+
+
+  private osImage(h: HostItem): Resource {
+    const k: string = this.osIconKey(h);
+    if (k === 'os_oraclelinux') { return $r('app.media.os_oraclelinux'); }
+    if (k === 'os_ubuntu') { return $r('app.media.os_ubuntu'); }
+    if (k === 'os_debian') { return $r('app.media.os_debian'); }
+    if (k === 'os_centos') { return $r('app.media.os_centos'); }
+    if (k === 'os_redhat') { return $r('app.media.os_redhat'); }
+    if (k === 'os_windows') { return $r('app.media.os_windows'); }
+    if (k === 'os_synology') { return $r('app.media.os_synology'); }
+    if (k === 'os_openwrt') { return $r('app.media.os_openwrt'); }
+    if (k === 'os_alpine') { return $r('app.media.os_alpine'); }
+    if (k === 'os_arch') { return $r('app.media.os_arch'); }
+    if (k === 'os_freebsd') { return $r('app.media.os_freebsd'); }
+    if (k === 'os_esxi') { return $r('app.media.os_esxi'); }
+    if (k === 'os_proxmox') { return $r('app.media.os_proxmox'); }
+    if (k === 'os_fedora') { return $r('app.media.os_fedora'); }
+    if (k === 'os_kali') { return $r('app.media.os_kali'); }
+    return $r('app.media.ic_hosts');
+  }
+
+
+  private isSelected(h: HostItem): boolean {
+    return this.selectedIds.includes(h.id);
+  }
+
+  private toggleSelect(h: HostItem): void {
+    if (this.isSelected(h)) {
+      this.selectedIds = this.selectedIds.filter((x: string) => x !== h.id);
+    } else {
+      this.selectedIds = this.selectedIds.concat([h.id]);
+    }
+  }
+
+  private selectGroup(g: string): void {
+    const ids: string[] = [];
+    for (let i = 0; i < this.hosts.length; i++) {
+      if (this.hostGroupOf(this.hosts[i]) === g) { ids.push(this.hosts[i].id); }
+    }
+    let merged: string[] = this.selectedIds.slice();
+    for (let i = 0; i < ids.length; i++) {
+      if (!merged.includes(ids[i])) { merged.push(ids[i]); }
+    }
+    this.selectedIds = merged;
+  }
+
+  private clearSelection(): void {
+    this.selectedIds = [];
+  }
+
+  // 批量删除：主机 + known_hosts + 保险库口令（照官方 DeleteHost 语义）
+  private async deleteSelected(): Promise<void> {
+    if (this.store === null || this.selectedIds.length === 0) { return; }
+    const ids: string[] = this.selectedIds.slice();
+    for (let i = 0; i < ids.length; i++) {
+      const idx = this.hosts.findIndex((x: HostItem) => x.id === ids[i]);
+      if (idx < 0) { continue; }
+      const h = this.hosts[idx];
+      const key = this.hostKey(h.address, h.port);
+      const hp = new relationalStore.RdbPredicates('hosts');
+      hp.equalTo('id', h.id);
+      await this.store.delete(hp);
+      const kp = new relationalStore.RdbPredicates('known_hosts');
+      kp.equalTo('host', key);
+      await this.store.delete(kp);
+      await Vault.remove(key);
+      this.creds.delete(key);
+    }
+    this.selectedIds = [];
+    await this.reload();
+    await this.reloadRules();
+  }
+
+
+
+
+
 
   build() {
     Stack({ alignContent: Alignment.TopStart }) {

@@ -124,3 +124,29 @@ python harmonyos/spec/run.py harmonyos/spec/scenarios/<spec>.yaml --serial 127.0
 ### 证据
 `harmonyos/.bin/ui/app-grid.png`（网格 + Oracle/NAS/测试/求是）、`app-list2.png`（列表 + OS 图标）。
 
+---
+
+## Round 4 追加：多选 / 批量删除 / 行与分组「⋯」上下文菜单
+
+### 已对齐
+| 项 | 实现 | 证据 |
+|---|---|---|
+| 行「⋯」上下文菜单 | `bindMenu`：连接 / 文件 / 编辑 / 删除（id 仍在树上，老用例不受影响） | 代码 |
+| 分组「⋯」菜单 | 全选本组 / 取消全选 / 折叠本组 / 展开本组 | 代码 |
+| **多选** | `selectedIds` + 行复选框 + 顶部全选按钮（真正联动） | `app-batch2.png` 中 `已选 2` |
+| **批量操作条** | 选中后出现「已选 N / 批量删除 / 清除」（`chips/delete-selected`、`chips/clear-selection`） | 同上 |
+| 批量删除语义 | 逐台删除 hosts + known_hosts + 保险库口令（与官方 DeleteHost 一致） | `deleteSelected()` |
+| OS 图标判定拆分 | `osIconKey()/hasOsIcon()/osImage()` 三个方法，避免 `@Builder` 内 Resource 判空差异 | 代码 |
+
+### 本轮踩坑
+- ArkTS **`@Builder` 里对 `Resource` 做 `!== null` 判空不可靠**（列表不生效、网格生效），
+  必须拆成"布尔方法 + 取资源方法"。
+- 用 `opacity(0)` 隐藏的操作区仍参与布局，会把标题挤断（Round 2 已记）。
+- 批量替换 `.opacity(this.selectAll …)` 时**误伤了分组表头与全选按钮**（那里没有 `h` 变量），
+  编译报 `Cannot find name 'h'`；已按上下文回退。
+
+### 待验证（下一轮）
+- 列表行里 `NAS` 是否显示 synology 图标（网格已确认能显示 Oracle 图标）；需要用 `devecocli ui layout`
+  精确取到该行头像节点再判断是"图标没渲染"还是"分支没走"。
+- 行复选框被行级 `onClick` 吞掉点击的问题（当前用顶部全选作为可靠入口）。
+

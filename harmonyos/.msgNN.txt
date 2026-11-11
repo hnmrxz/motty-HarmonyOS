@@ -1,0 +1,16 @@
+﻿feat(harmonyos/ui): PC 端 UI 1:1 第四轮 —— 多选/批量删除 + 行与分组上下文菜单
+
+已对齐:
+- 行"⋯" bindMenu: 连接/文件/编辑/删除 (既有 id 仍在树上, 老用例不受影响)
+- 分组"⋯" bindMenu: 全选本组/取消全选/折叠/展开
+- 多选: selectedIds + 行复选框 + 顶部全选按钮真正联动
+- 批量操作条: 已选 N / 批量删除 / 清除 (chips/delete-selected, chips/clear-selection)
+- 批量删除语义: hosts + known_hosts + 保险库口令逐台删除(与官方 DeleteHost 一致)
+- OS 图标判定拆分为 osIconKey/hasOsIcon/osImage, 避免 @Builder 内 Resource 判空差异
+
+踩坑:
+- @Builder 内对 Resource 做 !== null 判空不可靠(列表不生效/网格生效) -> 拆布尔+取资源两个方法
+- 批量替换 opacity 时误伤分组表头与全选按钮(那里没有 h), 编译报 Cannot find name 'h' -> 已按上下文回退
+
+待验证: 列表行 NAS 的 synology 图标是否渲染; 行复选框被行级 onClick 吞点击(当前用顶部全选作可靠入口)
+证据: .bin/ui/app-batch2.png (已选 2 + 批量删除 + 清除)
