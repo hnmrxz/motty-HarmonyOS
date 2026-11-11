@@ -139,3 +139,30 @@ vnc.desktopsize   PASS     (夹具 -vnc-resize)
 信任/删除对话框中文化后的断言对齐、地址列文本断言改 `screenRegex` 等——都是"断言/环境"层面的修正，
 没有为了变绿放宽任何业务断言。
 
+---
+
+## 面板分页约定（Round 57 起）
+
+诊断面板已从"单页"改为**三页**：`RDP` / `调试` / `快照`（`@State diagTab`，默认 `rdp`）。
+
+**写用例时必读**：
+1. 打开诊断面板（`click id:diag/open`）后，默认在 **RDP 页**；
+2. 需要 `catalog/*`、`terminal/*`、`vnc/session*`、`net/probe`、`ssh/probe*`、`diag/term-echo`、`vnc/result`、
+   `net/probe-result`、`catalog/result` 的用例，**必须先切到调试页**：
+   ```yaml
+   - action: click
+     target: id:diag/tab-debug
+   ```
+3. 需要 `rdp/canvas`、`rdp/canvas-info`、`rdp/ticks`、`rdp/experimental*` 的用例，切到快照页：
+   ```yaml
+   - action: click
+     target: id:diag/tab-snap
+   ```
+4. 被分页隐藏的控件**不会出现在 `uitest dump` 里**——"选择器未命中"优先怀疑"没切页"，
+   而不是"控件被删了"。
+
+**为什么分页**：面板可视高度实测只有 **1324px**（`diag/panel [914,351][2206,1675]`），
+单页内容约 1900px，排在后面的控件既不显示也不进 dump，用户也点不到。
+
+**已迁移**：30 条依赖调试页控件的用例已统一插入切页步骤；新增 `diag.tabs` 用例保护"分页不被改回单页"。
+
