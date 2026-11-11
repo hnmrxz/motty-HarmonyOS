@@ -1,0 +1,81 @@
+{
+  "spec": "host.persist",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "text",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "text",
+      "ok": false,
+      "detail": "未找到文本 '10.9.9.9'"
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（2in1 x86_64 / tablet x86_64, API 26）。只验证\"同一设备上重启应用后数据仍在\"， 不覆盖跨端导入（.mottybak）、不覆盖 schema 升级与 epoch 兼容、不覆盖卸载重装后的行为； 未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "assert 1 (text) 失败: 未找到文本 '10.9.9.9'"
+}
