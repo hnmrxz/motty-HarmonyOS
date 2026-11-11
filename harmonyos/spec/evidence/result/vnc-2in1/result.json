@@ -1,0 +1,45 @@
+{
+  "spec": "vnc.handshake",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": false,
+      "detail": "正则 'fb=64x48' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nlabel\\n\\n\\n\\n\\nMotty\\n\\nForward\\nDiagnostics\\nNew Host\\n\\nHosts\\n\\nNo hosts yet\\n\\n\\n\\nVNC (RFB 3.8)\\n\\nStop\\nClose\\nframe=104 64x48 '）"
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：RFB 3.8 版本协商、安全类型列表解析与 None 选择、 SecurityResult、ClientInit/ServerInit 解析（尺寸/像素格式/名称）、SetEncodings(Raw)、 FramebufferUpdateRequest、Raw 矩形解码并按 shift 还原 RGB。 **不覆盖**：VNC Auth(DES)/VeNCrypt/TLS、Hextile/ZRLE/CopyRect/RRE 编码、 增量更新与脏区、鼠标键盘事件上报、剪贴板、画面缩放与上屏（本帧只做取色，不做渲染）、 多帧/断线重连。未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "assert 0 (screenRegex) 失败: 正则 'fb=64x48' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nlabel\\n\\n\\n\\n\\nMotty\\n\\nForward\\nDiagnostics\\nNew Host\\n\\nHosts\\n\\nNo hosts yet\\n\\n\\n\\nVNC (RFB 3.8)\\n\\nStop\\nClose\\nframe=104 64x48 '）"
+}

@@ -1,0 +1,27 @@
+﻿chore(harmonyos): 清理工作目录（-1.47GB）+ 文档压缩为 4 份一级 + 历史归档
+
+清理（均在 gitignore 内，git 不跟踪）:
+- spec/runs 删除 1352 MB；先把证据抢救入库 spec/evidence:
+  239 份 result.json + 每用例一张截图（压成 640 宽 JPEG，909MB -> 3.2MB），共 3.7MB
+- native/build 102 MB（cmake 中间物，可重建）
+- .bin 下 hapsx* 5 份 38MB、sshfixture.exe~ 7MB、崩溃日志与 dump json
+- ohos/app/entry 的 .cxx 与 build 中间物（保留 HAP，并备份到 .bin/hap-backup）
+- 合计释放 1.47 GB；剩余约 1.1 GB 主要是 .bin/tools（perl 工具链，build-openssl.ps1 依赖）
+  与 native/third_party/src（309MB 上游源码，重建依赖），故保留
+
+文档压缩（根目录只留 README + LICENSING）:
+- 新增 harmonyos/README.md: 一分钟现状表 + 文档地图 + 常用命令 + 证据位置
+- docs/RDP.md = RDP-FEASIBILITY + RDP-SERVER-PATH 合并
+- docs/RELEASE.md = STORE-READINESS + ARM64-REAL-DEVICE 合并
+- docs/RUNBOOK.md = spec/RUNBOOK.md 迁移
+- docs/history/ 归档 INDEX/FINAL-STATUS/COMPLETION-REPORT/A-PRIME-*/CAPABILITY-MATRIX/PLAN
+  + history/README.md 写明"为什么进历史"的判据
+- 全仓更新 11 个文件里的文档路径引用
+
+RDP 排查更正（架构师指出 + 本轮实测复核）:
+- 公共头 include/freerdp/server/shadow.h 有完整 rdp_shadow_client 定义（含 inLobby/clients）
+- 实测 cliSeen=3 kick=0 => 客户端早已 activated，白屏与 lobby 无关
+- 监视器改 1024x768 避免 activate 早退 -> 画面仍 #FFFFFF
+- 结论写进 docs/RDP.md：已排除 lobby/尺寸/编码/lobby 表面；仍未定位，保持 E3
+
+校验: lint 全绿、SBOM 16 组件 36 产物通过

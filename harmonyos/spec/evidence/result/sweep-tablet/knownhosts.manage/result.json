@@ -1,0 +1,84 @@
+{
+  "spec": "knownhosts.manage",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "type",
+      "ok": true,
+      "detail": "secret: 已注入，未回读"
+    },
+    {
+      "i": 7,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "wait",
+      "ok": false,
+      "detail": "步骤内 expect 失败: 正则 'Unknown host key' 未命中（屏幕文本: '\\n\\n\\n\\n\\nMotty\\n\\nKnown\\nForward\\nDiagnostics\\nNew Host\\n\\nHosts\\n\\n\\nNo hosts yet\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n02, :, 36\\n\\n\\n\\n02\\n:\\n\\n36\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n100\\n'）",
+      "expect": {
+        "ok": false,
+        "detail": "正则 'Unknown host key' 未命中（屏幕文本: '\\n\\n\\n\\n\\nMotty\\n\\nKnown\\nForward\\nDiagnostics\\nNew Host\\n\\nHosts\\n\\n\\nNo hosts yet\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n02, :, 36\\n\\n\\n\\n02\\n:\\n\\n36\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n100\\n'）"
+      }
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：信任后 known_hosts 落库并可在 UI 列出、 删除条目（含库记录）、删除后再次连接**重新弹出信任确认**。 **不覆盖**：主机密钥变更（同主机换钥）告警、`@cert-authority`、known_hosts 导入/导出、 批量删除、算法白名单；未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "step 10 (wait) 失败: 步骤内 expect 失败: 正则 'Unknown host key' 未命中（屏幕文本: '\\n\\n\\n\\n\\nMotty\\n\\nKnown\\nForward\\nDiagnostics\\nNew Host\\n\\nHosts\\n\\n\\nNo hosts yet\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n02, :, 36\\n\\n\\n\\n02\\n:\\n\\n36\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n100\\n'）"
+}

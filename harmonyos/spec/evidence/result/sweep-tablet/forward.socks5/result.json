@@ -1,0 +1,20 @@
+{
+  "spec": "forward.socks5",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": false,
+      "detail": "Expecting value: line 1 column 1 (char 0)"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：SOCKS5 无认证握手（方法协商 + CONNECT IPv4）、 经 SSH direct-tcpip 建隧道、隧道内读到远端 SSH banner；HTTP CONNECT 分支已实现， 本用例只断言 SOCKS5（HTTP 由同一套 pump 复用，下一轮补用例）。 **不覆盖**：SOCKS5 用户名口令认证、UDP ASSOCIATE、域名地址(0x03)解析的成功路径、 IPv6、并发连接（当前串行）、真实浏览器/应用经代理的行为、arm64 真机。"
+  },
+  "passed": false,
+  "error": "step 0 (launch) 失败: Expecting value: line 1 column 1 (char 0)"
+}

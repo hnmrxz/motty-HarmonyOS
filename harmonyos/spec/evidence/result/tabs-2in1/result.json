@@ -1,0 +1,146 @@
+{
+  "spec": "session.tabs",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "type",
+      "ok": true,
+      "detail": "secret: 已注入，未回读"
+    },
+    {
+      "i": 7,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 11,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 12,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 13,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 14,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 15,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 16,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。验证：两个会话各自一块 VT 网格、标签栏计数、 切回主机列表不销毁会话、关闭一个标签后另一个仍在且计数更新。 **不覆盖**：标签重排/拖动、会话恢复（应用重启）、超过 2 个会话时的内存与切换开销、 分屏；未在 arm64 真机执行。"
+  },
+  "passed": true
+}

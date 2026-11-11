@@ -1,0 +1,62 @@
+{
+  "spec": "hosts.search",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "type",
+      "ok": true,
+      "detail": "secret: 已注入，未回读"
+    },
+    {
+      "i": 7,
+      "action": "click",
+      "ok": false,
+      "detail": "选择器未命中: id:shell/dialog-submit"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：按标签过滤、无匹配空态、原下标语义不变 （行内按钮 id 仍对应未过滤数组）。 **不覆盖**：按端口/协议过滤、模糊搜索排序、搜索历史、搜索结果计数；未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "step 7 (click) 失败: 选择器未命中: id:shell/dialog-submit"
+}

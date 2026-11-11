@@ -1,0 +1,44 @@
+{
+  "spec": "ssh.hostkey",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "type",
+      "ok": false,
+      "detail": "选择器未命中: id:shell/dialog-user"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。本 spec 验证的是\"校验逻辑与失败关闭\"： 未知主机不认证、指纹不符不认证。不覆盖 known_hosts 持久化（尚未实现）、 不覆盖 @cert-authority、不覆盖 hostkey 算法白名单；未在 arm64 真机执行。 对端为自建 sshfixture（RSA-3072 主机密钥），不是 upstream e2esshd。"
+  },
+  "passed": false,
+  "error": "step 4 (type) 失败: 选择器未命中: id:shell/dialog-user"
+}

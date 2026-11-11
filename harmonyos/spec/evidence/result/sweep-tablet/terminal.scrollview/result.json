@@ -1,0 +1,44 @@
+{
+  "spec": "terminal.scrollview",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "type",
+      "ok": false,
+      "detail": "选择器未命中: id:shell/dialog-user"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：向上滚动把历史行带入可视区、滚动位置有可读状态 （scroll=N）、向下回到实时后仍是尾部内容。 **不覆盖**：滚动条拖拽、滚到顶/底边界提示、回滚区搜索、选区复制、鼠标滚轮与触控惯性； 未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "step 4 (type) 失败: 选择器未命中: id:shell/dialog-user"
+}

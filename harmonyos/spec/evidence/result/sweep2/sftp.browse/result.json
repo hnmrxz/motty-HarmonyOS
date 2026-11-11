@@ -1,0 +1,74 @@
+{
+  "spec": "sftp.browse",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "type",
+      "ok": true,
+      "detail": "secret: 已注入，未回读"
+    },
+    {
+      "i": 7,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "click",
+      "ok": false,
+      "detail": "Expecting value: line 1 column 1 (char 0)"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：SFTP 子系统握手、列目录（含子目录切换）、 读取文本文件内容、目录项带尾斜杠与大小。 **不覆盖**：上传、重命名、删除、权限/时间戳展示、进度与断点、符号链接、 二进制文件（当前按 UTF-8 文本读，上限 256 KiB）、并发传输、SFTP 之外的 SCP。 未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "step 9 (click) 失败: Expecting value: line 1 column 1 (char 0)"
+}

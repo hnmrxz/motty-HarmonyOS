@@ -1,0 +1,26 @@
+{
+  "spec": "terminal.pty",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": false,
+      "detail": "选择器未命中: id:shell/add-host"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。对端是 Windows ConPTY 上的 cmd.exe， 所以这是\"真 pty + 真 shell\"的端到端会话，而非行回显夹具。 **不覆盖**：Linux bash/zsh 的 terminfo 行为、vim/less 等全屏程序、真实 SIGWINCH 对 shell 布局的影响（只验证 window-change 请求被发出并回显）、arm64 真机。"
+  },
+  "passed": false,
+  "error": "step 1 (click) 失败: 选择器未命中: id:shell/add-host"
+}

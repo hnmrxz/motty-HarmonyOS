@@ -1,0 +1,32 @@
+{
+  "spec": "terminal.vt",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "type",
+      "ok": false,
+      "detail": "选择器未命中: id:shell/dialog-label"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。只覆盖最小 VT 子集：CUP/CUU-CUD-CUF-CUB/CHA/VPA、 ED 0/1/2、EL 0/1/2、SGR 前景色与重置、CR/LF/换行滚动。 **不覆盖**：备用屏、回滚缓冲、宽字符与组合字符、连字、SIXEL/Kitty/iTerm2 图片、 鼠标上报、DECSET 2026、选择与复制、真实 pty 尺寸协商；未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "step 2 (type) 失败: 选择器未命中: id:shell/dialog-label"
+}

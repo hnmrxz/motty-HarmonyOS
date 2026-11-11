@@ -1,0 +1,26 @@
+{
+  "spec": "terminal.view",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": false,
+      "detail": "选择器未命中: id:shell/add-host"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。验证的是\"SSH 流式输出渲染进终端区域\"这一条通路。 终端已接入 VT 引擎（ESC 序列被解析而不是原样显示），但本 spec 只验证 \"多块流式数据都落进网格\"这一件事；颜色/光标语义由 terminal.vt 覆盖。不覆盖真实 shell 会话、窗口尺寸变更、 键盘输入；未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "step 1 (click) 失败: 选择器未命中: id:shell/add-host"
+}

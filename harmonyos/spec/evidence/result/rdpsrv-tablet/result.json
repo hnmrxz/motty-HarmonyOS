@@ -1,0 +1,70 @@
+{
+  "spec": "rdp.server-peer",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：App 内 FreeRDP shadow server 启动成功 （TCP 监听 + 帧生产 + 认证回调），客户端与它完成 RDP 协议协商并到达 connected。 **不覆盖**：画面渲染与位图校验（客户端仍无位图解码）、输入回传、NLA/CredSSP、 与真实 Windows RDP 服务端互通、多客户端、动态分辨率；未在 arm64 真机执行。"
+  },
+  "passed": true
+}

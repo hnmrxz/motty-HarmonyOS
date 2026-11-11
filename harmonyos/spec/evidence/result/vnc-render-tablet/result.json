@@ -1,0 +1,42 @@
+{
+  "spec": "vnc.render",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": false,
+      "detail": "步骤内 expect 失败: 正则 'frame=[1-9][0-9]* 64x48' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nlabel\\n\\n\\n\\n\\n\\n\\n\\n浏览器\\n\\n\\n\\n日历\\n\\n\\n\\n文件管理\\n\\n\\n\\n设置\\n\\n\\n\\nlabel\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n08, :'）",
+      "expect": {
+        "ok": false,
+        "detail": "正则 'frame=[1-9][0-9]* 64x48' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nlabel\\n\\n\\n\\n\\n\\n\\n\\n浏览器\\n\\n\\n\\n日历\\n\\n\\n\\n文件管理\\n\\n\\n\\n设置\\n\\n\\n\\nlabel\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n08, :'）"
+      }
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：会话级帧循环（持续请求增量更新并上屏）、 RGBA ArrayBuffer 上屏路径（Canvas.putImageData）、触摸 → 指针事件(PointerEvent) 发送到远端、远端据指针位置改变画面并被客户端统计到。 **不覆盖**：键盘事件（已实现发送但本 spec 未断言）、真实 VNC 服务器、 VNC Auth(DES)、Hextile/ZRLE 等编码、剪贴板、画面缩放/滚动、帧率与带宽表现、 arm64 真机。"
+  },
+  "passed": false,
+  "error": "step 3 (wait) 失败: 步骤内 expect 失败: 正则 'frame=[1-9][0-9]* 64x48' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nlabel\\n\\n\\n\\n\\n\\n\\n\\n浏览器\\n\\n\\n\\n日历\\n\\n\\n\\n文件管理\\n\\n\\n\\n设置\\n\\n\\n\\nlabel\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n08, :'）"
+}

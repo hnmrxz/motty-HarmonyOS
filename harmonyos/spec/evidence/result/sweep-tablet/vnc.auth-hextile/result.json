@@ -1,0 +1,89 @@
+{
+  "spec": "vnc.auth-hextile",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 4,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 5,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "screenRegex",
+      "ok": false,
+      "detail": "正则 'enc=hextile' 未命中（屏幕文本: '\\n\\n\\n\\n\\nMotty\\n\\nKnown\\nForward\\nDiagnostics\\nNew Host\\n\\nHosts\\n\\n\\nNo hosts yet\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n02, :, 49\\n\\n\\n\\n02\\n:\\n\\n49\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n100\\n'）"
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：VNC Auth(2) 的 DES 挑战-响应（口令按位反序成 key）、 Hextile(5) 解码（BackgroundSpecified/AnySubrects/SubrectsColoured 组合）。 **不覆盖**：错误口令的失败路径断言（夹具需以错误口令启动，属另一条用例）、 Raw 之外的其它编码（ZRLE/Tight/CopyRect）、VeNCrypt/TLS、 真实 VNC 服务器（TightVNC/RealVNC）、键盘事件、剪贴板、缩放滚动、arm64 真机。"
+  },
+  "passed": false,
+  "error": "assert 1 (screenRegex) 失败: 正则 'enc=hextile' 未命中（屏幕文本: '\\n\\n\\n\\n\\nMotty\\n\\nKnown\\nForward\\nDiagnostics\\nNew Host\\n\\nHosts\\n\\n\\nNo hosts yet\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n02, :, 49\\n\\n\\n\\n02\\n:\\n\\n49\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n100\\n'）"
+}

@@ -1,7 +1,7 @@
 # build-freerdp.ps1 —— 为 OHOS 交叉编译 FreeRDP 静态库（RDP 前置）
 #
 # 前置：先跑 native/build-openssl.ps1（FreeRDP 的源码无条件 include <openssl/*>，
-# mbedTLS 后端编不过——见 harmonyos/RDP-FEASIBILITY.md）。
+# mbedTLS 后端编不过——见 harmonyos/docs/RDP.md）。
 #
 # 本脚本固化的坑（每条都实测踩过）：
 #   1. 不要打"OpenSSL 改 OPTIONAL"的补丁：走 OpenSSL 时保持上游默认 REQUIRED 即可

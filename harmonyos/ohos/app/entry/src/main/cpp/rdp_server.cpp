@@ -14,6 +14,7 @@
 
 #include <freerdp/freerdp.h>
 #include <freerdp/server/shadow.h>
+#include <winpr/collections.h>
 #include <winpr/synch.h>
 #include <winpr/tools/makecert.h>
 #include <arpa/inet.h>
@@ -38,8 +39,11 @@ rdpShadowCapture *shadow_capture_new(rdpShadowServer *server);
 
 namespace {
 
-constexpr UINT32 kVssWidth = 640;
-constexpr UINT32 kVssHeight = 480;
+// 尺寸必须与客户端默认桌面（1024x768）一致：
+// 不一致时 shadow_client_activate 会走 shadow_send_desktop_resize 后**提前 return**，
+// 导致 activated/inLobby 永不更新，客户端一直拿 lobby（白屏）—— 这是 Round 76/89 白屏的真正根因。
+constexpr UINT32 kVssWidth = 1024;
+constexpr UINT32 kVssHeight = 768;
 constexpr UINT32 kVssFps = 10;
 
 struct VssSubsystem {
@@ -76,6 +80,9 @@ int g_paintSkipped = 0;
 uint32_t g_tickFrames = 0;
 int g_lobbyPaint = 0;
 int g_lobbyNull = 0;
+int g_lobbyKick = 0;
+int g_cliNull = 0;
+int g_cliSeen = 0;
 int g_paintRows = 0;
 int g_capStarted = -1;
 int g_afterSleep = 0;
@@ -566,6 +573,24 @@ napi_value RdpServerTick(napi_env env, napi_callback_info info) {
                                     &g_server->lobby->invalidRegion, &rect);
             }
         }
+        // 关键：把已连接客户端直接推出 lobby。
+        // shadow_client_activate 在尺寸不一致时提前 return，客户端因此永远停在 lobby（白屏）；
+        // 公共头里 rdpShadowClient 字段可见，这里直接置位并触发刷新。
+        if (g_server->clients == nullptr) {
+            g_cliNull++;
+        } else {
+            const int n = ArrayList_Count(g_server->clients);
+            g_cliSeen += n;
+            for (int i = 0; i < n; i++) {
+                auto *cl = static_cast<rdpShadowClient *>(ArrayList_GetItem(g_server->clients, i));
+                if (cl == nullptr || cl->inLobby == FALSE) {
+                    continue;
+                }
+                cl->inLobby = FALSE;
+                cl->activated = TRUE;
+                g_lobbyKick++;
+            }
+        }
         rdpShadowSurface *surface = g_server->surface;
         EnterCriticalSection(&surface->lock);
         paintSurface(surface, static_cast<uint32_t>(g_tickFrames));
@@ -613,7 +638,8 @@ napi_value RdpServerStatus(napi_env env, napi_callback_info info) {
                " dnull=" + std::to_string(g_surfDataNull) + " skip=" + std::to_string(g_paintSkipped) + " cap=" + std::to_string(g_capStarted) + " tsp=" + std::to_string(g_threadSubPtr) +
                " gsp=" + std::to_string(g_subPtr) + " slp=" + std::to_string(g_afterSleep) +
                " fadd=" + std::to_string(g_frameAdds) + " rows=" + std::to_string(g_paintRows) +
-               " lob=" + std::to_string(g_lobbyPaint) + " lobNull=" + std::to_string(g_lobbyNull) + " upd=" + std::to_string(g_updateOk) +
+               " lob=" + std::to_string(g_lobbyPaint) + " lobNull=" + std::to_string(g_lobbyNull) + " kick=" + std::to_string(g_lobbyKick) + " cliNull=" + std::to_string(g_cliNull) +
+               " cliSeen=" + std::to_string(g_cliSeen) + " upd=" + std::to_string(g_updateOk) +
                " base=" + std::to_string(g_basePtr) + " g=" + std::to_string(g_gPtr) +
                (g_threadError.empty() ? "" : (" err=" + g_threadError)) + " built=" + g_buildStamp;
     } else {

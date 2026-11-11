@@ -1,7 +1,7 @@
 # build-openssl.ps1 —— 为 OHOS 交叉编译 OpenSSL（RDP / FreeRDP 的前置）
 #
 # 为什么需要：FreeRDP 的源码在 crypto/tls.h 等文件里**无条件** include <openssl/*>，
-# mbedTLS 后端是社区实验分支、编不过（见 harmonyos/RDP-FEASIBILITY.md）。
+# mbedTLS 后端是社区实验分支、编不过（见 harmonyos/docs/RDP.md）。
 # 所以 RDP 要落地，必须先有 OHOS 版 OpenSSL。
 #
 # 本脚本把这一路上踩到的坑都固化下来，任何一条都不能省：

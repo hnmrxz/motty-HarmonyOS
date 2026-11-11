@@ -1,0 +1,143 @@
+{
+  "spec": "forward.occupied",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "type",
+      "ok": true,
+      "detail": "secret: 已注入，未回读"
+    },
+    {
+      "i": 8,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 11,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 12,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 13,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 14,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 15,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 16,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 17,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 18,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": false,
+      "detail": "正则 'error bind/listen on 2222' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nlabel\\n\\n\\n\\n\\nMotty\\n\\nKnown\\nForward\\nDiagnostics\\n中文\\nNew Host\\n\\nHosts\\n\\n\\n\\n\\n\\n\\nfwdocc-host\\n\\n127.0.0.1\\n:2222\\nTest\\nEdit\\nDel\\nF'）"
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：监听端口被占用时的错误传播（明确文案、不崩溃）。 **不覆盖**：端口权限（<1024）、TIME_WAIT 状态、错误后自动换端口；未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "assert 0 (screenRegex) 失败: 正则 'error bind/listen on 2222' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nlabel\\n\\n\\n\\n\\nMotty\\n\\nKnown\\nForward\\nDiagnostics\\n中文\\nNew Host\\n\\nHosts\\n\\n\\n\\n\\n\\n\\nfwdocc-host\\n\\n127.0.0.1\\n:2222\\nTest\\nEdit\\nDel\\nF'）"
+}

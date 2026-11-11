@@ -1,0 +1,32 @@
+{
+  "spec": "forward.persist",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "type",
+      "ok": false,
+      "detail": "聚焦后选择器消失: id:shell/dialog-label"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：转发规则写入 relationalStore、进程级重启后恢复、 规则计数与列表渲染、删除入口存在。 **不覆盖**：一键启动后的隧道连通性（另一条用例覆盖）、规则编辑、多主机规则、 开机自启、规则与 known_hosts 的一致性校验；未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "step 2 (type) 失败: 聚焦后选择器消失: id:shell/dialog-label"
+}

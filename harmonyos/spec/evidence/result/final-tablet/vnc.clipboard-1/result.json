@@ -1,0 +1,148 @@
+{
+  "spec": "vnc.clipboard",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "type",
+      "ok": true,
+      "detail": "secret: 已注入，未回读"
+    },
+    {
+      "i": 7,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 11,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 12,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 13,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 14,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 15,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 16,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 17,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：接收 ServerCutText（剪贴板内容显示）、 发送 ClientCutText（对端收到并回执 `got:app-clip`），以及帧循环对非 FramebufferUpdate 消息的分发。 **不覆盖**：UTF-8 以外编码（Latin-1 转换）、超长文本分片、实时双向同步（当前是手动读写）、 DesktopSize 伪编码与 resize、Bell(2) 与其他服务端消息；未在 arm64 真机执行。"
+  },
+  "passed": true
+}

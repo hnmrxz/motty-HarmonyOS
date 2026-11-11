@@ -1,0 +1,26 @@
+{
+  "spec": "terminal.arrow",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": false,
+      "detail": "选择器未命中: id:shell/add-host"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：↑/→ 被编码成 CSI A / CSI C 并**原样**到达对端 （对端以十六进制回显，故可判定），以及 UI 状态回报。 **不覆盖**：应用光标模式（DECCKM 的 SS3 Ox）、修饰键组合（Ctrl/Alt/Shift + 方向键）、 真实 shell 的行编辑器行为（cmd.exe/bash 的历史与光标语义）、Home/End/PageUp/PageDown； 未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "step 1 (click) 失败: 选择器未命中: id:shell/add-host"
+}

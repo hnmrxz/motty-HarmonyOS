@@ -1,0 +1,32 @@
+{
+  "spec": "vnc.session",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": false,
+      "detail": "选择器未命中: id:vnc/session"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：会话级帧循环（持续请求增量更新并解码）、 指针事件(PointerEvent)发送到远端、远端据指针位置改变画面后可被客户端统计到。 上屏方式：Canvas fillRect 逐像素网格（每帧 3072 个矩形），**不用 putImageData**—— 后者会触发 lib2d_graphics 的 SkiaImage::Serialize 崩溃（cppcrash 证据见 RUNBOOK §26）。 未覆盖：键盘事件断言、真实 VNC 服务器、VNC Auth(DES)、Hextile/ZRLE 编码、 剪贴板、缩放/滚动、帧率与带宽表现、arm64 真机。"
+  },
+  "passed": false,
+  "error": "step 2 (click) 失败: 选择器未命中: id:vnc/session"
+}

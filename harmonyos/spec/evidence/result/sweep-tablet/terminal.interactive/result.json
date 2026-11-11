@@ -1,0 +1,26 @@
+{
+  "spec": "terminal.interactive",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": false,
+      "detail": "选择器未命中: id:shell/add-host"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。验证\"输入 -> SSH 通道写入 -> 远端回显 -> 渲染\"闭环。 **没有 VT 解析**：不做行编辑、光标、退格、颜色；输入以整行 + 换行发送。 远端对端是自建 sshfixture 的 term-echo（不是真 shell，也不支持 pty）；未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "step 1 (click) 失败: 选择器未命中: id:shell/add-host"
+}

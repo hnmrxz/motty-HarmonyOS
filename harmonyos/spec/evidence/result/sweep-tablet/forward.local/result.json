@@ -1,0 +1,44 @@
+{
+  "spec": "forward.local",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "type",
+      "ok": false,
+      "detail": "选择器未命中: id:shell/dialog-user"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：本地监听 → accept → SSH direct-tcpip → 双向透传 → 远端 banner 回到本机 socket。 **不覆盖**：多连接并发（当前串行，一次一个）、远程(remote)转发、动态(SOCKS)转发、 ACL 与来源限制、断线重连、端口占用冲突处理、真实服务的长连接协议行为。 未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "step 4 (type) 失败: 选择器未命中: id:shell/dialog-user"
+}

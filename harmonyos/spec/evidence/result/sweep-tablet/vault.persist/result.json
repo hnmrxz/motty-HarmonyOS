@@ -1,0 +1,32 @@
+{
+  "spec": "vault.persist",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "type",
+      "ok": false,
+      "detail": "聚焦后选择器消失: id:shell/dialog-label"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。验证：口令经 Asset Store Kit 落盘， **进程级重启后**仍能取出并完成认证（restart = force-stop + 重新 launch）。 **不覆盖**：锁屏/锁屏后的访问限制行为（DEVICE_UNLOCKED 语义）、口令轮换与失效、 多用户、备份迁移、Asset 不可用时的降级路径、根密钥强度与硬件背书的实际保证。 未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "step 2 (type) 失败: 聚焦后选择器消失: id:shell/dialog-label"
+}

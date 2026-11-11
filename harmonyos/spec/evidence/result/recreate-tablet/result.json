@@ -1,0 +1,190 @@
+{
+  "spec": "host.recreate-trust",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "type",
+      "ok": true,
+      "detail": "secret: 已注入，未回读"
+    },
+    {
+      "i": 7,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 11,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 12,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 13,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 14,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 15,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 16,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 17,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 18,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 19,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 20,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 21,
+      "action": "type",
+      "ok": true,
+      "detail": "secret: 已注入，未回读"
+    },
+    {
+      "i": 22,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 23,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 24,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 25,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：删除主机后其 known_hosts 记录确实被清除， 同地址重建再连会重新进入\"未知主机\"确认流程。 **不覆盖**：删除后保险库口令是否被清（需\"重建时不填口令\"的用例）、 主机密钥变更后的重建、多主机同名地址（不同端口）；未在 arm64 真机执行。"
+  },
+  "passed": true
+}

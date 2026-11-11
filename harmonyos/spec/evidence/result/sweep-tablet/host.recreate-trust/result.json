@@ -1,0 +1,32 @@
+{
+  "spec": "host.recreate-trust",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "type",
+      "ok": false,
+      "detail": "选择器未命中: id:shell/dialog-label"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：删除主机后其 known_hosts 记录确实被清除， 同地址重建再连会重新进入\"未知主机\"确认流程。 **不覆盖**：删除后保险库口令是否被清（需\"重建时不填口令\"的用例）、 主机密钥变更后的重建、多主机同名地址（不同端口）；未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "step 2 (type) 失败: 选择器未命中: id:shell/dialog-label"
+}

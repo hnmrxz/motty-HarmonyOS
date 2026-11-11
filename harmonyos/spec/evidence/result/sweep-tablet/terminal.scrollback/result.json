@@ -1,0 +1,32 @@
+{
+  "spec": "terminal.scrollback",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "type",
+      "ok": false,
+      "detail": "选择器未命中: id:shell/dialog-label"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：超屏滚动入历史（30 行进 24 行屏）、 DECSET/DECRST 47/1047/1049 备用屏切换、退出后主屏内容恢复、退出后不残留备用屏内容。 **不覆盖**：回滚区的颜色/宽字符（历史只存文本行）、滚动条的鼠标/触控交互、 回滚内搜索、DECSTBM 滚动区域、resize 时的重排；未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "step 2 (type) 失败: 选择器未命中: id:shell/dialog-label"
+}

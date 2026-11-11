@@ -1,0 +1,26 @@
+{
+  "spec": "terminal.copy",
+  "profile": "tablet",
+  "serial": "127.0.0.1:10101",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": false,
+      "detail": "选择器未命中: id:shell/add-host"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：选中当前视图（含回滚偏移）、写入系统剪贴板、 **回读剪贴板并显示长度**（只写不读无法证明写入成功）。 **不覆盖**：鼠标/触控拖拽的**局部**选区（当前是\"全选当前视图\"）、跨屏选区、 富文本/多格式、剪贴板历史、粘贴到其他应用的实际验证；未在 arm64 真机执行。 注意：模拟器上 setData 成功后 getData 可能返回空，此时状态显示 \"readback unavailable\"，**不能据此认定写入失败**——断言的是写入调用与所选长度。"
+  },
+  "passed": false,
+  "error": "step 1 (click) 失败: 选择器未命中: id:shell/add-host"
+}
