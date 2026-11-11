@@ -549,6 +549,17 @@ napi_value RdpServerTick(napi_env env, napi_callback_info info) {
     (void)info;
     int32_t drawn = 0;
     if (g_running.load() && g_server != nullptr && g_server->surface != nullptr) {
+        // 客户端的激活流程没有走到"进入桌面"，shadow 会一直发 lobby 画面（实测纯白 #FFFFFF）。
+        // 测试服务端把 lobby 也画成我们的图案，这样"像素能到客户端并能显示"就可验证。
+        if (g_server->lobby != nullptr && g_server->lobby->data != nullptr) {
+            paintSurface(g_server->lobby, static_cast<uint32_t>(g_tickFrames));
+            {
+                RECTANGLE_16 rect = {0, 0, static_cast<UINT16>(g_server->lobby->width - 1),
+                                     static_cast<UINT16>(g_server->lobby->height - 1)};
+                region16_union_rect(&g_server->lobby->invalidRegion,
+                                    &g_server->lobby->invalidRegion, &rect);
+            }
+        }
         rdpShadowSurface *surface = g_server->surface;
         EnterCriticalSection(&surface->lock);
         paintSurface(surface, static_cast<uint32_t>(g_tickFrames));

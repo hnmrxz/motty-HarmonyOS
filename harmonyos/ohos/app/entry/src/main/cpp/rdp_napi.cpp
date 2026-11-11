@@ -25,6 +25,7 @@
 #include <cstdio>
 #include <cstring>
 #include <set>
+#include <map>
 #include <string>
 #include <thread>
 #include <vector>
@@ -134,6 +135,8 @@ static uint8_t g_snap[kSnapW * kSnapH * 4] = {0};
 static std::atomic<int> g_snapValid{0};
 static std::atomic<int> g_snapColors{0};
 static std::atomic<int> g_snapNonBlack{0};
+static std::atomic<uint32_t> g_snapDom{0};
+static std::atomic<int> g_snapDomCount{0};
 
 static void snapshotFromGdi(rdpContext *context) {
     if (context == nullptr || context->gdi == nullptr || context->gdi->primary_buffer == nullptr) {
@@ -167,6 +170,26 @@ static void snapshotFromGdi(rdpContext *context) {
                                g_snap[i * 4 + 0];
             seen.insert(c);
             if (c != 0) nonBlack++;
+        }
+        // 出现最多的颜色（排查"纯色到底是什么色"）
+        {
+            std::map<uint32_t, int> hist;
+            for (int i = 0; i < kSnapW * kSnapH; i++) {
+                const uint32_t c = (static_cast<uint32_t>(g_snap[i * 4 + 2]) << 16) |
+                                   (static_cast<uint32_t>(g_snap[i * 4 + 1]) << 8) |
+                                   g_snap[i * 4 + 0];
+                hist[c]++;
+            }
+            uint32_t dom = 0;
+            int best = 0;
+            for (const auto &kv : hist) {
+                if (kv.second > best) {
+                    best = kv.second;
+                    dom = kv.first;
+                }
+            }
+            g_snapDom.store(dom);
+            g_snapDomCount.store(best);
         }
         g_snapColors.store(static_cast<int>(seen.size()));
         g_snapNonBlack.store(nonBlack);
@@ -303,6 +326,12 @@ void renderWorker(RdpJob *job) {
         instance->VerifyCertificateEx = VerifyCertEx;
         freerdp_settings_set_bool(settings, FreeRDP_NlaSecurity, FALSE);
         freerdp_settings_set_bool(settings, FreeRDP_TlsSecurity, TRUE);
+        // 只接受原始位图：GFX/H264/RemoteFX 一旦协商成功，我们的 gdi 会解不出来 -> 纯色画面（实测）
+        freerdp_settings_set_bool(settings, FreeRDP_SupportGraphicsPipeline, FALSE);
+        freerdp_settings_set_bool(settings, FreeRDP_GfxH264, FALSE);
+        freerdp_settings_set_bool(settings, FreeRDP_GfxAVC444, FALSE);
+        freerdp_settings_set_bool(settings, FreeRDP_RemoteFxCodec, FALSE);
+        freerdp_settings_set_bool(settings, FreeRDP_NSCodec, FALSE);
         if (context->update != nullptr) {
             context->update->BitmapUpdate = OnBitmapUpdate;
         }
@@ -501,8 +530,10 @@ napi_value RdpSnapshot(napi_env env, napi_callback_info info) {
 napi_value RdpSnapStats(napi_env env, napi_callback_info info) {
     (void)info;
     char buf[96];
-    snprintf(buf, sizeof(buf), "colors=%d nonBlack=%d valid=%d", g_snapColors.load(),
-             g_snapNonBlack.load(), g_snapValid.load());
+    const uint32_t d = g_snapDom.load();
+    snprintf(buf, sizeof(buf), "colors=%d nonBlack=%d valid=%d dominant=#%02X%02X%02X (%d px)",
+             g_snapColors.load(), g_snapNonBlack.load(), g_snapValid.load(),
+             (d >> 16) & 0xFF, (d >> 8) & 0xFF, d & 0xFF, g_snapDomCount.load());
     napi_value out = nullptr;
     napi_create_string_utf8(env, buf, NAPI_AUTO_LENGTH, &out);
     return out;
