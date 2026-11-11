@@ -1,0 +1,12 @@
+﻿docs(harmonyos): RDP 画面最后一次尝试的负面证据 + 终态核查
+
+查了什么(想从"服务端推出 lobby"切):
+- rdpShadowClient 结构不可见: shadow.h 只有前置声明，字段(含 inLobby)无法访问
+- 没有公共 API 强制激活客户端: peer->Activate 只在 shadow_client_post_connect 设置，由协议握手触发
+- 画 server->lobby 表面无影响(上轮 lob=24 证明画了，客户端仍 #FFFFFF)
+
+结论: 不打补丁改 FreeRDP 源码、不自己实现服务端的前提下，公共 API 无法让客户端离开 lobby
+=> '画面内容正确'维持 E3；本轮贡献是把'为什么做不到'用证据钉死
+
+FINAL-STATUS.md 已更新 RDP 三条可选路径(打补丁/自建服务端/真实 Windows 验证)
+核查: lint 全绿、SBOM 16 组件 36 产物通过

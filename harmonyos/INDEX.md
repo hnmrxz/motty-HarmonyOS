@@ -2398,3 +2398,29 @@ Round 61–81 动过 VNC 面板按钮顺序、转发面板滚动容器、诊断�
 - §6 **明确不声称**的四种说法：不说 RDP 可用、不说支持 arm64、不说可上架、不说全量回归通过
 
 位置：`harmonyos/FINAL-STATUS.md`
+
+---
+
+## Round 89：RDP 画面最后一次尝试（结论：公共 API 到不了）
+
+### 一、这轮查了什么
+想从"服务端主动把客户端推出 lobby"这个方向切：
+
+| 检查 | 结果 |
+|---|---|
+| `rdpShadowClient` 结构是否可见 | **不可见**：`shadow.h` 只有前置声明 `typedef struct rdp_shadow_client rdpShadowClient;`，字段（含 `inLobby`）无法访问 |
+| 是否有公共 API 强制激活客户端 | 没有。激活路径 `peer->Activate = shadow_client_activate` 只在 `shadow_client_post_connect` 里设置，由协议握手触发 |
+| 画 `server->lobby` 表面是否影响客户端 | **无影响**（上轮计数 `lob=24` 证明画了，客户端仍 `#FFFFFF`） |
+
+### 二、结论（诚实）
+在不打补丁改 FreeRDP 源码、不自己实现服务端的前提下，
+**公共 API 无法让客户端离开 lobby**，因此"画面内容正确"这条在当前架构下卡死。
+
+### 三、值得记下来的三个可选下一步
+1. **打补丁**：改 `shadow_client_post_connect`，在客户端连接时直接 `inLobby = FALSE`（需重编 FreeRDP，工作量大但最直接）
+2. **自建最小 RDP 服务端**：自己控制画面（实现 X.224/MCS/许可/位图更新，工作量最大但完全可控）
+3. **真实 Windows 服务端验证客户端**：绕开内嵌服务端，需要一台可开远程桌面的机器
+
+### 四、影响
+"RDP 画面内容正确"维持 **E3**。本轮的贡献是**把"为什么做不到"用证据钉死**，
+而不是又一轮空转。

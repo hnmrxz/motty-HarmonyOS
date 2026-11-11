@@ -66,8 +66,9 @@ python harmonyos\tools\rdp-selfcheck.py --serial <序列号> --profile device --
 powershell harmonyos\tools\verify-arm64.ps1 -Serial <真机序列号>
 ```
 
-**RDP 画面这块的三条路**（按性价比排序）：
-1. 追 `shadow_client_activate` 的触发（`RDP_PDU_CLIENT_SYNCHRONIZE` 是否发出/被接受）
+**RDP 画面这块的三条路**（Round 89 已把"为什么卡住"用证据钉死，这里是可选方向）：
+1. **打补丁改 FreeRDP**：`rdpShadowClient` 的 `inLobby` 字段是**不透明结构**（`shadow.h` 只有前置声明），
+   公共 API 改不了。要离开 lobby 只能改 `shadow_client_post_connect` 后重编
 2. 放弃 shadow，自己实现最小 RDP 服务端（完全控制画面，工作量最大但最可控）
 3. 用真实 Windows 服务端验证客户端（需要你有可开启远程桌面的机器）
 
