@@ -1,0 +1,25 @@
+﻿feat(harmonyos/ui): PC 端 UI 1:1 第一轮 —— 深色导航栏杆 + 分组主机列表（照官方源码抄）
+
+参照来源(本轮建立):
+- 运行中的 Windows 版 motty 窗口截图(.bin/ui/motty-windows.png)
+- 官方 UI 框架 Viva: E:\viva (github.com/vivaui/viva, HEAD 95802a9)
+- 上游源码: git fetch upstream (t8y2/motty, HEAD 54dab1c) -> internal/i18n 官方中文文案
+- 本 fork internal/workbench/host_*.go -> 数据模型与度量常量
+
+照抄的确定性事实(写入 docs/UI-PARITY.md):
+- Host{Label,Group,Tags,Icon,Color,Address,User,Port,Protocol}; 分组空名=默认组
+- 调色板 ''/#22c55e/#eab308/#f97316/#ef4444/#3b82f6/#a855f7; 行左缘 3px 竖条标记
+- 卡片: 最小宽280/高64/间距12/分组表头42; 标签预设 开发/测试/生产
+- 官方文案: 搜索主机或 ssh user@hostname…/新建主机/编辑/删除/删除选中的 %d 台主机？此操作无法撤销。
+
+已对齐:
+- 深色主题 + 左侧导航栏杆(品牌+10 项)
+- 顶栏: 搜索(官方占位)+连接+新建主机; chips: 全部/SSH/RDP/VNC 带计数
+- 主机模型扩展 分组/标签/颜色 + 老库 ALTER TABLE 迁移
+- 分组渲染(名称+数量+折叠)、行样式(颜色竖条+圆形头像+右对齐地址+标签 chip)
+- 行内操作改为悬停显示(id 仍保留在树上, 既有用例可继续点)
+- 默认中文
+
+未对齐(下一步): 导航线性图标/列表-网格双视图+排序/右键菜单与多选/嵌套分组与置顶/窗口尺寸/应用标题 label/顶栏图标
+
+文档: harmonyos/docs/UI-PARITY.md

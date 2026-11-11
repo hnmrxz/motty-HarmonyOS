@@ -33,12 +33,13 @@ const STORE_CONFIG: relationalStore.StoreConfig = {
 
 const SQL_CREATE_HOSTS =
   'CREATE TABLE IF NOT EXISTS hosts (' +
-  'id TEXT PRIMARY KEY, label TEXT NOT NULL, address TEXT NOT NULL, usr TEXT, port TEXT, proto TEXT)';
+  'id TEXT PRIMARY KEY, label TEXT NOT NULL, address TEXT NOT NULL, usr TEXT, port TEXT, proto TEXT, ' +
+  'grp TEXT, tags TEXT, color TEXT)';
 
 const SQL_CREATE_KNOWN_HOSTS =
   'CREATE TABLE IF NOT EXISTS known_hosts (host TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, updated_at INTEGER)';
 
-const HOST_COLUMNS: string[] = ['id', 'label', 'address', 'usr', 'port', 'proto'];
+const HOST_COLUMNS: string[] = ['id', 'label', 'address', 'usr', 'port', 'proto', 'grp', 'tags', 'color'];
 
 const SQL_CREATE_FORWARDS =
   'CREATE TABLE IF NOT EXISTS forwards (' +
@@ -107,6 +108,10 @@ interface HostItem {
   user: string;
   port: string;
   proto: string;
+  // 以下三项照抄原版 Host 结构（internal/workbench/host_catalog.go）
+  group: string;   // 分组名，空 = 默认组
+  tags: string;    // 逗号分隔，原版预设：开发/测试/生产
+  color: string;   // #RRGGBB 连接色，空 = 无
 }
 
 interface TabInfo {
@@ -139,6 +144,9 @@ struct Index {
   @State formUser: string = '';
   @State formPort: string = '';
   @State formPassword: string = '';
+  @State formGroup: string = '';
+  @State formTags: string = '';
+  @State formColor: string = '';
   @State probeText: string = '(not probed)';
   @State keyDialog: boolean = false;
   @State changedDialog: boolean = false;
@@ -157,7 +165,10 @@ struct Index {
   @State vtHistory: string = '';
   @State ptyStatus: string = '';
   @State vtScroll: number = 0;
-  @State lang: string = 'en';
+  @State lang: string = 'zh';
+  @State pcNav: string = '主机';
+  @State collapsedGroups: string[] = [];
+  @State hoverRow: number = -1;
   @State aiAnswer: string = '';
   @State aiEndpoint: string = 'http://127.0.0.1:2297/v1/ai';
   @State rdpSrvStatus: string = '';
@@ -249,11 +260,24 @@ struct Index {
       await this.store.executeSql(SQL_CREATE_HOSTS);
       await this.store.executeSql(SQL_CREATE_KNOWN_HOSTS);
       await this.store.executeSql(SQL_CREATE_FORWARDS);
+      await this.migrateHosts();
       await this.reload();
       await this.reloadRules();
       hilog.info(DOMAIN, TAG, 'store ready, hosts=%{public}d', this.hosts.length);
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'store init failed: %{public}s', JSON.stringify(e));
+    }
+  }
+
+  private async migrateHosts(): Promise<void> {
+    if (this.store === null) { return; }
+    const stmts: string[] = [
+      'ALTER TABLE hosts ADD COLUMN grp TEXT',
+      'ALTER TABLE hosts ADD COLUMN tags TEXT',
+      'ALTER TABLE hosts ADD COLUMN color TEXT'
+    ];
+    for (let i = 0; i < stmts.length; i++) {
+      try { await this.store.executeSql(stmts[i]); } catch (e) { /* 已存在 */ }
     }
   }
 
@@ -271,7 +295,10 @@ struct Index {
         address: rs.getString(2),
         user: rs.getString(3),
         port: rs.getString(4),
-        proto: rs.getString(5)
+        proto: rs.getString(5),
+        group: rs.getString(6),
+        tags: rs.getString(7),
+        color: rs.getString(8)
       });
     }
     rs.close();
@@ -345,6 +372,9 @@ struct Index {
     this.formUser = '';
     this.formPort = '';
     this.formPassword = '';
+    this.formGroup = '';
+    this.formTags = '';
+    this.formColor = '';
   }
 
   private openEditHost(index: number): void {
@@ -358,6 +388,9 @@ struct Index {
     this.formUser = h.user;
     this.formPort = h.port;
     this.formPassword = '';
+    this.formGroup = h.group;
+    this.formTags = h.tags;
+    this.formColor = h.color;
     this.showDialog = true;
   }
 
@@ -387,6 +420,7 @@ struct Index {
     await Vault.remove(key);
     this.creds.delete(key);
     hilog.info(DOMAIN, TAG, 'host deleted: %{public}s (known_hosts + vault cleared)', key);
+    await this.migrateHosts();
     await this.reload();
     await this.reloadRules();
   }
@@ -403,7 +437,8 @@ struct Index {
       const pred = new relationalStore.RdbPredicates('hosts');
       pred.equalTo('id', this.editingId);
       const patch: relationalStore.ValuesBucket = {
-        'label': label, 'address': address, 'usr': this.formUser.trim(), 'port': port
+        'label': label, 'address': address, 'usr': this.formUser.trim(), 'port': port,
+        'grp': this.formGroup.trim(), 'tags': this.formTags.trim(), 'color': this.formColor.trim()
       };
       await this.store.update(patch, pred);
       const key = this.hostKey(address, port);
@@ -427,7 +462,10 @@ struct Index {
       'address': address,
       'usr': this.formUser.trim(),
       'port': port,
-      'proto': 'ssh'
+      'proto': 'ssh',
+      'grp': this.formGroup.trim(),
+      'tags': this.formTags.trim(),
+      'color': this.formColor.trim()
     };
     try {
       await this.store.insert('hosts', bucket);
@@ -1551,6 +1589,21 @@ struct Index {
             .onChange((v: string) => { this.formPort = v; })
         }.layoutWeight(1)
       }.width('100%')
+      Row({ space: 10 }) {
+        Column({ space: 6 }) {
+          Text('分组（Group）').fontSize(12).fontColor('#666666').width('100%')
+          TextInput({ placeholder: '个人', text: this.formGroup }).id('shell/dialog-group').width('100%')
+            .onChange((v: string) => { this.formGroup = v; })
+        }.layoutWeight(1)
+        Column({ space: 6 }) {
+          Text('标签（Tags）').fontSize(12).fontColor('#666666').width('100%')
+          TextInput({ placeholder: '开发,测试,生产', text: this.formTags }).id('shell/dialog-tags').width('100%')
+            .onChange((v: string) => { this.formTags = v; })
+        }.layoutWeight(1)
+      }.width('100%')
+      Text('颜色（Color，#RRGGBB，可选）').fontSize(12).fontColor('#666666').width('100%')
+      TextInput({ placeholder: '#22c55e', text: this.formColor }).id('shell/dialog-color').width('100%')
+        .onChange((v: string) => { this.formColor = v; })
       Text('Password (memory only, not stored)').fontSize(12).fontColor('#666666').width('100%')
       TextInput({ placeholder: 'password' }).id('shell/dialog-password').width('100%')
         .type(InputType.Password).onChange((v: string) => { this.formPassword = v; })
@@ -1560,7 +1613,7 @@ struct Index {
         Button(this.editingId.length > 0 ? this.t('common.save') : this.t('common.add')).id('shell/dialog-submit').onClick(() => { this.submit(); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
-    .id('host-form/dialog').width(560).padding(20).backgroundColor(Color.White).borderRadius(12)
+    .id('host-form/dialog').width(620).padding(20).backgroundColor('#1C1F24').borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
 
@@ -2115,92 +2168,271 @@ struct Index {
 
   @Builder
   hostListView() {
-    Column() {
-      Text(this.t('host.title')).id('host/title-text').fontSize(13).fontColor('#666666').width('100%')
-        .padding({ left: 16, top: 10, bottom: 4 })
-      TextInput({ text: this.hostQuery, placeholder: 'search label or address' })
-        .id('hosts/search')
-        .width('100%')
-        .padding({ left: 16, right: 16 })
-        .onChange((v: string) => { this.hostQuery = v; })
-      List({ space: 8 }) {
-        ForEach(this.hosts, (h: HostItem, index: number) => {
-          ListItem() {
-            if (this.matchesQuery(h)) {
-            Column({ space: 4 }) {
-              Row({ space: 12 }) {
-                Column({ space: 4 }) {
-                  Text(h.label).fontSize(16).fontWeight(FontWeight.Medium).width('100%')
-                  Row({ space: 2 }) {
-                    Text(h.address).fontSize(12).fontColor('#666666')
-                    Text(':' + h.port).fontSize(12).fontColor('#999999')
-                  }.width('100%')
-                }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-                Button(this.t('host.test')).id('host-row/' + index).backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-                  .onClick(() => { this.connectRow(index); })
-                Button(this.t('host.edit')).id('host-edit/' + index).backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-                  .onClick(() => { this.openEditHost(index); })
-                Button(this.t('host.del')).id('host-del/' + index).backgroundColor('#C62828').fontColor(Color.White)
-                  .onClick(() => { this.askDeleteHost(index); })
-                Button(this.t('host.files')).id('host-files/' + index).backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-                  .onClick(() => { this.openFiles(index); })
-                Button(this.t('host.open')).id('host-open/' + index).backgroundColor('#1A6DD0').fontColor(Color.White)
-                  .onClick(() => { this.openSession(h.label, index); })
-              }.width('100%')
-              if (this.statuses.length > index && this.statuses[index].length > 0) {
-                Text(this.statuses[index]).id('host-status/' + index).fontSize(11).fontColor('#0A6C00').width('100%')
-              }
-            }.width('100%').padding(12).backgroundColor(Color.White).borderRadius(8)
-            }
+    List({ space: 2 }) {
+      ForEach(this.sections(), (g: string) => {
+        ListItem() {
+          Row({ space: 8 }) {
+            Text(this.isCollapsed(g) ? '▸' : '▾').fontSize(12).fontColor('#8A8F98')
+            Text(this.sectionLabel(g)).fontSize(13).fontColor('#C7CBD1').fontWeight(FontWeight.Medium)
+            Text('(' + this.countGroup(g) + ')').fontSize(12).fontColor('#6B7078')
+            Blank()
           }
-        }, (h: HostItem) => h.id + '|' + h.label + '|' + h.address + '|' + h.port)
-      }
-      .id('host-grid/list').layoutWeight(1).width('100%').padding({ left: 16, right: 16, bottom: 16 })
-
+          .width('100%').height(34).padding({ left: 8, right: 8 })
+          .onClick(() => { this.toggleGroup(g); })
+        }
+        if (!this.isCollapsed(g)) {
+          ForEach(this.hosts, (h: HostItem, index: number) => {
+            ListItem() {
+              if (this.matchesQuery(h) && this.hostGroupOf(h) === g) {
+                Row({ space: 14 }) {
+                  // 颜色标记（原版 paintHostColorMark：左缘 3px 圆角竖条）
+                  Column().width(3).height(40).borderRadius(2)
+                    .backgroundColor(h.color.length > 0 ? h.color : Color.Transparent)
+                  // 图标块：首字母
+                  Text(h.label.substring(0, 1).toUpperCase()).fontSize(16).fontWeight(FontWeight.Bold)
+                    .fontColor(Color.White).width(40).height(40).textAlign(TextAlign.Center)
+                    .borderRadius(20)
+                    .backgroundColor(h.color.length > 0 ? h.color : '#2A2D33')
+                  // 名称 + 用户
+                  Column({ space: 4 }) {
+                    Text(h.label).fontSize(15).fontColor('#E8EAED').fontWeight(FontWeight.Medium)
+                      .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).width('100%')
+                    Text(h.user.length > 0 ? h.user : '-').fontSize(12).fontColor('#8A8F98')
+                  }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+                  // 地址（右对齐）
+                  Text((h.proto === 'rdp' ? 'rdp://' : (h.proto === 'vnc' ? 'vnc://' : '')) +
+                       h.address + (h.port.length > 0 ? ':' + h.port : ''))
+                    .fontSize(12).fontColor('#8A8F98').width(190).textAlign(TextAlign.End)
+                  // 标签 chips（原版预设：开发/测试/生产）
+                  ForEach(this.tagList(h), (tg: string) => {
+                    Text(tg).fontSize(11).fontColor('#C7CBD1')
+                      .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+                      .backgroundColor('#23262B').borderRadius(12)
+                  }, (tg: string) => h.id + tg)
+                  // 行内操作：默认隐藏，悬停显示（对齐原版交互），id 保持在树上供用例使用
+                  Row({ space: 6 }) {
+                  Button('⋯').fontSize(14).width(30).height(30)
+                    .backgroundColor('#23262B').fontColor('#C7CBD1')
+                    .onClick(() => { this.openSession(h.label, index); })
+                  Button(this.t('host.test')).id('host-row/' + index).fontSize(11).height(28)
+                    .backgroundColor('#23262B').fontColor('#C7CBD1')
+                  Button(this.t('host.files')).id('host-files/' + index).fontSize(11).height(28)
+                    .backgroundColor('#23262B').fontColor('#C7CBD1')
+                    .onClick(() => { this.openFiles(index); })
+                  Button(this.t('host.open')).id('host-open/' + index).fontSize(11).height(28)
+                    .backgroundColor('#2F6F4F').fontColor(Color.White)
+                    .onClick(() => { this.openSession(h.label, index); })
+                  Button(this.t('host.edit')).id('host-edit/' + index).fontSize(11).height(28)
+                    .backgroundColor('#23262B').fontColor('#C7CBD1')
+                    .onClick(() => { this.openEditHost(index); })
+                  Button(this.t('host.del')).id('host-del/' + index).fontSize(11).height(28)
+                    .backgroundColor('#3A2226').fontColor('#E08A8A')
+                    .onClick(() => { this.askDeleteHost(index); })
+                  }.opacity(this.hoverRow === index ? 1 : 0)
+                }
+                .width('100%').height(60).padding({ left: 10, right: 10 })
+                .borderRadius(10)
+                .backgroundColor(this.hoverRow === index ? '#22262C' : '#1C1F24')
+                .onHover((isHover: boolean) => {
+                  if (isHover) { this.hoverRow = index; }
+                  else if (this.hoverRow === index) { this.hoverRow = -1; }
+                })
+                .onClick(() => {})
+              }
+            }
+          }, (h: HostItem) => h.id)
+        }
+      }, (g: string) => g)
       if (this.hosts.length === 0) {
-        Text(this.t('host.empty')).id('host-grid/empty').fontSize(13).fontColor('#999999')
-          .width('100%').textAlign(TextAlign.Center).padding({ bottom: 24 })
-      } else if (this.matchCount() === 0) {
-        Text(this.t('host.noMatch')).id('hosts/no-match').fontSize(13).fontColor('#999999')
-          .width('100%').textAlign(TextAlign.Center).padding({ bottom: 24 })
+        ListItem() {
+          Column({ space: 6 }) {
+            Text(this.t('host.empty')).id('host-grid/empty').fontSize(13).fontColor('#6B7078')
+          }.width('100%').padding({ top: 60 })
+        }
+      }
+      if (this.hosts.length > 0) {
+        ListItem() {
+          Text(this.t('host.noMatch')).id('hosts/no-match').fontSize(13).fontColor('#6B7078')
+            .width('100%').padding({ top: 20 })
+            .visibility(this.anyMatch() ? Visibility.None : Visibility.Visible)
+        }
       }
     }
-    .layoutWeight(1).width('100%')
+    .id('host-grid/list').layoutWeight(1).width('100%').padding({ left: 22, right: 22, bottom: 16 })
+  }
+
+  @Builder
+  pcNavItem(label: string, id: string, enabled: boolean, onTap: () => void) {
+    Row({ space: 12 }) {
+      Text(label.substring(0, 1)).fontSize(14).fontColor('#9AA0A6').width(20).textAlign(TextAlign.Center)
+      Text(label).fontSize(14)
+        .fontColor(this.pcNav === label && enabled ? Color.White : '#C7CBD1')
+        .fontWeight(this.pcNav === label && enabled ? FontWeight.Medium : FontWeight.Normal)
+      Blank()
+    }
+    .id(id)
+    .width('100%').height(38).padding({ left: 12, right: 12 })
+    .borderRadius(8)
+    .backgroundColor(this.pcNav === label && enabled ? '#2A2D33' : Color.Transparent)
+    .opacity(enabled ? 1 : 0.45)
+    .onClick(() => { if (enabled) { onTap(); } })
+  }
+
+  @Builder
+  pcSidebar() {
+    Column({ space: 2 }) {
+      // 品牌
+      Row({ space: 8 }) {
+        Text('M').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#12141A')
+          .width(28).height(28).textAlign(TextAlign.Center).borderRadius(8)
+          .backgroundColor('#3DDC97')
+        Text('motty').fontSize(20).fontWeight(FontWeight.Bold).fontColor(Color.White)
+        Blank()
+      }.width('100%').padding({ left: 14, right: 14, top: 18, bottom: 18 })
+
+      this.pcNavItem('主机', 'nav/hosts', true, () => { this.pcNav = '主机'; this.showHosts = true; })
+      this.pcNavItem('工作区', 'nav/workspace', false, () => {})
+      this.pcNavItem('监控', 'diag/open', true, () => { this.diagOpen = true; })
+      this.pcNavItem('会话日志', 'nav/logs', false, () => {})
+      this.pcNavItem('密钥链', 'nav/keys', false, () => {})
+      this.pcNavItem('跳板路由', 'nav/jump', false, () => {})
+      this.pcNavItem('端口转发', 'fwd/open', true, () => { this.fwdOpen = true; this.reloadRules(); })
+      this.pcNavItem('已知主机', 'known/open', true, () => { this.openKnownHosts(); })
+      this.pcNavItem('快捷命令', 'nav/snippets', false, () => {})
+      this.pcNavItem('笔记', 'nav/notes', false, () => {})
+
+      Blank()
+      Row({ space: 8 }) {
+        Button(this.t('top.lang')).id('ui/lang').height(28).fontSize(12)
+          .backgroundColor('#2A2D33').fontColor('#C7CBD1')
+          .onClick(() => { this.toggleLang(); })
+        Blank()
+        Text('RDP: 实验').id('rdp/experimental').fontSize(10).fontColor('#E0A458')
+      }.width('100%').padding({ left: 12, right: 12, bottom: 14 })
+    }
+    .width(210).height('100%').backgroundColor('#101114')
+    .border({ width: { right: 1 }, color: '#22252A' })
+  }
+
+  @Builder
+  pcHeader() {
+    Row({ space: 10 }) {
+      TextInput({ text: this.hostQuery, placeholder: this.lang === 'zh' ? '搜索主机或 ssh user@hostname…' : 'Search hosts or ssh user@hostname…' })
+        .id('hosts/search')
+        .layoutWeight(1).height(38)
+        .backgroundColor('#1E2127').fontColor('#E8EAED').placeholderColor('#6B7078')
+        .borderRadius(8)
+        .onChange((v: string) => { this.hostQuery = v; })
+      Button(this.t('host.connect')).id('hosts/connect').height(38).fontSize(14)
+        .backgroundColor('#1E2127').fontColor('#C7CBD1')
+        .onClick(() => {
+          for (let i = 0; i < this.hosts.length; i++) {
+            if (this.matchesQuery(this.hosts[i])) { this.openSession(this.hosts[i].label, i); return; }
+          }
+        })
+      Button(this.t('top.newHost')).id('shell/add-host').height(38).fontSize(14)
+        .backgroundColor('#1E2127').fontColor('#C7CBD1')
+        .onClick(() => { this.resetForm(); this.showDialog = true; })
+    }
+    .width('100%').padding({ left: 22, right: 22, top: 16, bottom: 10 })
+  }
+
+  @Builder
+  pcChips() {
+    Row({ space: 8 }) {
+      Text('全部 ' + this.hosts.length).id('chip/all').fontSize(12)
+        .fontColor(Color.White).padding({ left: 12, right: 12, top: 5, bottom: 5 })
+        .backgroundColor('#2A2D33').borderRadius(14)
+      Text('SSH ' + this.countProto('ssh')).id('chip/ssh').fontSize(12)
+        .fontColor('#C7CBD1').padding({ left: 12, right: 12, top: 5, bottom: 5 })
+        .backgroundColor('#1E2127').borderRadius(14)
+      Text('RDP ' + this.countProto('rdp')).id('chip/rdp').fontSize(12)
+        .fontColor('#C7CBD1').padding({ left: 12, right: 12, top: 5, bottom: 5 })
+        .backgroundColor('#1E2127').borderRadius(14)
+      Text('VNC ' + this.countProto('vnc')).id('chip/vnc').fontSize(12)
+        .fontColor('#C7CBD1').padding({ left: 12, right: 12, top: 5, bottom: 5 })
+        .backgroundColor('#1E2127').borderRadius(14)
+      Blank()
+    }.width('100%').padding({ left: 22, right: 22, bottom: 8 })
+  }
+
+  private anyMatch(): boolean {
+    for (let i = 0; i < this.hosts.length; i++) {
+      if (this.matchesQuery(this.hosts[i])) { return true; }
+    }
+    return false;
+  }
+
+  private countProto(proto: string): number {
+    let n = 0;
+    for (let i = 0; i < this.hosts.length; i++) {
+      if (this.hosts[i].proto === proto) { n++; }
+    }
+    return n;
+  }
+
+
+  private hostGroupOf(h: HostItem): string {
+    return h.group.length > 0 ? h.group : '';
+  }
+
+  private sections(): string[] {
+    const out: string[] = [];
+    for (let i = 0; i < this.hosts.length; i++) {
+      const g = this.hostGroupOf(this.hosts[i]);
+      if (!out.includes(g)) { out.push(g); }
+    }
+    return out;
+  }
+
+  private sectionLabel(g: string): string {
+    return g.length > 0 ? g : this.t('host.groupDefault');
+  }
+
+  private countGroup(g: string): number {
+    let n = 0;
+    for (let i = 0; i < this.hosts.length; i++) {
+      if (this.hostGroupOf(this.hosts[i]) === g) { n++; }
+    }
+    return n;
+  }
+
+  private tagList(h: HostItem): string[] {
+    if (h.tags.length === 0) { return []; }
+    return h.tags.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0);
+  }
+
+  private isCollapsed(g: string): boolean {
+    return this.collapsedGroups.includes(g);
+  }
+
+  private toggleGroup(g: string): void {
+    if (this.isCollapsed(g)) {
+      this.collapsedGroups = this.collapsedGroups.filter((x: string) => x !== g);
+    } else {
+      this.collapsedGroups = this.collapsedGroups.concat([g]);
+    }
   }
 
   build() {
-    Stack({ alignContent: Alignment.Center }) {
-      Column() {
-        Row({ space: 8 }) {
-          Text('Motty').fontSize(20).fontWeight(FontWeight.Bold)
-          Blank()
+    Stack({ alignContent: Alignment.TopStart }) {
+      Row() {
+        this.pcSidebar()
+        Column() {
+          this.pcHeader()
+          this.pcChips()
           if (this.tabs.length > 0) {
-            Button('Hosts').id('nav/hosts').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-              .onClick(() => { this.showHosts = true; })
+            this.tabBar()
           }
-          Button(this.t('top.known')).id('known/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-            .onClick(() => { this.openKnownHosts(); })
-          Button(this.t('top.forward')).id('fwd/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-            .onClick(() => { this.fwdOpen = true; this.reloadRules(); })
-          Button(this.t('top.diag')).id('diag/open').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-            .onClick(() => { this.diagOpen = true; })
-          Button(this.t('top.lang')).id('ui/lang').backgroundColor('#455A64').fontColor(Color.White)
-            .onClick(() => { this.toggleLang(); })
-          Button(this.t('top.newHost')).id('shell/add-host')
-            .onClick(() => { this.resetForm(); this.showDialog = true; })
+          if (this.showHosts || this.tabs.length === 0) {
+            this.hostListView()
+          } else {
+            this.terminalView()
+          }
         }
-        .width('100%').padding({ left: 16, right: 16, top: 12, bottom: 12 }).backgroundColor('#F5F5F5')
-
-        if (this.tabs.length > 0) {
-          this.tabBar()
-        }
-        if (this.showHosts || this.tabs.length === 0) {
-          this.hostListView()
-        } else {
-          this.terminalView()
-        }
+        .layoutWeight(1).height('100%').backgroundColor('#17181C')
       }
-      .width('100%').height('100%').backgroundColor('#FAFAFA')
+      .width('100%').height('100%').backgroundColor('#17181C')
 
       if (this.vncOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
@@ -2220,7 +2452,6 @@ struct Index {
       }
       if (this.fwdOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
-        // 面板可能比屏幕高：套 Scroll，否则下半部分会被裁掉（按钮在 UI 树里都找不到）
         Scroll() {
           this.forwardPanel()
         }.width('100%').height('100%').align(Alignment.Top)
@@ -2231,7 +2462,6 @@ struct Index {
       }
       if (this.diagOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
-        // 诊断面板内容很多（hostkey/term/vnc/rdp 各一组），必须可滚动，否则下排按钮不渲染
         Scroll() {
           this.diagPanel()
         }.width('100%').height('100%').align(Alignment.Top)
@@ -2247,4 +2477,5 @@ struct Index {
     }
     .width('100%').height('100%')
   }
+
 }
