@@ -771,3 +771,37 @@ BMP 文件: /data/app/el2/100/base/com.motty.harmony/haps/entry/cache/rdp-frame.
 2. 排查 `WLog_PrintMessageVA` 崩溃：它在多条用例连续跑时出现，可能和 shadow 服务端反复启停在同进程内有关；
 3. 预览刷新要限频（BMP 3 MB/帧），并考虑增量更新。
 
+---
+
+## Round 49：三次改预览入口三次破坏布局 —— 记录清楚"为什么"
+
+### 本轮想做的事
+把 `rdp.preview`（点按钮 → 写 BMP → `Image` 显示）做成独立入口 + 独立用例，不干扰原有三条 RDP 用例。
+
+### 实际发生了什么
+| 尝试 | 结果 |
+|---|---|
+| 把按钮追加到已有按钮 Row | 该行变宽，后续按钮被挤/裁，原有用例点不到 `rdp/render`、`rdp/input` |
+| 按钮放到"`rdp/srv-start` 按钮的 `.onClick` 之后" | **代码插进了 onClick 闭包里**（那不是 UI），按钮根本不渲染 → 用例报"选择器未命中 `rdp/frame-btn`" |
+| 按钮改成独立 `Row` 插在按钮行之前 | 破坏了该 `@Builder` 的结构，连 `rdp/srv-start` 都找不到了 |
+
+三次都**回退**，代码恢复到 r47 状态，3/3 用例恢复 PASS。
+
+### 根因（这是真正的收获）
+`Index.ets` 是一个近 3000 行的单文件，UI 全在 `build()`/`@Builder` 里，
+我一直在用**字符串/行号锚点做插入**：
+- 锚点行在 `.onClick(() => { ... })` 里时，插入的 UI 代码**不会渲染**；
+- 插在 `Row`/`Column` 结构中间时，会改变其它元素的布局，导致**别的用例的点击坐标失效**。
+
+⇒ 结论：在这个文件里加 UI，必须先看清**所在闭包与所在容器**，并且新 UI 要放在**新的独立容器**里，
+插完立刻用小用例（截图 + 节点 dump）验证**自己在新位置可见**、且**原有按钮仍在原位**。
+
+### 现状
+回退后：`rdp.server-peer / rdp.client-render / rdp.client-input => 3/3 PASS`，lint 全绿。
+RDP 画面显示能力（BMP 路线）仍然**已被手工证明可用**（见 Round 48 截图），但还没有稳定的机器可判入口。
+
+### 下一轮做法（不再用行号锚点）
+1. 给诊断面板的 RDP 区块**整体重写一小段**（明确的 Container + 一行按钮 + 预览图），而不是在中间插一行；
+2. 重写后先 dump 一次，确认 `rdp/frame-btn`、`rdp/render`、`rdp/input` 三个 id 都在、坐标不重叠；
+3. 再写 `rdp.preview` 用例。
+

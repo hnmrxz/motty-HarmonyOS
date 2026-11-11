@@ -1,0 +1,48 @@
+{
+  "spec": "rdp.preview",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": false,
+      "detail": "选择器未命中: id:rdp/srv-start"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：点预览按钮 → NAPI 把自解码帧写成 32bpp BMP → Image 以 file:// 加载并显示。 **不覆盖**：预览刷新帧率（当前是手动点一次）、与真实 Windows 桌面的逐像素一致性、 预览区被窗口裁掉时的可见性（面板比窗口高）。"
+  },
+  "passed": false,
+  "error": "step 4 (click) 失败: 选择器未命中: id:rdp/srv-start"
+}
