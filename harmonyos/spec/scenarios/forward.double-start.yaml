@@ -1,0 +1,93 @@
+schema: 1
+id: forward.double-start
+title: 重复启动同一转发端口：第二次必须明确报错，且不影响第一次
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - D01
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "New Host|新建主机"
+      withinMs: 20000
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: fwddbl-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:host-row/0
+  - action: wait
+    ms: 2000
+    expect:
+      kind: screenRegex
+      regex: "Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+  - action: click
+    target: id:fwd/open
+  - action: click
+    target: id:fwd/mode-local
+  # 第一次启动：应当成功监听默认端口 2201
+  - action: click
+    target: id:fwd/start
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "listening on 127.0.0.1:2201"
+      withinMs: 15000
+  # 第二次启动同一端口：必须报 bind/listen 错误
+  - action: click
+    target: id:fwd/start
+  - action: wait
+    ms: 2500
+asserts:
+  - kind: screenRegex
+    regex: "error bind/listen on 2201"
+    withinMs: 15000
+  # 第一次的监听仍在（错误不应把它弄没）
+  - kind: screenRegex
+    regex: "listening on 127.0.0.1:2201"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：同一端口重复启动时的错误传播（明确文案、不崩溃）、
+    错误后原监听状态仍在。
+    **不覆盖**：外部进程占用端口（改用重复启动构造）、错误后自动换端口、并发多规则；未在 arm64 真机执行。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 用"重复启动"构造端口占用：外部占用需要设备侧 rport，spec 内无法自包含地创建
+notes: >-
+  断言"错误出现"同时还要断言"第一次的 listening 还在"，否则一个把已有转发弄坏的实现也能通过。

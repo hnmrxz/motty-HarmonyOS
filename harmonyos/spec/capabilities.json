@@ -928,6 +928,7 @@
       },
       "evidence": "E1",
       "proof": [
+        "spec/scenarios/forward.double-start.yaml",
         "spec/scenarios/forward.http.yaml",
         "spec/scenarios/forward.local.yaml",
         "spec/scenarios/forward.persist.yaml",
@@ -942,7 +943,7 @@
         "deps": "`@ohos.net.socket` 已有 API",
         "acceptance": "`local_proxy`、`proxy_start_stop`"
       },
-      "partialCoverage": "部分：local 转发、SOCKS5(无认证)、HTTP CONNECT、规则持久化、**停止/重启与端口释放**已双画像实测；端口占用错误路径（用例不稳定，未入库）、远程转发、SOCKS5 有认证、UDP ASSOCIATE 未做。"
+      "partialCoverage": "部分：local 转发、SOCKS5(无认证)、HTTP CONNECT、规则持久化、停止/重启与端口释放、**同端口重复启动的错误路径**已双画像实测；远程转发、SOCKS5 有认证、UDP ASSOCIATE、并发多规则未做。"
     },
     {
       "id": "D02",
