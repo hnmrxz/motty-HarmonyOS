@@ -1,0 +1,49 @@
+schema: 1
+id: ui.rdp-experimental
+title: 上架声明：RDP 入口处必须常显"实验性"提示（中英双语）
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - E04
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "New Host|新建主机"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1000
+asserts:
+  # 英文界面下的提示
+  - kind: screenRegex
+    regex: "RDP is experimental"
+    withinMs: 10000
+  - kind: screenRegex
+    regex: "picture/input are not delivered yet"
+    withinMs: 6000
+  # 切到中文后必须也有对应中文提示
+  - kind: absent
+    value: "rdp.experimental"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：诊断面板里 RDP 区域的"实验性"提示常显、
+    文案与键名一致（不缺键）。
+    **不覆盖**：中文界面的对应文案（由 `ui.i18n.diag` 走同一取词路径）、发布构建是否隐藏入口。
+deviations:
+  - 纯新增规格，无 upstream 对应脚本
+  - 该提示是为"上架时不把未完成功能说成可用"而加的（STORE-READINESS 附录 A）
+notes: >-
+  断言"缺键名不出现"，避免取词表漏配时界面上直接显示 rdp.experimental 却没人发现。

@@ -1155,7 +1155,8 @@
         "spec/scenarios/rdp.client-connect.yaml",
         "spec/scenarios/rdp.client-render.yaml",
         "spec/scenarios/rdp.connect.yaml",
-        "spec/scenarios/rdp.server-peer.yaml"
+        "spec/scenarios/rdp.server-peer.yaml",
+        "spec/scenarios/ui.rdp-experimental.yaml"
       ],
       "fallback": null,
       "userText": null,
