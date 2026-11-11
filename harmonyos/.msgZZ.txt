@@ -1,0 +1,16 @@
+﻿fix(harmonyos/spec): 消除假失败三根因；sftp.write 转绿
+
+1. --fresh 可验证: 旧实现只看 install 成功, uninstall 静默失败时照样跑 -> 数据没清 -> 空态断言必挂
+   现在 force-stop -> hdc uninstall(校验输出 success/not installed/not exist, 最多3次) -> 失败就 EnvError 停
+
+2. 卸载重装不会清空数据: EntryBackupAbility 备份恢复会把旧 DB/旧 known_hosts 带回来
+   => "新装即空"前提不存在, 依赖空态的用例会偶发失败
+   - 应用侧: catalog/reset-hosts 现在同时清空 known_hosts 与 session_logs(之前只清 hosts)
+   - 用例侧: ui.i18n.panels / cred.cleared 在 launch 后显式重置
+
+3. 上传名留空导致上传失败(真实缺陷): 默认上传名为空(历史原因: 预填会导致输入被追加), 点上传=空文件名
+   修法: 提交时若名称仍为空则回填 uploaded.txt
+   结果: sftp.write PASS
+
+本轮: sftp.write PASS; ui.i18n.panels 第19步仍不弹信任框(待查); cred.cleared 语义需按官方重写
+教训: "卸载重装=干净环境"是错的, 测试隔离必须由应用自身提供重置能力

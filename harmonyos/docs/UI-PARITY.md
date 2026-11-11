@@ -511,3 +511,34 @@ terminal.vt            PASS
 手工 `uninstall` + `install` 后实测：`全部 0` 且 `host-grid/empty`（"还没有主机"）在**两种视图**下都出现。
 ⇒ 这 3 条里有数据状态干扰，下一轮应让 runner 在 `--fresh` 失败时**报错而不是继续**（否则会持续产生"假失败"）。
 
+---
+
+## Round 16 追加：消除"假失败"的三个根因
+
+### 1) `--fresh` 现在可验证（runner 强化）
+旧实现只看 `install` 是否成功，`uninstall` 静默失败时照样继续跑 → 数据没清 → 后面"应为空态"的断言必然失败。
+现在：`aa force-stop` → `hdc uninstall`（**校验输出**含 success/not installed/not exist，最多重试 3 次）→ 仍失败就 `EnvError` 直接停，
+并在错误里写明"继续跑会产生假失败，请手动 uninstall"。
+
+### 2) 卸载重装**不会**清空数据（备份扩展会恢复）
+这是本轮最重要的发现：`EntryBackupAbility` 的备份恢复会让重装后的应用带着旧数据库/旧 known_hosts 回来。
+所以"新装即空"的前提根本不存在，凡是依赖空态的用例都会变成偶发失败。
+- 应用侧：诊断面板的 `catalog/reset-hosts` 现在**同时清空 `known_hosts` 与 `session_logs`**（之前只清 hosts）；
+- 用例侧：`ui.i18n.panels`、`cred.cleared` 在 `launch` 之后**显式重置**再开始断言。
+
+### 3) 上传名留空导致上传失败（真实缺陷）
+`sftp.write` 一直卡在"上传结果行"上：默认上传名为空（历史原因是"预填会导致输入被追加"），点上传等于用空文件名。
+修法：提交时若名称仍为空则回填 `uploaded.txt`（既保留"空输入不被追加"的好处，又保证有默认值）。
+结果：`sftp.write` **PASS**。
+
+### 本轮结果
+| 用例 | 结果 |
+|---|---|
+| `sftp.write` | ✅ PASS |
+| `ui.i18n.panels` | ❌ 第 19 步：清空 known_hosts 后点 `host-files/0` 仍未弹信任框，待查 |
+| `cred.cleared` | ❌ 仍是旧语义（"内存里没凭据"），保险库实现后该路径不再成立，需按官方语义重写 |
+
+### 教训
+**"卸载重装 = 干净环境"是错的**。测试隔离必须由应用自身提供"重置数据"的能力（我们现在有了），
+不能依赖系统卸载。
+

@@ -322,8 +322,22 @@ class Runner:
                 raise EnvError(f"--fresh 需要 HAP 但找不到: {hap}（可用 MOTTY_HAP 指定）")
             self.sh(f"aa force-stop {bundle}", check=False)
             # 注意：`bm uninstall` 在 hdc shell 下会静默失败（权限），必须用 hdc uninstall
-            subprocess.run([HDC, "-t", self.serial, "uninstall", bundle],
-                           capture_output=True, text=True)
+            # 卸载必须"可验证"：hdc uninstall 在应用运行时可能被跳过，导致 --fresh 静默失效
+            # （现象：下一步要空态，但列表里还有上次的主机 → 假失败）
+            uninstalled = False
+            for attempt in range(3):
+                self.sh(f"aa force-stop {bundle}", check=False)
+                time.sleep(0.5)
+                uproc = subprocess.run([HDC, "-t", self.serial, "uninstall", bundle],
+                                       capture_output=True, text=True)
+                uout = ((uproc.stdout or "") + (uproc.stderr or "")).lower()
+                if "success" in uout or "not installed" in uout or "not exist" in uout:
+                    uninstalled = True
+                    break
+                time.sleep(1.0)
+            if not uninstalled:
+                raise EnvError(f"--fresh 卸载失败（{uout[:160]!r}）：未能清空应用数据，"
+                               f"继续跑会产生假失败。请手动 hdc uninstall {bundle} 后重试")
             proc = subprocess.run([HDC, "-t", self.serial, "install", "-r", hap],
                                   capture_output=True, text=True)
             installed = "success" in (proc.stdout or "").lower() or "AppMod finish" in (proc.stdout or "")

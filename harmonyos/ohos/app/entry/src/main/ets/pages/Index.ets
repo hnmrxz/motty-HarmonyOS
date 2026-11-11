@@ -1125,6 +1125,9 @@ struct Index {
   }
 
   private uploadFile(cred: Cred, fp: string): void {
+    if (this.sftpUploadName.trim().length === 0) {
+      this.sftpUploadName = 'uploaded.txt';
+    }
     this.sftpStatus = 'uploading ' + this.sftpUploadName;
     mottynapi.sftpWrite(cred.address, cred.port, cred.user, cred.password, fp,
       this.sftpUploadName, this.sftpUploadText,
@@ -3006,6 +3009,12 @@ struct Index {
       await Vault.remove(key);
       this.creds.delete(key);
     }
+    // 同时清空 known_hosts 与会话日志：卸载重装后系统会恢复应用数据（备份扩展），
+    // 只清 hosts 会让"首次连接应弹信任框"这类断言永远失败。
+    const kpAll = new relationalStore.RdbPredicates('known_hosts');
+    await this.store.delete(kpAll);
+    const lpAll = new relationalStore.RdbPredicates('session_logs');
+    await this.store.delete(lpAll);
     this.selectedIds = [];
     await this.reload();
     this.catalogResult = 'catalog-reset: hosts=' + this.hosts.length;
