@@ -1717,6 +1717,21 @@ struct Index {
         .id('shell/dialog-password').width('100%').type(InputType.Password)
         .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
         .onChange((v: string) => { this.formPassword = v; })
+      Row({ space: 8 }) {
+        ForEach(this.tagChoices(), (tag: string) => {
+          Text(tag).fontSize(11)
+            .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+            .borderRadius(12)
+            .fontColor(this.tagList({ id: '', label: '', address: '', user: '', port: '',
+              proto: '', group: '', tags: this.formTags, color: '' } as HostItem).indexOf(tag) >= 0
+              ? '#12141A' : '#C7CBD1')
+            .backgroundColor(this.tagList({ id: '', label: '', address: '', user: '', port: '',
+              proto: '', group: '', tags: this.formTags, color: '' } as HostItem).indexOf(tag) >= 0
+              ? '#3DDC97' : '#23262B')
+            .id('hostform/tag/' + tag)
+            .onClick(() => { this.toggleFormTag(tag); })
+        }, (tag: string) => 'tg-' + tag)
+      }.width('100%')
       Row({ space: 10 }) {
         Column({ space: 4 }) {
           Text('分组').fontSize(12).fontColor('#8A8F98').width('100%')
@@ -1732,9 +1747,20 @@ struct Index {
         }.layoutWeight(1)
       }.width('100%')
       Text('颜色').fontSize(12).fontColor('#8A8F98').width('100%')
-      TextInput({ placeholder: '#3B82F6（留空使用默认）', text: this.formColor }).id('shell/dialog-color').width('100%')
-        .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
-        .onChange((v: string) => { this.formColor = v; })
+      Row({ space: 8 }) {
+        ForEach(this.colorChoices(), (c: string) => {
+          Row()
+            .width(24).height(24).borderRadius(12)
+            .backgroundColor(c.length > 0 ? c : '#23262B')
+            .border({ width: this.formColor === c ? 2 : 1,
+                      color: this.formColor === c ? '#E8EAED' : '#3A3E45' })
+            .id('hostform/color/' + (c.length > 0 ? c.substring(1) : 'none'))
+            .onClick(() => { this.formColor = c; })
+        }, (c: string) => 'cc-' + c)
+        TextInput({ placeholder: '#3B82F6', text: this.formColor }).id('shell/dialog-color')
+          .layoutWeight(1).backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
+          .onChange((v: string) => { this.formColor = v; })
+      }.width('100%')
       Row({ space: 12 }) {
         Button(this.t('hostkey.cancel')).id('shell/dialog-cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
           .onClick(() => { this.showDialog = false; this.editingId = ''; this.resetForm(); })
@@ -3551,6 +3577,24 @@ struct Index {
     .id('palette/panel')
     .width(560).height(420).padding(16).backgroundColor('#1C1F24').borderRadius(12)
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
+  }
+
+
+  // 官方色板（与 host_catalog 预设一致）
+  private colorChoices(): string[] {
+    return ['', '#22c55e', '#eab308', '#f97316', '#ef4444', '#3b82f6', '#a855f7'];
+  }
+
+  private tagChoices(): string[] {
+    return this.lang === 'zh' ? ['开发', '测试', '生产'] : ['dev', 'test', 'prod'];
+  }
+
+  private toggleFormTag(tag: string): void {
+    const cur: string[] = this.tagList({ id: '', label: '', address: '', user: '', port: '',
+      proto: '', group: '', tags: this.formTags, color: '' } as HostItem);
+    const has: boolean = cur.indexOf(tag) >= 0;
+    const next: string[] = has ? cur.filter((x: string) => x !== tag) : cur.concat([tag]);
+    this.formTags = next.join(',');
   }
 
   build() {

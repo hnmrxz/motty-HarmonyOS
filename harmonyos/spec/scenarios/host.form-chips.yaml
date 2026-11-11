@@ -1,0 +1,75 @@
+schema: 1
+id: host.form-chips
+title: 主机表单：色板与标签 chips 可点选，保存后列表显示标签
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  # 表单里必须有官方色板与标签 chips
+  - action: click
+    target: id:shell/add-host
+  - action: wait
+    ms: 1000
+    expect:
+      kind: screenRegex
+      regex: "新建主机"
+      withinMs: 8000
+  - action: click
+    target: id:hostform/color/ef4444
+  - action: wait
+    ms: 400
+  - action: click
+    target: id:hostform/tag/生产
+  - action: wait
+    ms: 400
+  - action: type
+    target: id:shell/dialog-label
+    text: chips-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.2.2.2
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+asserts:
+  # 列表里出现新主机与它的标签
+  - kind: screenRegex
+    regex: "chips-a"
+    withinMs: 12000
+  - kind: screenRegex
+    regex: "生产"
+    withinMs: 8000
+  # 色板/标签控件用的是 id，不应把键名漏到界面上
+  - kind: absent
+    value: "hostform/color"
+    withinMs: 2000
+  - kind: absent
+    value: "hostform/tag"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：表单内官方色板（7 个色块）与标签 chips（开发/测试/生产）存在并可点选、
+    保存后列表显示该标签。
+    **不覆盖**：颜色结果是否真的应用到行左缘（像素级校验）、自定义颜色输入、标签上限与非法字符校验、
+    编辑时 chips 的选中态回显。
+deviations:
+  - 颜色只验证"控件可点选"，不做像素校验；标签验证"列表出现该标签"。
+notes: >-
+  这条用例钉住的是"表单里有官方那套色板/标签控件"，不是"颜色好看不好看"。

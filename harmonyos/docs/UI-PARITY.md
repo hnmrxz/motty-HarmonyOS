@@ -696,3 +696,27 @@ hosts.search / host.persist / infra.host-create-by-id / hostkey.changed / net.re
 ```
 仍失败：`rdp.server-peer`（RDP 服务端状态串不符，RDP 仍是实验态）、以及基线里未跑完的 RDP 系列。
 
+---
+
+## Round 26 追加：主机表单的色板与标签 chips（官方交互）
+
+### 之前的问题
+表单里"颜色"是一个 `#RRGGBB` 文本框，标签是一个逗号分隔文本框——能用，但**不是官方那套交互**，
+而且用户要自己记颜色值。
+
+### 现在
+| 控件 | 实现 |
+|---|---|
+| 颜色 | 官方 7 色色板：`无 / #22c55e / #eab308 / #f97316 / #ef4444 / #3b82f6 / #a855f7`，点选即填；id `hostform/color/<hex>`（无颜色为 `hostform/color/none`）。旁边保留手填输入框（`shell/dialog-color`） |
+| 标签 | 官方预设 chips：`开发 / 测试 / 生产`（英文界面为 `dev / test / prod`），可多选，选中高亮；id `hostform/tag/<名称>`；仍与 `shell/dialog-tags` 文本互通 |
+
+### 用例
+新增 `host.form-chips`（pcOnly）**PASS**：
+打开表单 → 点色块 `hostform/color/ef4444` → 点标签 `hostform/tag/生产` → 填名称/地址 → 保存 → 断言列表出现新主机与该标签，且界面不泄漏 `hostform/color` / `hostform/tag` 键名。
+
+### 回归
+`host.manage / snippets.crud / ui.i18n.panels / command.palette => 4/4 PASS`（表单 id 与流程未被破坏）。
+
+### 说明
+颜色只验证"控件可点选"，不做像素级校验；编辑时 chips 的选中态回显、标签上限/非法字符校验还没做。
+
