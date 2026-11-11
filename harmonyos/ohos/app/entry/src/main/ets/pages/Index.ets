@@ -264,6 +264,7 @@ struct Index {
   @State paletteOpen: boolean = false;
   @State paletteQuery: string = '';
   @State paletteIndex: number = 0;
+  @State paletteHover: number = -1;
   @State snipName: string = '';
   @State snipCmd: string = '';
   @State snipEditingId: string = '';
@@ -3796,7 +3797,11 @@ struct Index {
             .id('palette/item/' + idx)
             .width('100%').height(34).padding({ left: 10, right: 10 })
             .borderRadius(6)
-            .backgroundColor(this.paletteIndex === idx ? '#3DDC97' : Color.Transparent)
+            .backgroundColor(this.paletteIndex === idx ? '#3DDC97'
+              : (this.paletteHover === idx ? '#2F343B' : Color.Transparent))
+            .onHover((isHover: boolean) => {
+              this.paletteHover = isHover ? idx : -1;
+            })
             .onClick(() => { this.runPalette(label); })
           }
         }, (label: string) => label)
@@ -3960,6 +3965,11 @@ struct Index {
       this.paletteIndex = (this.paletteIndex + n - 1) % n;
     } else if (e.keyCode === 2013) {
       this.paletteIndex = (this.paletteIndex + 1) % n;
+    } else if (e.keyCode === 2070) {
+      // Esc = 关闭命令面板（KEYCODE_ESCAPE = 2070，官方文档确认）
+      this.paletteOpen = false;
+      this.paletteQuery = '';
+      this.paletteHover = -1;
     } else if (e.keyCode === 2054) {
       const labels: string[] = this.paletteLabels();
       if (this.paletteIndex >= 0 && this.paletteIndex < labels.length) {

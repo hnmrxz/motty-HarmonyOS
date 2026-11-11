@@ -1052,3 +1052,23 @@ runner 新增动作 **`key`**（`uitest uiInput keyEvent <code>`，`code` 已进
 ### 回归
 `host.manage / host.form-chips / host.form-validation / hosts.search => 4/4 PASS`
 
+---
+
+## Round 64 追加：命令面板 Esc 关闭 + 鼠标悬停高亮
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| Esc | `KEYCODE_ESCAPE = 2070`（官方 `oh_key_code.h` 确认），在 `paletteKey()` 里关闭面板并清空查询 |
+| 悬停 | `@State paletteHover` + 每项 `.onHover(...)`；背景优先级：**选中（绿）> 悬停（深灰）> 透明** |
+
+### 用例
+`command.palette-esc` **PASS**：打开面板（断言标题在）→ 按 Esc（key 2070）→ 断言标题消失。
+
+### 回归
+`command.palette / command.palette-keys / ui.i18n => 3/3 PASS`
+
+### 明确的边界
+- **悬停高亮没有自动化覆盖**：`uitest` 不注入 hover 事件；已写进用例 `limits`，不假装测过；
+- Esc 关闭后焦点落点、连续开关多次也没覆盖。
+

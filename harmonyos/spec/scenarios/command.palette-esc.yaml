@@ -1,0 +1,55 @@
+schema: 1
+id: command.palette-esc
+title: 命令面板：Esc 关闭（KEYCODE_ESCAPE=2070），关闭后不再显示面板
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:top/search
+  - action: wait
+    ms: 1000
+    expect:
+      kind: screenRegex
+      regex: "命令面板|Command palette"
+      withinMs: 8000
+  # Esc 关闭
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 900
+    expect:
+      kind: absent
+      value: "命令面板"
+      withinMs: 8000
+asserts:
+  - kind: absent
+    value: "命令面板"
+    withinMs: 6000
+  - kind: absent
+    value: "palette/panel"
+    withinMs: 3000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：面板打开后按 Esc（2070）关闭，关闭后标题文案消失。
+    **不覆盖**：鼠标悬停高亮（uitest 不注入 hover 事件）、Esc 关闭后焦点落点、连续开关多次。
+deviations:
+  - 悬停高亮已实现（onHover），但只能用肉眼/后续模拟器注入验证，本用例不覆盖。
+notes: >-
+  Esc 键值来自官方 oh_key_code.h：KEYCODE_ESCAPE = 2070。
