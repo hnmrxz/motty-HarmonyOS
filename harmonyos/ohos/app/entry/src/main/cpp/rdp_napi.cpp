@@ -122,6 +122,16 @@ struct MottyRdpContext {
 };
 int ClientGlobalInit(void) { return 0; }
 void ClientGlobalUninit(void) { }
+// EndPaint：每帧绘制结束都会调用。用它判断"更新到底有没有到达"。
+// 比 BitmapUpdate 回调更可靠：gdi_init 之后 gdi 自己会接管解码。
+static std::atomic<int> g_paints{0};
+
+BOOL OnEndPaint(rdpContext *context) {
+    g_paints.fetch_add(1);
+    (void)context;
+    return TRUE;
+}
+
 // PostConnect：位图更新需要 GDI 表面来解码，否则更新会被丢弃（实测 frames=0）
 BOOL OnPostConnect(freerdp *instance) {
     if (instance == nullptr || instance->context == nullptr) {
@@ -130,6 +140,11 @@ BOOL OnPostConnect(freerdp *instance) {
     if (!gdi_init(instance, PIXEL_FORMAT_BGRX32)) {
         fprintf(stderr, "[MOTTY_RDP_CLIENT] gdi_init failed\n");
         return FALSE;
+    }
+    // 注意顺序：gdi_init 之后再挂回调，否则会被 gdi 的默认处理覆盖
+    if (instance->context->update != nullptr) {
+        instance->context->update->BitmapUpdate = OnBitmapUpdate;
+        instance->context->update->EndPaint = OnEndPaint;
     }
     return TRUE;
 }
@@ -280,11 +295,38 @@ void renderWorker(RdpJob *job) {
                 std::lock_guard<std::mutex> lock(g_statsMtx);
                 st = g_stats;
             }
+            // 若 EndPaint 有计数，说明更新到达了：直接从 GDI 主缓冲读像素做统计
+            RenderStats st2;
+            {
+                std::lock_guard<std::mutex> lock(g_statsMtx);
+                st2 = g_stats;
+            }
+            {
+                const int paints = g_paints.load();
+                if (paints > 0 && instance->context->gdi != nullptr &&
+                    instance->context->gdi->primary_buffer != nullptr) {
+                    const BYTE *buf = instance->context->gdi->primary_buffer;
+                    const UINT32 w = instance->context->gdi->width;
+                    const UINT32 h = instance->context->gdi->height;
+                    st2.width = static_cast<int>(w);
+                    st2.height = static_cast<int>(h);
+                    st2.pixels = static_cast<int>(w * h);
+                    const size_t total = static_cast<size_t>(w) * h;
+                    const size_t step = total / 512 + 1;
+                    for (size_t i = 0; i < total; i += step) {
+                        const BYTE b = buf[i * 4 + 0];
+                        const BYTE g = buf[i * 4 + 1];
+                        const BYTE r = buf[i * 4 + 2];
+                        const int idx = ((r > 127) ? 4 : 0) + ((g > 127) ? 2 : 0) + ((b > 127) ? 1 : 0);
+                        st2.buckets[idx]++;
+                    }
+                }
+            }
             char buf[256];
-            snprintf(buf, sizeof(buf), "frames=%d size=%dx%d pixels=%d colors=%d%d%d%d%d%d%d%d",
-                     st.updates, st.width, st.height, st.pixels, st.buckets[0], st.buckets[1],
-                     st.buckets[2], st.buckets[3], st.buckets[4], st.buckets[5], st.buckets[6],
-                     st.buckets[7]);
+            snprintf(buf, sizeof(buf), "frames=%d paints=%d size=%dx%d pixels=%d colors=%d%d%d%d%d%d%d%d",
+                     st2.updates, g_paints.load(), st2.width, st2.height, st2.pixels,
+                     st2.buckets[0], st2.buckets[1], st2.buckets[2], st2.buckets[3],
+                     st2.buckets[4], st2.buckets[5], st2.buckets[6], st2.buckets[7]);
             result = buf;
             freerdp_disconnect(instance);
         }

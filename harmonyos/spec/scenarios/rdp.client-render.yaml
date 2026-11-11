@@ -1,0 +1,66 @@
+schema: 1
+id: rdp.client-render
+title: RDP 客户端收到并解码服务端桌面更新（尺寸/像素数可断言）
+sourceScript: null
+profile:
+  - 2in1
+  - tablet
+capabilities:
+  - E04
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "New Host|新建主机"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:rdp/srv-start
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "running port=13389"
+      withinMs: 15000
+  # 客户端连接 + 泵事件 + 从 GDI 表面统计像素
+  - action: click
+    target: id:rdp/render
+  - action: wait
+    ms: 15000
+asserts:
+  # paints>0 说明桌面更新真的到达并触发了绘制
+  - kind: screenRegex
+    regex: "rdp-render: frames=[1-9][0-9]* paints=[1-9][0-9]*"
+    withinMs: 30000
+  # 尺寸必须等于服务端桌面尺寸，像素数必须与之相符
+  - kind: screenRegex
+    regex: "size=1024x768 pixels=786432"
+    withinMs: 8000
+  - kind: absent
+    value: "error context"
+    withinMs: 2000
+  - kind: absent
+    value: "gdi_init failed"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    模拟器双画像（x86_64, API 26）。覆盖：客户端通过官方客户端入口点建立上下文、gdi 解码桌面更新、
+    EndPaint 触发、桌面尺寸与像素数统计正确（1024×768 = 786432）。
+    **不覆盖**：把像素画到 Canvas（UI 渲染）、输入回传、NLA、与真实 Windows 服务端互通。
+    注意：本用例**不**断言具体颜色分布（那依赖服务端图案细节）。
+deviations:
+  - 服务端为内嵌 FreeRDP shadow；桌面尺寸 1024x768 是 shadow 默认值，不是我们 capture 的 640x480
+  - 位图回调走的是 gdi 内部路径：`context->update->BitmapUpdate` 不触发，但 EndPaint + gdi 缓冲可用
+notes: >-
+  paints>0 与 size/pixels 一起断言，才能区分"只是连上了"和"真的收到了画面数据"。

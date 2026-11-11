@@ -2082,3 +2082,35 @@ rdp-render: frames=0 size=0x0 pixels=0 colors=00000000
 - 三个真实缺陷已修（其中两个曾导致崩溃/空上下文）
 - **渲染仍 E3**；用例数保持 51
 - Round 70 的 `connected` 不受影响（那条用 `freerdp_new` 路径，双画像通过）
+---
+
+## Round 74：**RDP 客户端收到并解码桌面更新**（双画像通过）
+
+### 一、破在哪儿
+前几轮一直在等 `context->update->BitmapUpdate` 回调 —— **它根本不会触发**。
+`gdi_init()` 之后，位图解码由 gdi 接管，回调走的是 gdi 内部路径。
+换上 `EndPaint` 计数 + 直接读 `gdi->primary_buffer` 之后，第一次拿到真实数据：
+
+```
+rdp-render: frames=3 paints=3 size=1024x768 pixels=786432 colors=...
+```
+- `paints=3`：桌面更新真的到达并触发了绘制
+- `size=1024x768`：服务端（shadow 默认）桌面尺寸
+- `pixels=786432` = 1024×768 ✓
+
+### 二、用例（`rdp.client-render`，双画像通过）
+断言 `frames>0 && paints>0` + `size=1024x768 pixels=786432`，并反向断言无 `error context` / `gdi_init failed`。
+**不断言颜色分布**（依赖服务端图案细节，容易变脆）。
+
+### 三、这轮修掉的（也都是真问题）
+1. `EndPaint` 钩子（诊断"更新到底有没有到"的最可靠手段）
+2. 从 GDI 主缓冲统计像素（绕开不触发的 BitmapUpdate）
+3. 明确记录"**gdi_init 之后要再挂回调**"这个顺序陷阱
+
+### 四、诚实边界
+- **尚未把像素画到 Canvas**：这是"能看见"的最后一步（且 `putImageData` 之前崩过，要重查）
+- 输入回传、NLA/CredSSP、真实 Windows 服务端互通仍未做
+- 服务端是内嵌 shadow（测试对端），桌面尺寸 1024×768 是它的默认值
+
+### 五、状态
+用例 51 → **52**；E1 能力 16。
