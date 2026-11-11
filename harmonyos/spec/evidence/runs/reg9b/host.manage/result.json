@@ -1,0 +1,74 @@
+{
+  "spec": "host.manage",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "type",
+      "ok": true,
+      "detail": "secret: 已注入，未回读"
+    },
+    {
+      "i": 7,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "click",
+      "ok": false,
+      "detail": "选择器未命中: id:host-edit/0"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：编辑主机（改名后列表更新、id 不变）、 删除需二次确认、取消不删、确认后主机消失。 **不覆盖**：删除后 known_hosts 与保险库口令是否真的被清（需要\"重建同主机再看是否重新要求信任\" 的第二条用例）、编辑时改端口/地址的迁移、批量删除、撤销；未在 arm64 真机执行。"
+  },
+  "passed": false,
+  "error": "step 9 (click) 失败: 选择器未命中: id:host-edit/0"
+}

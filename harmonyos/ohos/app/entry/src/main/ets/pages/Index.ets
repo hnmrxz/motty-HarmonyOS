@@ -42,6 +42,12 @@ const SQL_CREATE_KNOWN_HOSTS =
 
 const HOST_COLUMNS: string[] = ['id', 'label', 'address', 'usr', 'port', 'proto', 'grp', 'tags', 'color'];
 
+// 会话日志（官方 NavSessionLogs 的最小实现）
+const SQL_CREATE_LOGS =
+  'CREATE TABLE IF NOT EXISTS session_logs (' +
+  'id TEXT PRIMARY KEY, label TEXT, address TEXT, proto TEXT, started_at INTEGER)';
+const LOG_COLUMNS: string[] = ['id', 'label', 'address', 'proto', 'started_at'];
+
 const SQL_CREATE_FORWARDS =
   'CREATE TABLE IF NOT EXISTS forwards (' +
   'id TEXT PRIMARY KEY, host_key TEXT, mode TEXT, listen_port TEXT, target_host TEXT, target_port TEXT)';
@@ -150,6 +156,14 @@ interface CatalogDoc {
   groups: CatalogGroup[];
 }
 
+interface LogItem {
+  id: string;
+  label: string;
+  address: string;
+  proto: string;
+  startedAt: number;
+}
+
 interface Cred {
   address: string;
   port: number;
@@ -197,6 +211,7 @@ struct Index {
   @State selectedIds: string[] = [];
   @State catalogResult: string = '(catalog: idle)';
   @State settingsOpen: boolean = false;
+  @State logs: LogItem[] = [];
   private prefs: preferences.Preferences | null = null;
   @State hostView: string = 'list';
   @State hostSort: string = 'manual';
@@ -291,6 +306,7 @@ struct Index {
       await this.store.executeSql(SQL_CREATE_HOSTS);
       await this.store.executeSql(SQL_CREATE_KNOWN_HOSTS);
       await this.store.executeSql(SQL_CREATE_FORWARDS);
+      await this.store.executeSql(SQL_CREATE_LOGS);
       await this.migrateHosts();
       await this.reload();
       await this.reloadRules();
@@ -530,6 +546,7 @@ struct Index {
     if (h === undefined) {
       return;
     }
+    this.recordSession(h);
     const key = this.hostKey(h.address, h.port);
     const cred = this.creds.get(key);
     if (cred === undefined) {
@@ -2273,6 +2290,7 @@ struct Index {
                       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).width('100%')
                     Text(h.user.length > 0 ? h.user : '-').fontSize(12).fontColor('#8A8F98')
                   }
+                  .id('host-name/' + index)
                   .alignItems(HorizontalAlign.Start).layoutWeight(3)
                   .onClick(() => { this.openSession(h.label, index); })
                   // 地址（右对齐）
@@ -2291,30 +2309,21 @@ struct Index {
                   }, (tg: string) => h.id + tg)
                   // 行内操作：默认隐藏，悬停显示（对齐原版交互），id 保持在树上供用例使用
                   Row({ space: 4 }) {
-                    Button('⋯').fontSize(13).width(24).height(24)
+                  Button(this.t('host.test')).id('host-row/' + index).fontSize(10).height(26)
                     .backgroundColor('#23262B').fontColor('#C7CBD1')
-                    .onClick(() => { this.openSession(h.label, index); })
-                    .bindMenu([
-                      { value: this.lang === 'zh' ? '连接' : 'Connect', action: () => { this.openSession(h.label, index); } },
-                      { value: this.lang === 'zh' ? '文件' : 'Files', action: () => { this.openFiles(index); } },
-                      { value: this.lang === 'zh' ? '编辑' : 'Edit', action: () => { this.openEditHost(index); } },
-                      { value: this.lang === 'zh' ? '删除' : 'Delete', action: () => { this.askDeleteHost(index); } }
-                    ])
-                  Button(this.t('host.test')).id('host-row/' + index).fontSize(11).height(28)
-                    .backgroundColor('#23262B').fontColor('#C7CBD1')
-                  Button(this.t('host.files')).id('host-files/' + index).fontSize(11).height(28)
+                  Button(this.t('host.files')).id('host-files/' + index).fontSize(10).height(26)
                     .backgroundColor('#23262B').fontColor('#C7CBD1')
                     .onClick(() => { this.openFiles(index); })
-                  Button(this.t('host.open')).id('host-open/' + index).fontSize(11).height(28)
+                  Button(this.t('host.open')).id('host-open/' + index).fontSize(10).height(26)
                     .backgroundColor('#2F6F4F').fontColor(Color.White)
                     .onClick(() => { this.openSession(h.label, index); })
-                  Button(this.t('host.edit')).id('host-edit/' + index).fontSize(11).height(28)
+                  Button(this.t('host.edit')).id('host-edit/' + index).fontSize(10).height(26)
                     .backgroundColor('#23262B').fontColor('#C7CBD1')
                     .onClick(() => { this.openEditHost(index); })
-                  Button(this.t('host.del')).id('host-del/' + index).fontSize(11).height(28)
+                  Button(this.t('host.del')).id('host-del/' + index).fontSize(10).height(26)
                     .backgroundColor('#3A2226').fontColor('#E08A8A')
                     .onClick(() => { this.askDeleteHost(index); })
-                  }.width(96).justifyContent(FlexAlign.End).opacity(this.hoverRow === index ? 1 : 0)
+                  }.width(190).justifyContent(FlexAlign.End)
                 }
                 .width('100%').height(60).padding({ left: 10, right: 10 })
                 .borderRadius(10)
@@ -2401,8 +2410,8 @@ struct Index {
       this.pcNavItem('主机', 'nav/hosts', $r('app.media.ic_hosts'), true, () => { this.pcNav = '主机'; this.showHosts = true; })
       this.pcNavItem('工作区', 'nav/workspace', $r('app.media.ic_workspace'), false, () => {})
       this.pcNavItem('监控', 'diag/open', $r('app.media.ic_monitor'), true, () => { this.diagOpen = true; })
-      this.pcNavItem('会话日志', 'nav/logs', $r('app.media.ic_logs'), false, () => {})
-      this.pcNavItem('密钥链', 'nav/keys', $r('app.media.ic_keys'), false, () => {})
+      this.pcNavItem('会话日志', 'nav/logs', $r('app.media.ic_logs'), true, () => { this.pcNav = '会话日志'; this.reloadLogs(); })
+      this.pcNavItem('密钥链', 'nav/keys', $r('app.media.ic_keys'), true, () => { this.pcNav = '密钥链'; })
       this.pcNavItem('跳板路由', 'nav/jump', $r('app.media.ic_jump'), false, () => {})
       this.pcNavItem('端口转发', 'fwd/open', $r('app.media.ic_forward'), true, () => { this.fwdOpen = true; this.reloadRules(); })
       this.pcNavItem('已知主机', 'known/open', $r('app.media.ic_known'), true, () => { this.openKnownHosts(); })
@@ -3079,6 +3088,129 @@ struct Index {
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 
+
+  private async recordSession(h: HostItem): Promise<void> {
+    if (this.store === null) { return; }
+    const bucket: relationalStore.ValuesBucket = {
+      'id': 'log_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+      'label': h.label, 'address': h.address, 'proto': h.proto,
+      'started_at': Date.now()
+    };
+    try {
+      await this.store.insert('session_logs', bucket);
+    } catch (e) {
+      hilog.error(DOMAIN, TAG, 'recordSession failed: %{public}s', JSON.stringify(e));
+    }
+  }
+
+  private async reloadLogs(): Promise<void> {
+    if (this.store === null) { return; }
+    const pred = new relationalStore.RdbPredicates('session_logs');
+    pred.orderByDesc('started_at');
+    const rs = await this.store.query(pred, LOG_COLUMNS);
+    const out: LogItem[] = [];
+    while (rs.goToNextRow() && out.length < 200) {
+      out.push({
+        id: rs.getString(0), label: rs.getString(1), address: rs.getString(2),
+        proto: rs.getString(3), startedAt: rs.getLong(4)
+      });
+    }
+    rs.close();
+    this.logs = out;
+  }
+
+  private async clearLogs(): Promise<void> {
+    if (this.store === null) { return; }
+    const pred = new relationalStore.RdbPredicates('session_logs');
+    await this.store.delete(pred);
+    await this.reloadLogs();
+  }
+
+  private credKeys(): string[] {
+    const out: string[] = [];
+    this.creds.forEach((_v: Cred, k: string) => { out.push(k); });
+    return out;
+  }
+
+
+  // ---------------- 会话日志页（NavSessionLogs 的最小实现） ----------------
+  @Builder
+  logsPage() {
+    Column({ space: 10 }) {
+      Row({ space: 10 }) {
+        Text(this.lang === 'zh' ? '会话日志' : 'Session logs').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Text('(' + this.logs.length + ')').fontSize(12).fontColor('#6B7078')
+        Blank()
+        Button(this.lang === 'zh' ? '刷新' : 'Refresh').id('logs/refresh').height(30).fontSize(12)
+          .backgroundColor('#1E2127').fontColor('#C7CBD1')
+          .onClick(() => { this.reloadLogs(); })
+        Button(this.lang === 'zh' ? '清空' : 'Clear').id('logs/clear').height(30).fontSize(12)
+          .backgroundColor('#3A2226').fontColor('#E08A8A')
+          .onClick(() => { this.clearLogs(); })
+      }.width('100%')
+      if (this.logs.length === 0) {
+        Text(this.lang === 'zh' ? '还没有会话记录' : 'No sessions yet').id('logs/empty')
+          .fontSize(13).fontColor('#6B7078').width('100%').padding({ top: 40 })
+      }
+      List({ space: 6 }) {
+        ForEach(this.logs, (it: LogItem) => {
+          ListItem() {
+            Row({ space: 12 }) {
+              Text(it.label).fontSize(14).fontColor('#E8EAED').layoutWeight(2)
+              Text(it.address).fontSize(12).fontColor('#8A8F98').layoutWeight(2)
+              Text(it.proto.length > 0 ? it.proto.toUpperCase() : 'SSH').fontSize(11).fontColor('#C7CBD1')
+                .padding({ left: 8, right: 8, top: 3, bottom: 3 }).backgroundColor('#23262B').borderRadius(10)
+              Text(new Date(it.startedAt).toLocaleString()).fontSize(11).fontColor('#6B7078').layoutWeight(2)
+            }
+            .width('100%').height(44).padding({ left: 10, right: 10 })
+            .borderRadius(8).backgroundColor('#1C1F24')
+          }
+        }, (it: LogItem) => it.id)
+      }.id('logs/list').layoutWeight(1).width('100%')
+    }
+    .width('100%').height('100%').padding({ left: 22, right: 22, top: 10 })
+  }
+
+  // ---------------- 密钥链页（凭据清单的最小实现） ----------------
+  @Builder
+  vaultPage() {
+    Column({ space: 10 }) {
+      Row({ space: 10 }) {
+        Text(this.lang === 'zh' ? '密钥链' : 'Keychain').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Text('(' + this.credKeys().length + ')').fontSize(12).fontColor('#6B7078')
+        Blank()
+      }.width('100%')
+      Text(this.lang === 'zh'
+        ? '口令存放在系统 Asset Store，这里只显示已保存凭据的条目（不显示明文）。'
+        : 'Passwords live in the system Asset Store; only entry keys are listed here.')
+        .fontSize(11).fontColor('#8A8F98').width('100%')
+      if (this.credKeys().length === 0) {
+        Text(this.lang === 'zh' ? '还没有已保存的凭据' : 'No saved credentials').id('vault/empty')
+          .fontSize(13).fontColor('#6B7078').width('100%').padding({ top: 40 })
+      }
+      List({ space: 6 }) {
+        ForEach(this.credKeys(), (k: string) => {
+          ListItem() {
+            Row({ space: 12 }) {
+              Image($r('app.media.ic_keys')).width(16).height(16)
+              Text(k).fontSize(13).fontColor('#E8EAED').layoutWeight(1)
+              Button(this.lang === 'zh' ? '删除' : 'Delete').height(26).fontSize(11)
+                .backgroundColor('#3A2226').fontColor('#E08A8A')
+                .onClick(async () => {
+                  await Vault.remove(k);
+                  this.creds.delete(k);
+                  this.probeText = 'credential removed: ' + k;
+                })
+            }
+            .width('100%').height(44).padding({ left: 10, right: 10 })
+            .borderRadius(8).backgroundColor('#1C1F24')
+          }
+        }, (k: string) => 'cred-' + k)
+      }.id('vault/list').layoutWeight(1).width('100%')
+    }
+    .width('100%').height('100%').padding({ left: 22, right: 22, top: 10 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -3091,7 +3223,11 @@ struct Index {
           if (this.tabs.length > 0) {
             this.tabBar()
           }
-          if (this.showHosts || this.tabs.length === 0) {
+          if (this.pcNav === '会话日志') {
+            this.logsPage()
+          } else if (this.pcNav === '密钥链') {
+            this.vaultPage()
+          } else if (this.showHosts || this.tabs.length === 0) {
             if (this.hostView === 'grid') {
               this.hostGridView()
             } else {

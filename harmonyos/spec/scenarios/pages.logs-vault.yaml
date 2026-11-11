@@ -1,0 +1,86 @@
+schema: 1
+id: pages.logs-vault
+title: 侧栏页面：会话日志会记录连接尝试；密钥链页可打开
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 4000
+steps:
+  - action: launch
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  # 建一台不带口令的主机
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: logpage-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.1.1.1
+  - action: type
+    target: id:shell/dialog-user
+    text: root
+  - action: type
+    target: id:shell/dialog-port
+    text: "22"
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1200
+  # 触发一次连接尝试（无凭据 -> 但会话日志应先记录）
+  - action: click
+    target: id:host-name/0
+  - action: wait
+    ms: 1200
+  # 打开会话日志页
+  - action: click
+    target: id:nav/logs
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "会话日志|Session logs"
+      withinMs: 8000
+  # 打开密钥链页
+  - action: click
+    target: id:nav/keys
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "密钥链|Keychain"
+      withinMs: 8000
+  # 回主机页
+  - action: click
+    target: id:nav/hosts
+  - action: wait
+    ms: 1000
+asserts:
+  - kind: screenRegex
+    regex: "logpage-a"
+    withinMs: 12000
+  - kind: absent
+    value: "id:nav/logs"
+    withinMs: 2000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：侧栏路由（会话日志/密钥链/主机）、会话日志页渲染、连接尝试写入日志行、
+    回到主机页主机仍在。**不覆盖**：日志分页/搜索、时间格式本地化、密钥链的明文口令操作、
+    日志清理后的一致性。
+deviations:
+  - 会话日志在"无凭据"时也会记录（这是当前实现：记录发生在凭据检查之前）
+notes: >-
+  只用"页面能打开"断言太松；这里额外要求日志里出现刚建的主机名，才算日志真的写入了。

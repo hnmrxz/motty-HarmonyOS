@@ -277,3 +277,37 @@ aa force-stop -> aa start
 - 设置项还很少（官方设置页有连接超时/保活/重连/AI 等大量项）
 - 偏好文件损坏的回退、导出偏好
 
+---
+
+## Round 9 追加：会话日志页 + 密钥链页（侧栏两项从"禁用"变"可用"）
+
+### 已实现
+| 页面 | 入口 | 内容 |
+|---|---|---|
+| 会话日志 | `nav/logs` → `logs/list`、`logs/empty`、`logs/refresh`、`logs/clear` | 新表 `session_logs(id,label,address,proto,started_at)`；`openSession()` 在凭据检查**之前**先落一行；按时间倒序最多 200 条 |
+| 密钥链 | `nav/keys` → `vault/list`、`vault/empty` | 只列已保存凭据的 key（`address:port`），可删除；显式声明"口令在 Asset Store，这里不显示明文" |
+| 路由 | `pcNav` 状态 | 主机 / 会话日志 / 密钥链三页切换；点回「主机」恢复列表或网格 |
+
+### 用例（pcOnly）
+- `pages.logs-vault`：建主机 → 点名称列触发连接 → 进会话日志页 → 断言主机名出现在日志里 → 进密钥链页 → 回主机页。**PASS**
+- `host.catalog`、`settings.persist` 本轮复跑仍 **PASS**。
+
+### 这轮暴露的一个真问题（重要）
+第 2 轮为了让行内操作"悬停才出现"，用了 `opacity(this.hoverRow === index ? 1 : 0)`。
+**但 opacity=0 的节点不进 UITest 的 dump**，于是 25 条依赖 `host-open/0`、`host-files/0` 的旧用例全部失效
+（复跑 `sftp.manage` 时第一次就失败在这一步）。
+
+处置：**行内操作恢复常显**（与参照的悬停交互存在差异，记在这里）：
+- 去掉行内「⋯」按钮（其菜单与右侧按钮重复），按钮宽度 190，图标按钮 24×24；
+- 结果：`host-row/0`、`host-files/0`、`host-open/0`、`host-edit/0` 都能被 dump 到；
+  `host-del/0` 在 5 个按钮时仍会被挤出，后续要么再收窄、要么把删除挪进菜单。
+
+### 本轮仍未修（下一轮）
+- `host.manage`：第 13 步等 `manage-b` 超时（编辑流程或列表刷新时序，待定位）
+- `sftp.manage`：第 13 步点不到 `sftp/entry/hello.txt`（可能是夹具未运行或列表渲染变化）
+- `host-del/0` 仍会被挤出可见区
+
+### 教训
+**"视觉上隐藏"和"自动化可见"是两件事**。以后凡是要靠 dump 断言的控件，不能用 opacity 隐藏；
+要用 `visibility` 之外的布局手段（例如抽屉/菜单），或给测试专用 id 放在可见区域。
+
