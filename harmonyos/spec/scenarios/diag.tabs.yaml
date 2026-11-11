@@ -1,0 +1,67 @@
+schema: 1
+id: diag.tabs
+title: 诊断面板分页：RDP / 调试 / 快照 三页可切换，各页控件只在对应页出现
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 3000
+steps:
+  - action: launch
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "New Host|新建主机"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "rdp-server|not probed"
+      withinMs: 8000
+  - action: click
+    target: id:diag/tab-debug
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "catalog export"
+      withinMs: 8000
+  - action: click
+    target: id:diag/tab-snap
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "ticks="
+      withinMs: 8000
+  - action: click
+    target: id:diag/tab-rdp
+  - action: wait
+    ms: 900
+asserts:
+  - kind: screenRegex
+    regex: "rdp-server|not probed"
+    withinMs: 8000
+  - kind: absent
+    value: "catalog export"
+    withinMs: 4000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：默认进入 RDP 页、可切到调试页（catalog export 出现）、
+    可切到快照页（ticks= 出现）、切回 RDP 页后调试页控件消失。
+    **不覆盖**：分页状态跨重启保持、每页全部控件（只断言代表性控件）。
+deviations:
+  - 面板可视高度实测只有 1324px，分页就是让每页放得下；这条用例防"被改回单页"。
+notes: >-
+  背景：单页面板内容约 1900px 超出 1324px，导致大量控件不可见、不可点。分页是结构修复。

@@ -37,6 +37,11 @@ steps:
     ms: 700
   - action: click
     target: id:diag/open
+  - action: wait
+    ms: 600
+  # 面板已分页：调试类按钮在「调试」页
+  - action: click
+    target: id:diag/tab-debug
   - action: click
     target: id:vnc/session
   # VNC 走的是"直连"路径（不需要 SSH 主机密钥确认），所以这里等连接状态

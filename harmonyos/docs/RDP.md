@@ -1054,3 +1054,46 @@ snapshot 信息、512×384 的 Canvas、catalog 组、长状态文本…）**纵
 最终：`rdp.server-peer / rdp.client-render / rdp.client-input / rdp.preview / rdp.preview-idle /
 host.catalog / ui.i18n.panels => 7/7 PASS`。
 
+---
+
+## Round 57：诊断面板**改成三页**（RDP / 调试 / 快照），溢出问题真正解决
+
+### 结构
+```
+┌ 诊断 ─────────────────────────── [关闭] ┐
+│ [RDP] [调试] [快照]                        │
+│ ── 当前页内容（每页都远小于 1324px）──      │
+└───────────────────────────────────────────┘
+```
+| 页 | 内容 |
+|---|---|
+| **RDP**（默认） | `rdp/srv-state`、`rdp/result`（状态行在页顶）、服务端 启动/停止/状态、预览条（`rdp/frame-btn`/`rdp/frame`）、探测按钮、目标输入框 |
+| **调试** | 终端 demo 5 个、VNC 2 个、catalog export/import/reset + 结果、TCP/SSH/主机密钥探测、探测结果面板 |
+| **快照** | `rdp/canvas`、`rdp/canvas-info`、`rdp/ticks`、实验性说明 |
+
+实现方式：新增 `diagPanelV2()` + `diagTabBtn()`，用 `@State diagTab` 控制；**旧的单页 builder 保留不调用**（便于对照）。
+
+### 实测
+```
+RDP 页:   rdp/result, rdp/srv-stop, rdp/render, rdp/frame-btn, diag/tab-*
+调试页:   catalog/export-file, catalog/reset-hosts, terminal/shell, vnc/session, net/probe, ssh/probe
+快照页:   rdp/canvas, rdp/canvas-info, rdp/experimental, rdp/ticks
+```
+⇒ 每个控件在它该在的页里**都可见、可点**（Round 52 起的老问题解决）。
+
+### 用例适配
+30 条依赖"调试"页控件的用例（catalog/终端/VNC/探测）在 `diag/open` 之后统一插入：
+```yaml
+- action: click
+  target: id:diag/tab-debug
+```
+新增 `diag.tabs` 用例：默认 RDP 页 → 切调试页（`catalog export` 出现）→ 切快照页（`ticks=` 出现）
+→ 切回 RDP 页（调试页控件消失），**PASS**。
+
+### 回归（代表性子集，7/7 + 新用例）
+```
+host.catalog / ui.i18n.panels / host.batch-delete / net.reachability
+/ rdp.client-render / rdp.preview / snippets.crud => 7/7 PASS
+diag.tabs => PASS
+```
+

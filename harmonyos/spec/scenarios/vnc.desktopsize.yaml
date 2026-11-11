@@ -39,6 +39,11 @@ steps:
     ms: 700
   - action: click
     target: id:diag/open
+  - action: wait
+    ms: 600
+  # 面板已分页：调试类按钮在「调试」页
+  - action: click
+    target: id:diag/tab-debug
   - action: click
     target: id:vnc/session
   # 夹具在第 3 次更新请求后就把尺寸改成 80x60（非常快，64x48 是瞬态的，不做断言）

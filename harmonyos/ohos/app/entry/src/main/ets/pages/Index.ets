@@ -285,6 +285,7 @@ struct Index {
   @State rdpSnapInfo: string = 'rdp-canvas: (empty)';
   @State rdpFrameSrc: string = '';
   @State rdpFrameInfo: string = '';
+  @State diagTab: string = 'rdp';
   @State rdpFrameWrites: number = 0;
   @State rdpPreviewOn: boolean = false;
   @State rdpFrameSkips: number = 0;
@@ -4067,6 +4068,150 @@ struct Index {
     }.width('100%').alignItems(HorizontalAlign.Start)
   }
 
+
+  // ---------------- 诊断面板 v2：分页（解决 1324px 垂直预算不足）----------------
+  @Builder
+  diagTabBtn(label: string, key: string) {
+    Button(label)
+      .id('diag/tab-' + key)
+      .height(28).fontSize(12)
+      .backgroundColor(this.diagTab === key ? '#1A6DD0' : '#E6E6E6')
+      .fontColor(this.diagTab === key ? Color.White : '#1A1A1A')
+      .onClick(() => { this.diagTab = key; })
+  }
+
+  @Builder
+  diagPanelV2() {
+    Column({ space: 8 }) {
+      Row() {
+        Text(this.t('diag.title')).fontSize(16).fontWeight(FontWeight.Bold)
+        Blank()
+        Button(this.t('common.close')).id('diag/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+          .onClick(() => { this.diagOpen = false; this.stopRdpPreview(); })
+      }.width('100%')
+      Row({ space: 8 }) {
+        this.diagTabBtn('RDP', 'rdp')
+        this.diagTabBtn('调试', 'debug')
+        this.diagTabBtn('快照', 'snap')
+      }.width('100%').justifyContent(FlexAlign.Start)
+
+      if (this.diagTab === 'rdp') {
+        Text(this.rdpSrvStatus.length > 0 ? this.rdpSrvStatus : 'rdp-server: (idle)')
+          .id('rdp/srv-state').fontSize(11).fontFamily('monospace').fontColor('#0A6C00').width('100%')
+        Text(this.rdpResult.length > 0 ? this.rdpResult : 'rdp: (not probed)')
+          .id('rdp/result').fontSize(11).fontFamily('monospace').fontColor('#37474F').width('100%')
+        Row({ space: 8 }) {
+          Button(this.t('rdp.srvStart')).id('rdp/srv-start').backgroundColor('#0A6C00').fontColor(Color.White)
+            .onClick(() => { this.startRdpServer(); })
+          Button(this.t('rdp.srvStop')).id('rdp/srv-stop').backgroundColor('#C62828').fontColor(Color.White)
+            .onClick(() => { this.stopRdpServer(); })
+          Button(this.t('rdp.srvStatus')).id('rdp/srv-status').backgroundColor('#37474F').fontColor(Color.White)
+            .onClick(() => { this.refreshRdpServer(); })
+        }.width('100%')
+        this.rdpPreviewStrip()
+        Row({ space: 8 }) {
+          Button(this.t('rdp.local') + ' :13389').id('rdp/probe-local').backgroundColor('#1A6DD0').fontColor(Color.White)
+            .onClick(() => { this.rdpProbe(13389, 'tester', 'secret'); })
+          Button('RDP render').id('rdp/render').backgroundColor('#1A6DD0').fontColor(Color.White)
+            .onClick(() => { this.startRdpRender(); })
+          Button('RDP input').id('rdp/input').backgroundColor('#1A6DD0').fontColor(Color.White)
+            .onClick(() => { this.probeRdpInput(); })
+          Button('TCP').id('rdp/tcpprobe').backgroundColor('#37474F').fontColor(Color.White)
+            .onClick(() => {
+              const p2: number = Number.parseInt(this.rdpTargetPort, 10);
+              this.rdpResult = 'tcp-probe: ' +
+                mottynapi.rawTcpProbe(this.rdpTargetHost, Number.isNaN(p2) ? 3389 : p2);
+            })
+        }.width('100%')
+        Row({ space: 8 }) {
+          Button('RDP :3390').id('rdp/probe-closed').backgroundColor('#37474F').fontColor(Color.White)
+            .onClick(() => { this.rdpProbe(3390); })
+          Button('RDP :2222').id('rdp/probe-ssh').backgroundColor('#37474F').fontColor(Color.White)
+            .onClick(() => { this.rdpProbe(2222); })
+        }.width('100%')
+        Row({ space: 6 }) {
+          TextInput({ text: this.rdpTargetHost, placeholder: 'host' }).id('rdp/host').width(150)
+            .onChange((v: string) => { this.rdpTargetHost = v; })
+          TextInput({ text: this.rdpTargetPort, placeholder: 'port' }).id('rdp/port').width(70)
+            .onChange((v: string) => { this.rdpTargetPort = v; })
+          TextInput({ text: this.rdpTargetUser, placeholder: 'user' }).id('rdp/user').width(110)
+            .onChange((v: string) => { this.rdpTargetUser = v; })
+          TextInput({ text: this.rdpTargetPass, placeholder: 'password' }).id('rdp/pass').type(InputType.Password).width(110)
+            .onChange((v: string) => { this.rdpTargetPass = v; })
+          Toggle({ type: ToggleType.Checkbox, isOn: this.rdpUseNla }).id('rdp/nla')
+            .onChange((v: boolean) => { this.rdpUseNla = v; })
+          Text('NLA').fontSize(11)
+        }.width('100%')
+      }
+
+      if (this.diagTab === 'debug') {
+        Row({ space: 8 }) {
+          Button('term-echo').id('diag/term-echo').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+            .onClick(() => { this.connectFixtureDemo('term-echo'); })
+          Button('vt-demo').id('terminal/demo').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+            .onClick(() => { this.connectFixtureDemo('demo'); })
+          Button('vt-demo2').id('terminal/vt2').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+            .onClick(() => { this.connectFixtureDemo('vt2'); })
+          Button('vt').id('terminal/vt').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+            .onClick(() => { this.connectFixtureDemo('vt'); })
+          Button('pty shell').id('terminal/shell').backgroundColor('#0A6C00').fontColor(Color.White)
+            .onClick(() => { this.connectFixtureDemo('shell'); })
+        }.width('100%')
+        Row({ space: 8 }) {
+          Button('VNC session').id('vnc/session').backgroundColor('#6A1B9A').fontColor(Color.White)
+            .onClick(() => { this.diagOpen = false; this.stopRdpPreview(); this.startVnc('secret'); })
+          Button('VNC bad pw').id('vnc/session-bad').backgroundColor('#C62828').fontColor(Color.White)
+            .onClick(() => { this.diagOpen = false; this.stopRdpPreview(); this.startVnc('wrong-password'); })
+        }.width('100%')
+        Row({ space: 8 }) {
+          Button('catalog export').id('catalog/export-file').fontSize(11).height(28)
+            .backgroundColor('#1E2127').fontColor('#C7CBD1')
+            .onClick(() => { this.exportCatalogToSandbox(); })
+          Button('catalog import').id('catalog/import-file').fontSize(11).height(28)
+            .backgroundColor('#1E2127').fontColor('#C7CBD1')
+            .onClick(() => { this.importCatalogFromSandbox(); })
+          Button('catalog reset hosts').id('catalog/reset-hosts').fontSize(11).height(26)
+            .backgroundColor('#3A2226').fontColor('#E08A8A')
+            .onClick(() => { this.resetAllHosts(); })
+        }.width('100%')
+        Text(this.catalogResult).id('catalog/result').fontSize(11).fontFamily('monospace')
+          .fontColor('#0A6C00').width('100%')
+        Row({ space: 8 }) {
+          Button(this.t('diag.tcpProbe')).id('net/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+            .onClick(() => { this.probeNet(); })
+          Button(this.t('diag.sshProbe')).id('ssh/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+            .onClick(() => { this.probeSsh(); })
+          Button(this.t('diag.hostkeyCheck')).id('ssh/hostkey-check').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+            .onClick(() => { this.hostkeyCheck(); })
+        }.width('100%')
+        Text(this.vncResult.length > 0 ? this.vncResult : 'vnc: (not probed)')
+          .id('vnc/result').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')
+        Scroll() {
+          Text(this.probeText).id('net/probe-result').fontSize(11).fontFamily('monospace')
+            .fontColor('#C7CBD1').width('100%')
+        }.height(80).width('100%').border({ width: 1, color: '#22252A' }).padding(8)
+      }
+
+      if (this.diagTab === 'snap') {
+        Text(this.rdpSnapInfo).id('rdp/canvas-info').fontSize(11).fontFamily('monospace').fontColor('#0A6C00')
+        Text('ticks=' + this.rdpTickCount + ' drawn=' + this.rdpTickDrawn).id('rdp/ticks').fontSize(11).fontColor('#0A6C00')
+        Canvas(this.rdpCanvasCtx)
+          .id('rdp/canvas')
+          .width(512).height(384)
+          .backgroundColor('#000000')
+        Text(this.lang === 'zh' ? 'RDP：实验性' : 'RDP is experimental')
+          .id('rdp/experimental').fontSize(11).fontWeight(FontWeight.Bold)
+          .fontColor('#E0A458').width('100%')
+        Text(this.lang === 'zh'
+          ? '画面已能解码并投递到界面；输入可发送到服务端。仍属实验性。'
+          : 'picture is decoded and delivered; input reaches the server. Still experimental.')
+          .id('rdp/experimental-note').fontSize(10).fontColor('#8A8F98').width('100%')
+      }
+    }
+    .id('diag/panel').width(680).padding(16).backgroundColor(Color.White).borderRadius(12)
+    .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -4148,7 +4293,7 @@ struct Index {
       if (this.diagOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
         Scroll() {
-          this.diagPanel()
+          this.diagPanelV2()
         }.width('100%').height('100%').align(Alignment.Top)
       }
       if (this.keyDialog) {

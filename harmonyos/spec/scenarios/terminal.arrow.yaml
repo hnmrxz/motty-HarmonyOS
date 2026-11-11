@@ -38,6 +38,11 @@ steps:
   # 用 term-echo 夹具：它会把"以 ESC 开头的数据"以十六进制回显
   - action: click
     target: id:diag/open
+  - action: wait
+    ms: 600
+  # 面板已分页：调试类按钮在「调试」页
+  - action: click
+    target: id:diag/tab-debug
   - action: click
     target: id:diag/term-echo
   - action: wait

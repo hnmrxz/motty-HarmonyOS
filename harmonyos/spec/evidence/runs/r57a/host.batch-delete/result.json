@@ -1,0 +1,224 @@
+{
+  "spec": "host.batch-delete",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 11,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 12,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 13,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 14,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 15,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 16,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 17,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 18,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 19,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 20,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 21,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 22,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 23,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 24,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 25,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 26,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 27,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 28,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 29,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：全选后点批量删除会先弹确认（文案带真实台数 2）、取消不动数据、 再次确认后清空并回到空态。 **不覆盖**：只选中部分主机的批量删除、删除时保险库口令是否真的被清（另有 cred 类用例）、 撤销删除。"
+  },
+  "passed": true
+}
