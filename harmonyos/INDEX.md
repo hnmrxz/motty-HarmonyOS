@@ -1655,3 +1655,38 @@ rdp-server: start rc=0 running port=13389 frames=0
 ### 五、为什么这轮值得记
 两个"把成功当失败"的返回值错误，各花了很久才定位——根因是**没有读 FreeRDP 的返回值约定就照直觉写**。
 自检体系（把每个阶段的结果塞进状态行）是这轮唯一真正有效的排障手段。
+---
+
+## Round 57：定位到"版本回滚"根因的一半
+
+### 一、确认的真问题
+1. **`bm clean -n <bundle> -d` 在本机表现为"把应用回滚到先前安装的版本"**。
+   这解释了 Round 55–56 的怪现象：手动启动是新二进制、`run.py` 跑用例却抓到旧行为
+   （旧二进制文案格式 `stopped err=shadow_server_init failed`，没有新加的 `built=` 字段）。
+2. 因此 `--fresh` 之后**必须重装 HAP**：`spec/run.py` 已改为"force-stop → bm clean -d → 重装 → 继续"，
+   HAP 路径默认 `harmonyos/ohos/app/entry/build/default/outputs/default/entry-default-signed.hap`，
+   可用环境变量 `MOTTY_HAP` 覆盖；找不到时**打印警告**而不是静默继续。
+3. 新增用例级开关 `app.skipFresh: true`（schema 已允许）：
+   对"清数据会破坏环境"的用例（如 RDP 服务端自检）改为不清数据。
+   已用于 `rdp.server-peer`。
+
+### 二、native 构建指纹（本轮新增的排障手段）
+状态行现在输出 `built=<__DATE__ __TIME__>`，以及 `loops=`（采集线程循环次数）、
+`surface=ok|null`（是否拿到 shadow 表面）。实测：
+- **手动启动 + 点击**：`start rc=0 running port=13389 frames=0 loops=0 surface=null built=Nov 11 2026 08:04:23`
+  → 服务端确实在跑（`/proc/net/tcp` 的 `344D` 为 LISTEN），但**采集线程没被调用**（`loops=0`）
+- 说明 FreeRDP 的 shadow **不会调用 `ep.Start`**，采集线程需要我们自己拉起
+
+### 三、尝试后回退的改动
+按上面结论"start 成功后自己起采集线程"改了一版，但引入崩溃（`std::terminate`，`libc++_shared` 栈），
+**已回退**——不留未验证的改动在主干上。
+
+### 四、仍未解决
+即使加了"清理后重装"，`run.py --fresh` 抓到的仍是旧二进制（无 `built=` 字段）；
+而手动启动是新的。**下一步**：
+1. 让 runner 在 launch 后把 `built=` 抓下来打印（人眼立刻能比对，不用等断言失败）
+2. 检查 `/data/storage/el1/bundle/libs/x86_64/libmottynapi.so` 的 mtime 是否随 install 更新
+3. 若确认 install 不刷新该路径，则需要 uninstall + install（手动路径有效）
+
+### 五、状态
+`rdp.server-peer` **仍失败**，不算 E1。服务端"能启动"目前只有**手动证据**。

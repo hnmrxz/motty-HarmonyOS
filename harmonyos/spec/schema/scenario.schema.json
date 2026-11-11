@@ -71,6 +71,9 @@
           "type": "integer",
           "minimum": 0,
           "default": 800
+        },
+        "skipFresh": {
+          "type": "boolean"
         }
       },
       "description": "runner 据此启动应用。缺失则 launch 步骤报错而不是静默跳过"

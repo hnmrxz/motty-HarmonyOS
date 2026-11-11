@@ -23,6 +23,7 @@
 """
 import argparse
 import json
+import os
 import pathlib
 import re
 import shutil
@@ -307,10 +308,31 @@ class Runner:
     def run_spec(self, spec):
         self.which_device()
         self.start_uitest()
+        # spec 可声明 app.skipFresh: true —— 用于清理数据会破坏环境的场景
+        # （实测本机 `bm clean -d` 会让应用回滚到旧版本，导致测到旧二进制）
+        if spec.get('app', {}).get('skipFresh') is True:
+            self.fresh = False
+        if self.fresh and 'app' in spec:
+            # 注意（实测）：本机的 `bm clean -d` 会让应用**回滚到先前安装的版本**，
+            # 于是用例跑的是旧二进制，而手动启动是新二进制——表现为"改了代码却测不到"。
+            # 因此清理数据后必须重装当前 HAP。路径可用 MOTTY_HAP 覆盖。
+            pass
         if self.fresh and 'app' in spec:
             # 清应用数据：让断言不依赖上一次运行遗留的库内容（可重复性）
-            self.sh("bm clean -n " + spec["app"]["bundleName"] + " -d", check=False)
+            bundle = spec["app"]["bundleName"]
+            self.sh(f"aa force-stop {bundle}", check=False)
+            self.sh("bm clean -n " + bundle + " -d", check=False)
             time.sleep(0.5)
+            hap = os.environ.get("MOTTY_HAP")
+            if hap is None:
+                hap = str(pathlib.Path(__file__).resolve().parents[1] /
+                          "ohos/app/entry/build/default/outputs/default/entry-default-signed.hap")
+            if pathlib.Path(hap).exists():
+                proc = subprocess.run([HDC, "-t", self.serial, "install", "-r", hap],
+                                      capture_output=True, text=True)
+                time.sleep(0.5)
+            else:
+                print(f"警告: --fresh 找不到 HAP（{hap}），可能测到旧版本", file=sys.stderr)
         result = {
             'spec': spec['id'],
             'profile': self.profile,

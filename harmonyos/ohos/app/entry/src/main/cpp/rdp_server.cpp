@@ -47,6 +47,8 @@ struct VssSubsystem {
     std::thread worker;
     std::atomic<bool> stop{false};
     std::atomic<uint32_t> frames{0};
+    std::atomic<uint32_t> loops{0};
+    std::atomic<int> surfaceSeen{0};
     char user[64];
     char password[64];
 };
@@ -57,6 +59,8 @@ char g_authPass[64] = {0};
 VssSubsystem *g_subsystem = nullptr;
 std::thread g_serverThread;
 std::atomic<bool> g_running{false};
+// 构建指纹：用来确认"设备上跑的到底是哪一份 .so"（用例 vs 手动点击）
+const char *g_buildStamp = __DATE__ " " __TIME__;
 std::string g_lastError;
 // 我们自己的 ep.Init 是否被调用过：用来把失败点切在 shadow_subsystem_init 的前半段/后半段
 int g_vssInitCalls = 0;
@@ -116,7 +120,9 @@ void captureThread(VssSubsystem *sub) {
     uint32_t frame = 0;
     while (!sub->stop.load()) {
         rdpShadowServer *server = sub->common.server;
+        sub->loops.fetch_add(1);
         if (server != nullptr && server->surface != nullptr) {
+            sub->surfaceSeen.store(1);
             rdpShadowSurface *surface = server->surface;
             EnterCriticalSection(&surface->lock);
             paintSurface(surface, frame++);
@@ -457,10 +463,13 @@ napi_value RdpServerStatus(napi_env env, napi_callback_info info) {
     std::string text;
     if (g_running.load() && g_server != nullptr) {
         const uint32_t frames = g_subsystem != nullptr ? g_subsystem->frames.load() : 0;
+        const uint32_t loops = g_subsystem != nullptr ? g_subsystem->loops.load() : 0;
+        const int surfaceSeen = g_subsystem != nullptr ? g_subsystem->surfaceSeen.load() : 0;
         text = "running port=" + std::to_string(static_cast<unsigned>(g_server->port)) +
-               " frames=" + std::to_string(frames);
+               " frames=" + std::to_string(frames) + " loops=" + std::to_string(loops) +
+               " surface=" + (surfaceSeen != 0 ? "ok" : "null") + " built=" + g_buildStamp;
     } else {
-        text = "stopped rc=" + std::to_string(g_lastRc) + " dir=" +
+        text = "stopped rc=" + std::to_string(g_lastRc) + " built=" + g_buildStamp + " dir=" +
                (g_lastConfigDir.empty() ? "(empty)" : g_lastConfigDir) +
                (g_lastError.empty() ? "" : (" err=" + g_lastError));
     }
