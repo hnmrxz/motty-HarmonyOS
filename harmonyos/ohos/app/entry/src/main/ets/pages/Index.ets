@@ -1641,6 +1641,7 @@ struct Index {
     hilog.info(DOMAIN, TAG, 'forward rule saved, total=%{public}d', this.fwdRuleCount);
   }
 
+
   private async deleteRule(id: string): Promise<void> {
     if (this.store === null) {
       return;
@@ -2224,7 +2225,7 @@ struct Index {
       Text('saved rules: ' + this.fwdRuleCount)
         .id('fwd/rule-count').fontSize(11).fontColor('#0A6C00').width('100%')
       Column({ space: 4 }) {
-        ForEach(this.fwdRules, (rule: string) => {
+        ForEach(this.fwdRules, (rule: string, ridx: number) => {
           Row({ space: 8 }) {
             Text(rule.substring(rule.indexOf('|') + 1)).fontSize(11).fontFamily('monospace')
               .layoutWeight(1)
