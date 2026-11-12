@@ -1,0 +1,148 @@
+{
+  "spec": "forward.clear-all",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 6,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 11,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 12,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 13,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 14,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 15,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：清空前置（空态）、建两条规则计数为 2、点\"清空全部规则\"后计数为 0 且列表空。 **不覆盖**：清空时正在运行的隧道（清规则不停止已建立的转发，属设计选择，未断言）。"
+  },
+  "passed": true
+}

@@ -1,0 +1,10 @@
+﻿test(harmonyos): 全量回归 full102 = 89/89 全绿（第十三次全通过, 批量硬化后首次全量）
+
+SUMMARY passed=89/89  failed=0
+本轮是批量硬化后的第一次全量: 47 条用例在 diag/open、diag/tab-debug 之后都断言"面板确实打开了",
+full101 的 notes.crud flake 未再出现
+
+连续全绿(13 次): full68 76/76, full72 78/78, full75 79/79, full77 80/80, full81 82/82,
+  full84 83/83, full86 83/83, full90 84/84, full93 86/86, full95 87/87, full97 88/88,
+  full99 89/89, full102 89/89
+基线(更新): 用例数 89; 全量 89/89(硬化后仍全绿)

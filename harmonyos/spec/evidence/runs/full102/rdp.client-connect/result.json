@@ -1,0 +1,98 @@
+{
+  "spec": "rdp.client-connect",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 4,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 7,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：客户端与**真实 RDP 服务端实现**（FreeRDP shadow） 完成传输层协商并到达 connected；TLS 握手通过（自签证书由 VerifyCertificateEx 按会话接受）； 客户端显式关闭 NLA（shadow 不支持 CredSSP）。 **不覆盖**：画面是否显示（客户端尚无位图解码）、输入回传、与真实 Windows 服务端互通、 NLA/CredSSP、多显示器、动态分辨率。"
+  },
+  "passed": true
+}

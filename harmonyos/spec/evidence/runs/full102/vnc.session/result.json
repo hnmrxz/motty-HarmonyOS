@@ -1,0 +1,116 @@
+{
+  "spec": "vnc.session",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 8,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。覆盖：会话级帧循环（持续请求增量更新并解码）、 指针事件(PointerEvent)发送到远端、远端据指针位置改变画面后可被客户端统计到。 上屏方式：Canvas fillRect 逐像素网格（每帧 3072 个矩形），**不用 putImageData**—— 后者会触发 lib2d_graphics 的 SkiaImage::Serialize 崩溃（cppcrash 证据见 RUNBOOK §26）。 未覆盖：键盘事件断言、真实 VNC 服务器、VNC Auth(DES)、Hextile/ZRLE 编码、 剪贴板、缩放/滚动、帧率与带宽表现、arm64 真机。"
+  },
+  "passed": true
+}
