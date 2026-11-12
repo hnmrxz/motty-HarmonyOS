@@ -1,0 +1,18 @@
+﻿feat(harmonyos/knownhosts): 已知主机"清空"按钮 + 修掉一个依赖历史数据的用例缺陷
+
+full92 结果: 84/85
+  FAIL ui.i18n.panels step 18: 期望"信任此主机"对话框, 未出现
+  单跑通过, 但根因不是抖动: 重装会恢复应用数据, known_hosts 里可能已存在夹具指纹,
+  于是"首次信任"对话框根本不出现 —— 用例隐式假设"库是空的", 这个假设不可靠
+
+新增功能: 已知主机面板加 known/clear(清空已知主机): delete 整张 known_hosts -> refresh -> 空态
+  既是用户需要的操作(换机/换指纹后重新信任), 也让用例可以先清空再连
+
+用例:
+- 新增 knownhosts.clear PASS: 空库点清空 -> 空态; 连一次建立信任 -> 再清空 -> 回空态
+- ui.i18n.panels 在连主机前先 known/open -> known/clear -> known/close, PASS
+
+回归: knownhosts.manage / ui.i18n.panels / ssh.hostkey / host.recreate-trust => 4/4 PASS
+
+教训(写进规范): 用例不要假设"数据库是空的"; 重装会恢复数据。
+凡涉及"首次"行为(首次信任/首次写入), 用例必须显式清理对应表

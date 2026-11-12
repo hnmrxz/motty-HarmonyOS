@@ -53,6 +53,19 @@ steps:
     target: id:shell/dialog-submit
   - action: wait
     ms: 900
+  # 清空已知主机：重装会恢复历史数据，指纹已在库里时信任对话框不会出现（实测踩过）
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/clear
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/close
+  - action: wait
+    ms: 500
   - action: click
     target: id:host-files/0
   - action: wait

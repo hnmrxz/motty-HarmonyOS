@@ -1,0 +1,132 @@
+{
+  "spec": "ui.i18n.panels",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 11,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 12,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 13,
+      "action": "type",
+      "ok": true,
+      "detail": "第 2 次注入才落位"
+    },
+    {
+      "i": 14,
+      "action": "type",
+      "ok": true,
+      "detail": "secret: 已注入，未回读"
+    },
+    {
+      "i": 15,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 16,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 17,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 18,
+      "action": "wait",
+      "ok": false,
+      "detail": "步骤内 expect 失败: 正则 '信任此主机|Trust this host|Unknown host key' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n调试\\n\\n\\n\\n会话日志\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）",
+      "expect": {
+        "ok": false,
+        "detail": "正则 '信任此主机|Trust this host|Unknown host key' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n调试\\n\\n\\n\\n会话日志\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）"
+      }
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：SFTP 面板标题/下载/上传/上级/列表 两组语言取词、以及\"键名泄漏\"的反向检测。 **不覆盖**：转发表单与 VNC 面板的逐条文案、跟随系统语言热切换、第三种语言、复数与日期本地化、arm64 真机。"
+  },
+  "passed": false,
+  "error": "step 18 (wait) 失败: 步骤内 expect 失败: 正则 '信任此主机|Trust this host|Unknown host key' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n调试\\n\\n\\n\\n会话日志\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）"
+}

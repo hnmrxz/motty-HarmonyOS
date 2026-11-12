@@ -1,0 +1,142 @@
+{
+  "spec": "host.form-chips",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 11,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 12,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 13,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 14,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 15,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：表单内官方色板（7 个色块）与标签 chips（开发/测试/生产）存在并可点选、 保存后列表显示该标签。 **不覆盖**：颜色结果是否真的应用到行左缘（像素级校验）、自定义颜色输入、标签上限与非法字符校验、 编辑时 chips 的选中态回显。"
+  },
+  "passed": true
+}

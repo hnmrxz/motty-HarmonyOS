@@ -1629,6 +1629,18 @@ struct Index {
     await this.refreshKnownHosts();
   }
 
+  private async clearKnownHosts(): Promise<void> {
+    if (this.store === null) { return; }
+    try {
+      const pred = new relationalStore.RdbPredicates('known_hosts');
+      await this.store.delete(pred);
+      await this.refreshKnownHosts();
+      hilog.info(DOMAIN, TAG, 'known hosts cleared');
+    } catch (e) {
+      hilog.error(DOMAIN, TAG, 'clearKnownHosts failed: %{public}s', JSON.stringify(e));
+    }
+  }
+
   // ---------------- 转发规则持久化 ----------------
   private async reloadRules(): Promise<void> {
     if (this.store === null) {
@@ -2434,6 +2446,9 @@ struct Index {
       }.width('100%')
       Text('trusted entries: ' + this.knownKeys.length)
         .id('known/count').fontSize(11).fontColor('#0A6C00').width('100%')
+        Button(this.lang === 'zh' ? '清空已知主机' : 'Clear known hosts')
+          .id('known/clear').height(28).fontSize(12).backgroundColor('#C62828').fontColor(Color.White)
+          .onClick(() => { this.clearKnownHosts(); })
       Scroll() {
         Column({ space: 4 }) {
           ForEach(this.knownKeys, (key: string, idx: number) => {
@@ -4969,3 +4984,6 @@ struct Index {
   }
 
 }
+  // 清空已知主机（用于"重新走一次首次信任"，也让用例不依赖历史数据）
+
+

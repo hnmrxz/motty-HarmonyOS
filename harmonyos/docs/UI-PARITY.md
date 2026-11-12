@@ -1465,3 +1465,32 @@ dump **不含 fontSize**，所以"终端文字真的变大了"这一点只能给
 - 与**真实 Windows RDP 服务器**的像素一致性（对端是进程内 shadow 服务端画的测试图案）；
 - 键鼠直投到会话视图（目前输入仍走诊断页的 `rdp/input` 探针）。
 
+---
+
+## Round 92 追加：已知主机「清空」+ 修掉一个**依赖历史数据**的用例缺陷
+
+### full92 结果：**84/85**
+```
+FAIL ui.i18n.panels step 18: 期望"信任此主机"对话框，未出现
+```
+单跑通过（`runs/r92a`）——但**根因不是抖动**：
+
+> 重装会恢复应用数据，`known_hosts` 里可能**已经存在**夹具指纹，
+> 于是"首次信任"对话框根本不出现。用例 implicitly 假设"库是空的"，这个假设不可靠。
+
+### 新增功能（顺手把假设变确定）
+已知主机面板加按钮 **`known/clear`（清空已知主机）**：
+`delete` 整张 `known_hosts` → `refreshKnownHosts()` → 空态 `(no trusted hosts)`。
+它既是用户需要的操作（换机/换指纹后重新信任），也让用例可以**先清空再连**。
+
+### 用例
+- 新增 `knownhosts.clear` **PASS**：空库点清空 → 空态；连一次建立信任 → 再清空 → 回到空态；
+- `ui.i18n.panels` 在连主机前先 `known/open → known/clear → known/close`，**PASS**（不再依赖历史数据）。
+
+### 回归
+`knownhosts.manage / ui.i18n.panels / ssh.hostkey / host.recreate-trust => 4/4 PASS`
+
+### 教训（写进规范）
+**用例不要假设"数据库是空的"**：本项目的重装会恢复数据。
+凡涉及"首次"行为（首次信任、首次写入），用例必须显式清理对应表。
+

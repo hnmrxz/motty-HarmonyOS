@@ -1,0 +1,119 @@
+schema: 1
+id: knownhosts.clear
+title: 已知主机面板支持"清空已知主机"，清空后显示空态
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+fixture:
+  vncAuth: false
+  vncResize: false
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/clear
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "no trusted hosts|没有已知主机|无已知主机"
+      withinMs: 8000
+  - action: click
+    target: id:known/close
+  - action: wait
+    ms: 500
+  # 连一次产生信任记录
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: kh-clear
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "kh-clear"
+      withinMs: 12000
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "信任此主机|Trust this host|Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2500
+  - action: click
+    target: id:nav/hosts
+  - action: wait
+    ms: 800
+  # 再看已知主机：应有记录；清空后回到空态
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "known|已知主机|trusted"
+      withinMs: 8000
+  - action: click
+    target: id:known/clear
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "no trusted hosts|没有已知主机|无已知主机"
+      withinMs: 10000
+asserts:
+  - kind: screenRegex
+    regex: "no trusted hosts|没有已知主机|无已知主机"
+    withinMs: 8000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：已知主机面板的"清空已知主机"按钮在空库时也可点；连接建立信任后清空，
+    列表回到空态。
+    **不覆盖**：清空后再次连接的重新信任（同一路径，未单独断言）、已知主机的导入导出。
+deviations:
+  - 依赖 ssh 夹具（127.0.0.1:2222）。空态文案按语言不同，正则里三种写法都接受。
+notes: >-
+  这个按钮同时让 ui.i18n.panels 这类"首次信任"用例变得可确定（先清空再连）。
