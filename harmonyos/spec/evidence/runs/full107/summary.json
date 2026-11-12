@@ -1,0 +1,554 @@
+{
+  "total": 91,
+  "passed": 91,
+  "failed": 0,
+  "results": [
+    {
+      "spec": "ai.request",
+      "passed": true,
+      "seconds": 62.4,
+      "error": ""
+    },
+    {
+      "spec": "command.palette-esc",
+      "passed": true,
+      "seconds": 15.1,
+      "error": ""
+    },
+    {
+      "spec": "command.palette-hosts",
+      "passed": true,
+      "seconds": 41.1,
+      "error": ""
+    },
+    {
+      "spec": "command.palette-keys",
+      "passed": true,
+      "seconds": 20.3,
+      "error": ""
+    },
+    {
+      "spec": "command.palette",
+      "passed": true,
+      "seconds": 16.1,
+      "error": ""
+    },
+    {
+      "spec": "cred.cleared",
+      "passed": true,
+      "seconds": 77.1,
+      "error": ""
+    },
+    {
+      "spec": "diag.tabs",
+      "passed": true,
+      "seconds": 25.1,
+      "error": ""
+    },
+    {
+      "spec": "forward.clear-all",
+      "passed": true,
+      "seconds": 50.1,
+      "error": ""
+    },
+    {
+      "spec": "forward.double-start",
+      "passed": true,
+      "seconds": 67.4,
+      "error": ""
+    },
+    {
+      "spec": "forward.edit",
+      "passed": true,
+      "seconds": 43.9,
+      "error": ""
+    },
+    {
+      "spec": "forward.http",
+      "passed": true,
+      "seconds": 60.9,
+      "error": ""
+    },
+    {
+      "spec": "forward.local",
+      "passed": true,
+      "seconds": 60.4,
+      "error": ""
+    },
+    {
+      "spec": "forward.persist",
+      "passed": true,
+      "seconds": 65.7,
+      "error": ""
+    },
+    {
+      "spec": "forward.socks5",
+      "passed": true,
+      "seconds": 61.0,
+      "error": ""
+    },
+    {
+      "spec": "forward.stop",
+      "passed": true,
+      "seconds": 74.3,
+      "error": ""
+    },
+    {
+      "spec": "forward.typed",
+      "passed": true,
+      "seconds": 34.6,
+      "error": ""
+    },
+    {
+      "spec": "host.batch-delete",
+      "passed": true,
+      "seconds": 68.5,
+      "error": ""
+    },
+    {
+      "spec": "host.catalog",
+      "passed": true,
+      "seconds": 111.7,
+      "error": ""
+    },
+    {
+      "spec": "host.detail",
+      "passed": true,
+      "seconds": 77.0,
+      "error": ""
+    },
+    {
+      "spec": "host.form-chips",
+      "passed": true,
+      "seconds": 38.1,
+      "error": ""
+    },
+    {
+      "spec": "host.form-validation",
+      "passed": true,
+      "seconds": 38.2,
+      "error": ""
+    },
+    {
+      "spec": "host.grid-meta",
+      "passed": true,
+      "seconds": 42.9,
+      "error": ""
+    },
+    {
+      "spec": "host.group-collapse",
+      "passed": true,
+      "seconds": 57.4,
+      "error": ""
+    },
+    {
+      "spec": "host.group-filter",
+      "passed": true,
+      "seconds": 72.6,
+      "error": ""
+    },
+    {
+      "spec": "host.group-order",
+      "passed": true,
+      "seconds": 84.5,
+      "error": ""
+    },
+    {
+      "spec": "host.group-pin",
+      "passed": true,
+      "seconds": 84.4,
+      "error": ""
+    },
+    {
+      "spec": "host.group-rename-delete",
+      "passed": true,
+      "seconds": 63.1,
+      "error": ""
+    },
+    {
+      "spec": "host.icon",
+      "passed": true,
+      "seconds": 57.7,
+      "error": ""
+    },
+    {
+      "spec": "host.lastused",
+      "passed": true,
+      "seconds": 55.9,
+      "error": ""
+    },
+    {
+      "spec": "host.manage",
+      "passed": true,
+      "seconds": 77.0,
+      "error": ""
+    },
+    {
+      "spec": "host.persist",
+      "passed": true,
+      "seconds": 29.6,
+      "error": ""
+    },
+    {
+      "spec": "host.proto-filter",
+      "passed": true,
+      "seconds": 87.7,
+      "error": ""
+    },
+    {
+      "spec": "host.recreate-trust",
+      "passed": true,
+      "seconds": 94.2,
+      "error": ""
+    },
+    {
+      "spec": "hostkey.changed",
+      "passed": true,
+      "seconds": 69.2,
+      "error": ""
+    },
+    {
+      "spec": "hosts.search",
+      "passed": true,
+      "seconds": 90.7,
+      "error": ""
+    },
+    {
+      "spec": "infra.host-create-by-id",
+      "passed": true,
+      "seconds": 46.3,
+      "error": ""
+    },
+    {
+      "spec": "knownhosts.clear",
+      "passed": true,
+      "seconds": 68.2,
+      "error": ""
+    },
+    {
+      "spec": "knownhosts.manage",
+      "passed": true,
+      "seconds": 67.1,
+      "error": ""
+    },
+    {
+      "spec": "logs.search",
+      "passed": true,
+      "seconds": 86.4,
+      "error": ""
+    },
+    {
+      "spec": "net.reachability",
+      "passed": true,
+      "seconds": 16.5,
+      "error": ""
+    },
+    {
+      "spec": "notes.crud",
+      "passed": true,
+      "seconds": 57.9,
+      "error": ""
+    },
+    {
+      "spec": "pages.logs-vault",
+      "passed": true,
+      "seconds": 51.9,
+      "error": ""
+    },
+    {
+      "spec": "rdp.client-connect",
+      "passed": true,
+      "seconds": 31.7,
+      "error": ""
+    },
+    {
+      "spec": "rdp.client-input",
+      "passed": true,
+      "seconds": 37.6,
+      "error": ""
+    },
+    {
+      "spec": "rdp.client-render",
+      "passed": true,
+      "seconds": 49.3,
+      "error": ""
+    },
+    {
+      "spec": "rdp.connect",
+      "passed": true,
+      "seconds": 40.5,
+      "error": ""
+    },
+    {
+      "spec": "rdp.preview-idle",
+      "passed": true,
+      "seconds": 53.3,
+      "error": ""
+    },
+    {
+      "spec": "rdp.preview",
+      "passed": true,
+      "seconds": 51.4,
+      "error": ""
+    },
+    {
+      "spec": "rdp.server-peer",
+      "passed": true,
+      "seconds": 20.2,
+      "error": ""
+    },
+    {
+      "spec": "rdp.session-view",
+      "passed": true,
+      "seconds": 115.5,
+      "error": ""
+    },
+    {
+      "spec": "session.tabs",
+      "passed": true,
+      "seconds": 61.6,
+      "error": ""
+    },
+    {
+      "spec": "settings.font-size",
+      "passed": true,
+      "seconds": 33.7,
+      "error": ""
+    },
+    {
+      "spec": "settings.persist",
+      "passed": true,
+      "seconds": 62.3,
+      "error": ""
+    },
+    {
+      "spec": "sftp.browse",
+      "passed": true,
+      "seconds": 59.2,
+      "error": ""
+    },
+    {
+      "spec": "sftp.download",
+      "passed": true,
+      "seconds": 60.4,
+      "error": ""
+    },
+    {
+      "spec": "sftp.manage",
+      "passed": true,
+      "seconds": 65.3,
+      "error": ""
+    },
+    {
+      "spec": "sftp.missing",
+      "passed": true,
+      "seconds": 66.3,
+      "error": ""
+    },
+    {
+      "spec": "sftp.navigate",
+      "passed": true,
+      "seconds": 65.8,
+      "error": ""
+    },
+    {
+      "spec": "sftp.unicode",
+      "passed": true,
+      "seconds": 69.0,
+      "error": ""
+    },
+    {
+      "spec": "sftp.write",
+      "passed": true,
+      "seconds": 65.4,
+      "error": ""
+    },
+    {
+      "spec": "snippets.crud",
+      "passed": true,
+      "seconds": 60.9,
+      "error": ""
+    },
+    {
+      "spec": "ssh.connect-from-list",
+      "passed": true,
+      "seconds": 58.2,
+      "error": ""
+    },
+    {
+      "spec": "ssh.exec",
+      "passed": true,
+      "seconds": 52.0,
+      "error": ""
+    },
+    {
+      "spec": "ssh.hostkey",
+      "passed": true,
+      "seconds": 54.2,
+      "error": ""
+    },
+    {
+      "spec": "terminal.arrow",
+      "passed": true,
+      "seconds": 64.3,
+      "error": ""
+    },
+    {
+      "spec": "terminal.copy",
+      "passed": true,
+      "seconds": 64.1,
+      "error": ""
+    },
+    {
+      "spec": "terminal.interactive",
+      "passed": true,
+      "seconds": 76.4,
+      "error": ""
+    },
+    {
+      "spec": "terminal.key",
+      "passed": true,
+      "seconds": 56.2,
+      "error": ""
+    },
+    {
+      "spec": "terminal.pty",
+      "passed": true,
+      "seconds": 66.6,
+      "error": ""
+    },
+    {
+      "spec": "terminal.resize",
+      "passed": true,
+      "seconds": 80.7,
+      "error": ""
+    },
+    {
+      "spec": "terminal.scrollback",
+      "passed": true,
+      "seconds": 60.6,
+      "error": ""
+    },
+    {
+      "spec": "terminal.scrollview",
+      "passed": true,
+      "seconds": 64.1,
+      "error": ""
+    },
+    {
+      "spec": "terminal.touchscroll",
+      "passed": true,
+      "seconds": 64.4,
+      "error": ""
+    },
+    {
+      "spec": "terminal.view",
+      "passed": true,
+      "seconds": 58.5,
+      "error": ""
+    },
+    {
+      "spec": "terminal.vt",
+      "passed": true,
+      "seconds": 62.6,
+      "error": ""
+    },
+    {
+      "spec": "ui.i18n.diag",
+      "passed": true,
+      "seconds": 24.3,
+      "error": ""
+    },
+    {
+      "spec": "ui.i18n.diagnostics",
+      "passed": true,
+      "seconds": 31.3,
+      "error": ""
+    },
+    {
+      "spec": "ui.i18n.panels",
+      "passed": true,
+      "seconds": 73.3,
+      "error": ""
+    },
+    {
+      "spec": "ui.i18n.vnc",
+      "passed": true,
+      "seconds": 31.7,
+      "error": ""
+    },
+    {
+      "spec": "ui.i18n",
+      "passed": true,
+      "seconds": 18.9,
+      "error": ""
+    },
+    {
+      "spec": "ui.rdp-experimental",
+      "passed": true,
+      "seconds": 17.4,
+      "error": ""
+    },
+    {
+      "spec": "vault.persist",
+      "passed": true,
+      "seconds": 57.3,
+      "error": ""
+    },
+    {
+      "spec": "vnc.adapt",
+      "passed": true,
+      "seconds": 57.0,
+      "error": ""
+    },
+    {
+      "spec": "vnc.auth-hextile",
+      "passed": true,
+      "seconds": 32.6,
+      "error": ""
+    },
+    {
+      "spec": "vnc.clipboard",
+      "passed": true,
+      "seconds": 64.1,
+      "error": ""
+    },
+    {
+      "spec": "vnc.desktopsize",
+      "passed": true,
+      "seconds": 56.1,
+      "error": ""
+    },
+    {
+      "spec": "vnc.host-session",
+      "passed": true,
+      "seconds": 51.3,
+      "error": ""
+    },
+    {
+      "spec": "vnc.key",
+      "passed": true,
+      "seconds": 59.0,
+      "error": ""
+    },
+    {
+      "spec": "vnc.negative",
+      "passed": true,
+      "seconds": 27.9,
+      "error": ""
+    },
+    {
+      "spec": "vnc.session",
+      "passed": true,
+      "seconds": 25.4,
+      "error": ""
+    },
+    {
+      "spec": "workspace.page",
+      "passed": true,
+      "seconds": 70.9,
+      "error": ""
+    }
+  ],
+  "at": "2026-11-13T07:41:51"
+}
