@@ -1,0 +1,144 @@
+schema: 1
+id: logs.search
+title: 会话日志支持搜索过滤：无匹配显示"没有匹配"，清空关键词恢复
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+fixture:
+  vncAuth: false
+  vncResize: false
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/clear
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/close
+  - action: wait
+    ms: 500
+  # 建主机并连一次，产生日志
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: logsq-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "logsq-a"
+      withinMs: 12000
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "信任此主机|Trust this host|Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2500
+  - action: click
+    target: id:nav/logs
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "logsq-a"
+      withinMs: 10000
+  # 搜索不存在的关键词 -> 无匹配
+  - action: type
+    target: id:logs/search
+    text: zzznomatch
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "没有匹配的会话记录|No matching sessions"
+      withinMs: 8000
+  # 再搜存在的关键词 -> 记录回来
+  - action: click
+    target: id:logs/search
+  - action: key
+    code: 2055
+  - action: key
+    code: 2055
+  - action: key
+    code: 2055
+  - action: key
+    code: 2055
+  - action: key
+    code: 2055
+  - action: key
+    code: 2055
+  - action: key
+    code: 2055
+  - action: key
+    code: 2055
+  - action: key
+    code: 2055
+  - action: key
+    code: 2055
+  - action: type
+    target: id:logs/search
+    text: logsq
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "logsq-a"
+      withinMs: 8000
+asserts:
+  - kind: screenRegex
+    regex: "logsq-a"
+    withinMs: 8000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：日志页有搜索框；无匹配关键词显示"没有匹配的会话记录"；
+    改回可匹配关键词后记录重新出现。
+    **不覆盖**：大小写混合匹配的逐条断言、搜索与"清空"的交互（清空会同时清掉列表）。
+deviations:
+  - 搜索框是非受控输入；清除关键词用 10 次退格（2055），而不是全选删除。
+notes: >-
+  过滤按 label/address/proto 的子串（小写比较）。

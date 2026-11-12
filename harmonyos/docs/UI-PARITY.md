@@ -1516,3 +1516,25 @@ FAIL ui.i18n.panels step 18: 期望"信任此主机"对话框，未出现
 这是把 Round 92 的「用户需要的清理动作」模式推广到第二处；
 `logs/clear` 原本就有，`known/clear` 是 Round 92 新增，`fwd/clear-all` 是本轮新增。
 
+---
+
+## Round 96 追加：会话日志「搜索过滤」
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 搜索框 | `logs/search`（非受控输入，`onChange` 写 `logsQuery`），占位文案：搜索日志（名称/地址/协议） |
+| 计数 | `logs/count` 显示 `匹配数 / 总数` |
+| 过滤 | `logsFiltered()`：按 `label / address / proto` 小写子串匹配 |
+| 空态 | 有关键词时显示「没有匹配的会话记录」，无关键词时仍是「还没有会话记录」 |
+
+### 用例
+`logs.search` **PASS**：连接一次产生日志 → 日志页能看到 `logsq-a` → 搜 `zzznomatch` 显示「没有匹配」→
+退格清空后搜 `logsq` → 记录重新出现。
+
+### 回归
+`pages.logs-vault / ui.i18n / host.lastused => 3/3 PASS`
+
+### 备注
+搜索框同样遵守"非受控输入"约定（Round 79 的教训）；清空关键词用退格（2055），而不是全选删除。
+

@@ -268,6 +268,7 @@ struct Index {
   @State settingsOpen: boolean = false;
   @State termFontSize: number = 13;
   @State logs: LogItem[] = [];
+  @State logsQuery: string = '';
   @State snippets: SnippetItem[] = [];
   @State notes: NoteItem[] = [];
   @State noteDialog: boolean = false;
@@ -3878,6 +3879,17 @@ struct Index {
     this.logs = out;
   }
 
+
+  // 会话日志过滤：按 label / address / proto 子串（不区分大小写的简单版本）
+  private logsFiltered(): LogItem[] {
+    const q: string = this.logsQuery.trim().toLowerCase();
+    if (q.length === 0) { return this.logs; }
+    return this.logs.filter((it: LogItem) =>
+      it.label.toLowerCase().indexOf(q) >= 0 ||
+      it.address.toLowerCase().indexOf(q) >= 0 ||
+      it.proto.toLowerCase().indexOf(q) >= 0);
+  }
+
   private async clearLogs(): Promise<void> {
     if (this.store === null) { return; }
     const pred = new relationalStore.RdbPredicates('session_logs');
@@ -3907,12 +3919,21 @@ struct Index {
           .backgroundColor('#3A2226').fontColor('#E08A8A')
           .onClick(() => { this.clearLogs(); })
       }.width('100%')
-      if (this.logs.length === 0) {
-        Text(this.lang === 'zh' ? '还没有会话记录' : 'No sessions yet').id('logs/empty')
+        Row({ space: 10 }) {
+          TextInput({ placeholder: this.lang === 'zh' ? '搜索日志（名称/地址/协议）' : 'Search logs' })
+            .id('logs/search').height(34).fontSize(12).layoutWeight(1)
+            .onChange((v: string) => { this.logsQuery = v; })
+          Text(this.logsFiltered().length + ' / ' + this.logs.length)
+            .id('logs/count').fontSize(11).fontColor('#6B7078')
+        }.width('100%')
+      if (this.logsFiltered().length === 0) {
+        Text(this.logsQuery.trim().length > 0
+          ? (this.lang === 'zh' ? '没有匹配的会话记录' : 'No matching sessions')
+          : (this.lang === 'zh' ? '还没有会话记录' : 'No sessions yet')).id('logs/empty')
           .fontSize(13).fontColor('#6B7078').width('100%').padding({ top: 40 })
       }
       List({ space: 6 }) {
-        ForEach(this.logs, (it: LogItem) => {
+        ForEach(this.logsFiltered(), (it: LogItem) => {
           ListItem() {
             Row({ space: 12 }) {
               Text(it.label).fontSize(14).fontColor('#E8EAED').layoutWeight(2)
