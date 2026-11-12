@@ -1410,3 +1410,26 @@ preferences 只剩兼容兜底，丢了不影响设置。
 - 备份/恢复行为**没有端到端自动化用例**（用例框架里没有"卸载再重装"的 action），
   所以"排除生效"目前是 E2 + 手工 E1 的组合证据，不是全自动回归。
 
+---
+
+## Round 88 追加：设置面板新增「终端字号」
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 状态 | `@State termFontSize: number = 13`，范围 10~24 |
+| UI | 设置面板新增一行：`settings/font-dec`（-）、`settings/font-value`（`字号 N`）、`settings/font-inc`（+） |
+| 生效 | 终端输出 `Text('terminal/output')` 的 `fontSize` 绑定 `this.termFontSize`（真的改变渲染字号） |
+| 持久化 | 存 DB `ui_state.termFontSize`，启动 `loadPrefs()` 读回 |
+
+### 用例
+`settings.font-size` **PASS**：默认显示 `字号 13` → `+` 两次 → `字号 15` → `-` 一次 → `字号 14` →
+**重启后仍为 `字号 14`**（DB 持久化）。
+
+### 诚实边界
+dump **不含 fontSize**，所以"终端文字真的变大了"这一点只能给 **E2（代码层绑定）**，
+用例断言的是**设置值 + 持久化**（E1）。若以后需要像素级验证，可加 `minHeight` 断言或截图对比。
+
+### 回归
+`settings.persist / ui.i18n / terminal.view / terminal.vt => 4/4 PASS`
+

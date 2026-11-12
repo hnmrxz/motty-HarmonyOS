@@ -266,6 +266,7 @@ struct Index {
   @State selectedIds: string[] = [];
   @State catalogResult: string = '(catalog: idle)';
   @State settingsOpen: boolean = false;
+  @State termFontSize: number = 13;
   @State logs: LogItem[] = [];
   @State snippets: SnippetItem[] = [];
   @State notes: NoteItem[] = [];
@@ -2639,7 +2640,7 @@ struct Index {
         .id('terminal/vt-status').fontSize(11).fontColor('#999999').width('100%')
       Scroll() {
         Text(this.termText.length > 0 ? this.termText : '(no output yet)')
-          .id('terminal/output').fontSize(13).fontFamily('monospace').fontColor('#D4D4D4')
+          .id('terminal/output').fontSize(this.termFontSize).fontFamily('monospace').fontColor('#D4D4D4')
           .width('100%')
           .onTouch((event: TouchEvent) => { this.onTermTouch(event); })
       }
@@ -3121,6 +3122,14 @@ struct Index {
     } catch (e) {
       return '';
     }
+  }
+
+
+  private changeTermFont(delta: number): void {
+    const next: number = this.termFontSize + delta;
+    if (next < 10 || next > 24) { return; }
+    this.termFontSize = next;
+    this.savePrefs();
   }
 
   private moveGroup(g: string, dir: number): void {
@@ -3640,6 +3649,7 @@ struct Index {
     const dbCollapsed: string = await this.getUiState('collapsedGroups');
     const dbPinned: string = await this.getUiState('pinnedGroups');
     const dbOrder: string = await this.getUiState('groupOrder');
+    const dbFont: string = await this.getUiState('termFontSize');
     let lang: string = dbLang;
     let view: string = dbView;
     let sort: string = dbSort;
@@ -3662,6 +3672,8 @@ struct Index {
     if (dbOrder.length > 0) {
       this.groupOrder = dbOrder.split('\u0001').filter((x: string) => x.length > 0);
     }
+    const fontN: number = Number.parseInt(dbFont, 10);
+    if (fontN >= 10 && fontN <= 24) { this.termFontSize = fontN; }
     hilog.info(DOMAIN, TAG, 'settings loaded lang=%{public}s order=%{public}s',
       this.lang, this.groupOrder.join(','));
   }
@@ -3674,6 +3686,7 @@ struct Index {
     await this.setUiState('collapsedGroups', this.collapsedGroups.join('\u0001'));
     await this.setUiState('pinnedGroups', this.pinnedGroups.join('\u0001'));
     await this.setUiState('groupOrder', this.groupOrder.join('\u0001'));
+    await this.setUiState('termFontSize', String(this.termFontSize));
     if (this.prefs === null) { return; }
     try {
       this.prefs.putSync('lang', this.lang);
@@ -3718,6 +3731,21 @@ struct Index {
 
       // 默认视图
       Column({ space: 6 }) {
+        // 终端字号（作用到终端输出文本的实际字号）
+        Column({ space: 6 }) {
+          Text(this.lang === 'zh' ? '终端字号' : 'Terminal font size').fontSize(12).fontColor('#8A8F98')
+          Row({ space: 10 }) {
+            Button('-').id('settings/font-dec').height(30).width(40).fontSize(13)
+              .backgroundColor('#23262B').fontColor('#C7CBD1')
+              .onClick(() => { this.changeTermFont(-1); })
+            Text('字号 ' + this.termFontSize.toString()).id('settings/font-value')
+              .fontSize(12).fontColor('#C7CBD1')
+            Button('+').id('settings/font-inc').height(30).width(40).fontSize(13)
+              .backgroundColor('#23262B').fontColor('#C7CBD1')
+              .onClick(() => { this.changeTermFont(1); })
+          }
+        }.alignItems(HorizontalAlign.Start).width('100%')
+
         Text(this.lang === 'zh' ? '默认视图' : 'Default view').fontSize(12).fontColor('#8A8F98')
         Row({ space: 8 }) {
           Button(this.lang === 'zh' ? '列表' : 'List').id('settings/view-list').height(30).fontSize(12)

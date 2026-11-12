@@ -1,0 +1,14 @@
+﻿feat(harmonyos/settings): 设置面板新增「终端字号」(10~24, 作用于终端渲染, DB 持久化) + 用例 PASS
+
+实现:
+- @State termFontSize 默认 13, 范围 10~24
+- 设置面板新增一行: settings/font-dec(-)、settings/font-value(字号 N)、settings/font-inc(+)
+- 终端输出 Text('terminal/output') 的 fontSize 绑定 termFontSize(真的改变渲染字号)
+- 持久化: DB ui_state.termFontSize, 启动 loadPrefs() 读回
+
+用例 settings.font-size PASS: 默认 字号13 -> + 两次 字号15 -> - 一次 字号14 -> 重启后仍 字号14
+
+诚实边界: dump 不含 fontSize, 所以"终端文字真的变大了"只能给 E2(代码层绑定);
+  用例断言的是设置值+持久化(E1)。若需像素级验证可加 minHeight 断言或截图对比
+
+回归: settings.persist / ui.i18n / terminal.view / terminal.vt => 4/4 PASS
