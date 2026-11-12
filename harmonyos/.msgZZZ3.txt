@@ -1,0 +1,9 @@
+﻿test(harmonyos): 全量回归 full93 = 86/86 全绿（第九次全通过）
+
+SUMMARY passed=86/86  failed=0
+包含 Round 91 的 RDP 会话视图、Round 92 的 已知主机清空 与用例数据清理修正;
+ui.i18n.panels 不再依赖历史 known_hosts
+
+连续全绿: full68 76/76, full72 78/78, full75 79/79, full77 80/80, full81 82/82,
+  full84 83/83, full86 83/83, full90 84/84, full93 86/86
+基线(更新): 用例数 86; 全量 86/86
