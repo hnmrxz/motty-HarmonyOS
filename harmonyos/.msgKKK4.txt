@@ -1,0 +1,9 @@
+﻿test(harmonyos): 全量回归 full104 = 90/90 全绿（第十四次全通过）
+
+SUMMARY passed=90/90  failed=0
+包含 Round 103 的 VNC 主机会话路由(vnc.host-session)
+
+连续全绿(14 次): full68 76/76, full72 78/78, full75 79/79, full77 80/80, full81 82/82,
+  full84 83/83, full86 83/83, full90 84/84, full93 86/86, full95 87/87, full97 88/88,
+  full99 89/89, full102 89/89, full104 90/90
+基线(更新): 用例数 90; 全量 90/90
