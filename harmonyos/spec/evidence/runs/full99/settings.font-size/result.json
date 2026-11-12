@@ -1,0 +1,130 @@
+{
+  "spec": "settings.font-size",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 7,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 9,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 11,
+      "action": "restart",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 12,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 13,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 14,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：设置面板有字号 +/-；点击改变数值（13 -> 15 -> 14）；重启后保持 14（DB 持久化）。 **不覆盖**：终端输出文本的**实际像素字号**（dump 不含 fontSize，字号是否作用到渲染属于代码层 E2）。"
+  },
+  "passed": true
+}
