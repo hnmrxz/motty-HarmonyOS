@@ -1,0 +1,20 @@
+﻿feat(harmonyos/ui): 分组排序(上移/下移+持久化) + 发现 preferences 已损坏的严重问题
+
+实现:
+- 分组 ⋯ 现在打开自定义弹出菜单 groupmenu/panel: 上移/下移/固定/重命名/删除/关闭
+  (bindMenu 弹层不进 uitest dump, 自绘后才可稳定点击)
+- moveGroup(): 按当前显示顺序交换相邻两项, 写入 groupOrder
+- sections() 排序优先级: 固定分组 > groupOrder > 原有顺序
+- 持久化: 存 DB 表 ui_state(k,v), 不依赖 preferences(原因见下)
+
+用例 host.group-order PASS: 建 G1/G2 -> Esc 收起输入法 -> 打开 G2 菜单 -> 上移 -> G2 在 G1 上方
+  -> 重启后仍是 G2 在上(持久化生效)
+
+严重发现: 设备上 preferences/motty-ui.broken —— preferences 存储已损坏
+  写入日志显示 saved groupOrder=G2,G1, 但重启后读到永远空值(flush/flushSync 都一样)
+  hdc shell 无权删除该目录, 重装又会通过备份恢复同一份损坏文件
+处置: 1) 分组顺序改存 DB(ui_state), 用例随即通过
+  2) 记录设备级问题: preferences 一旦 .broken, 应用侧无自动恢复手段(需改 EntryBackupAbility 或首启自检),
+     可能影响语言/视图/折叠等设置的重启保持 —— 后续应加"读不到就重建存储"的自愈逻辑
+
+回归: host.group-pin / host.group-collapse / settings.persist / host.manage => 4/4 PASS

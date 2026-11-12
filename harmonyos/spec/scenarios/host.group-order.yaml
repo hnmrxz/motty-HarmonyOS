@@ -1,0 +1,118 @@
+schema: 1
+id: host.group-order
+title: 分组排序：菜单里"上移/下移"改变分组顺序并持久化，重启后保持
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1000
+  - action: click
+    target: id:diag/tab-debug
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:catalog/reset-hosts
+  - action: wait
+    ms: 1500
+  - action: click
+    target: id:diag/close
+  - action: wait
+    ms: 800
+  # 建 G1（先）与 G2（后）：自然顺序 G1 在前
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: go-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.3.3.1
+  - action: type
+    target: id:shell/dialog-group
+    text: G1
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: go-b
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.3.3.2
+  - action: type
+    target: id:shell/dialog-group
+    text: G2
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+  # 收起输入法：不收起时面板/坐标会被 IME 顶起，菜单按钮点击会落空（实测）
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 800
+  # 打开 G2 的分组菜单 -> 上移
+  - action: click
+    target: id:group/menu/G2
+  - action: wait
+    ms: 700
+    expect:
+      kind: screenRegex
+      regex: "上移分组|Move group up"
+      withinMs: 8000
+  - action: click
+    target: id:groupmenu/up
+  - action: wait
+    ms: 1000
+    expect:
+      kind: before
+      a: "id:group/header/G2"
+      b: "id:group/header/G1"
+      withinMs: 10000
+  # 重启后顺序保持
+  - action: restart
+  - action: wait
+    ms: 6000
+  - action: wait
+    ms: 300
+    expect:
+      kind: before
+      a: "id:group/header/G2"
+      b: "id:group/header/G1"
+      withinMs: 12000
+asserts:
+  - kind: screenRegex
+    regex: "go-b"
+    withinMs: 8000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：分组菜单可打开（自定义弹出层）、"上移分组"把 G2 排到 G1 之前、
+    重启后顺序保持（持久化）。
+    **不覆盖**：下移、固定组与排序的优先级组合、多组连续调整。
+deviations:
+  - 分组菜单改成自定义弹出层（bindMenu 不在 uitest dump 里，无法自动化点击）；
+    入口仍是 group/menu/<组名>（图标），弹出层是 groupmenu/panel。
+notes: >-
+  排序优先级：固定分组 > groupOrder（用户顺序）> 原有顺序；本用例只测 groupOrder。

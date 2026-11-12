@@ -1318,3 +1318,35 @@ TextInput({ placeholder: 'listen port' }).id('fwd/listen')
 ### 回归
 `forward.typed / forward.local / forward.stop / forward.persist => 4/4 PASS`
 
+---
+
+## Round 82 追加：分组排序（上移/下移）+ 一个**严重的持久化发现**
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 入口 | 分组 `⋯`（`group/menu/<组名>`）现在打开**自定义弹出菜单** `groupmenu/panel`：上移/下移/固定/重命名/删除/关闭 |
+| 排序 | `moveGroup()` 按当前显示顺序交换相邻两项，写入 `groupOrder` |
+| 显示 | `sections()` 排序优先级：**固定分组 > groupOrder > 原有顺序** |
+| 持久化 | 存 **DB** 表 `ui_state(k,v)`（不是 preferences，原因见下） |
+| 用户 | 菜单是自定义弹出层——`bindMenu` 弹层不进 `uitest dump`，改成自绘后才可被用例与用户稳定点击 |
+
+### 用例
+`host.group-order` **PASS**：建 G1/G2 → Esc 收起输入法 → 打开 G2 菜单 → 上移 → G2 在 G1 上方 →
+**重启后仍是 G2 在上**（持久化生效）。
+
+### 严重的持久化发现（本轮最有价值）
+调试持久化时发现设备上：
+```
+/data/app/el2/100/base/com.motty.harmony/haps/entry/preferences/motty-ui.broken
+```
+**preferences 存储已损坏**：写入日志显示 `prefs saved groupOrder=G2,G1`，但重启后读到的永远是空值。
+（`flush()`/`flushSync()` 都试过，一样。）hdc shell 无权删除该目录，重装又会通过备份恢复同一份损坏文件。
+⇒ 处置：
+1. 分组顺序**改存 DB**（`ui_state` 表），不依赖 preferences；用例随即通过；
+2. 记录这条设备级问题：**preferences 一旦 .broken，应用侧没有自动恢复手段**（需要改 EntryBackupAbility 或首次启动自检），
+   可能影响语言/视图/折叠等设置的重启保持 —— 后续应加"读不到就重建存储"的自愈逻辑。
+
+### 回归
+`host.group-pin / host.group-collapse / settings.persist / host.manage => 4/4 PASS`
+

@@ -42,6 +42,8 @@ const SQL_CREATE_HOSTS =
 const SQL_CREATE_KNOWN_HOSTS =
   'CREATE TABLE IF NOT EXISTS known_hosts (host TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, updated_at INTEGER)';
 
+const SQL_CREATE_UI_STATE =
+  'CREATE TABLE IF NOT EXISTS ui_state (k TEXT PRIMARY KEY, v TEXT)';
 const HOST_COLUMNS: string[] = ['id', 'label', 'address', 'usr', 'port', 'proto', 'grp', 'tags', 'color', 'icon'];
 
 // 会话日志（官方 NavSessionLogs 的最小实现）
@@ -249,6 +251,9 @@ struct Index {
   @State groupFilter: string = '';
   @State protoFilter: string = '';
   @State pinnedGroups: string[] = [];
+  @State groupMenu: string = '';
+  @State groupMenuTarget: string = '';
+  @State groupOrder: string[] = [];
   @State groupRenameOpen: boolean = false;
   @State groupRenameOld: string = '';
   @State groupRenameText: string = '';
@@ -379,6 +384,7 @@ struct Index {
       const ctx = getContext(this) as common.UIAbilityContext;
       this.store = await relationalStore.getRdbStore(ctx, STORE_CONFIG);
       await this.store.executeSql(SQL_CREATE_HOSTS);
+    await this.store.executeSql(SQL_CREATE_UI_STATE);
       await this.store.executeSql(SQL_CREATE_KNOWN_HOSTS);
       await this.store.executeSql(SQL_CREATE_FORWARDS);
       await this.store.executeSql(SQL_CREATE_LOGS);
@@ -388,7 +394,8 @@ struct Index {
       await this.reload();
       await this.reloadRules();
       await this.loadPrefs();
-      hilog.info(DOMAIN, TAG, 'store ready, hosts=%{public}d', this.hosts.length);
+      await this.loadGroupOrderFromDb();
+    hilog.info(DOMAIN, TAG, 'store ready, hosts=%{public}d', this.hosts.length);
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'store init failed: %{public}s', JSON.stringify(e));
     }
@@ -2666,12 +2673,8 @@ struct Index {
             Text('(' + this.countGroup(g) + ')').fontSize(12).fontColor('#6B7078')
             Blank()
             Image($r('app.media.ic_more')).id('group/menu/' + g).width(16).height(16)
-            .bindMenu([
-              { value: this.lang === 'zh' ? '全选本组' : 'Select group', action: () => { this.selectGroup(g); } },
-              { value: this.lang === 'zh' ? '取消全选' : 'Clear selection', action: () => { this.clearSelection(); } },
-              { value: this.lang === 'zh' ? '折叠本组' : 'Collapse', action: () => { if (!this.isCollapsed(g)) { this.toggleGroup(g); } } },
-              { value: this.lang === 'zh' ? '展开本组' : 'Expand', action: () => { if (this.isCollapsed(g)) { this.toggleGroup(g); } } }
-            ])
+            .onClick(() => { this.groupMenu = g; this.groupMenuTarget = g; })
+
           }
           .width('100%').height(34).padding({ left: 8, right: 8 })
           .id('group/header/' + g)
@@ -3033,6 +3036,71 @@ struct Index {
     await this.reload();
   }
 
+
+  // 分组上移/下移：按"当前显示顺序"交换相邻两项，并持久化
+  private moveGroupFromMenu(dir: number): void {
+    const g: string = this.groupMenuTarget;
+    this.groupMenu = '';
+    if (g.length === 0) { return; }
+    this.moveGroup(g, dir);
+  }
+
+
+  // 分组顺序存 DB（不用 preferences：实测 prefs 文件损坏后（.broken）写入不会落盘，
+  // 重启读到空值；DB 是应用自己的存储，更可控）
+  private async saveGroupOrderToDb(): Promise<void> {
+    if (this.store === null) { return; }
+    const v: string = this.groupOrder.join('\u0001');
+    try {
+      const pred = new relationalStore.RdbPredicates('ui_state');
+      pred.equalTo('k', 'groupOrder');
+      const rs = await this.store.query(pred, ['k']);
+      const exists: boolean = rs.goToNextRow();
+      rs.close();
+      if (exists) {
+        const p2 = new relationalStore.RdbPredicates('ui_state');
+        p2.equalTo('k', 'groupOrder');
+        await this.store.update({ 'v': v } as relationalStore.ValuesBucket, p2);
+      } else {
+        await this.store.insert('ui_state', { 'k': 'groupOrder', 'v': v } as relationalStore.ValuesBucket);
+      }
+    } catch (e) {
+      hilog.error(DOMAIN, TAG, 'saveGroupOrder failed: %{public}s', JSON.stringify(e));
+    }
+  }
+
+  private async loadGroupOrderFromDb(): Promise<void> {
+    if (this.store === null) { return; }
+    try {
+      const pred = new relationalStore.RdbPredicates('ui_state');
+      pred.equalTo('k', 'groupOrder');
+      const rs = await this.store.query(pred, ['v']);
+      if (rs.goToNextRow()) {
+        const v: string = rs.getString(0);
+        this.groupOrder = v.length === 0 ? [] : v.split('\u0001').filter((x: string) => x.length > 0);
+      }
+      rs.close();
+    } catch (e) {
+      hilog.error(DOMAIN, TAG, 'loadGroupOrder failed: %{public}s', JSON.stringify(e));
+    }
+  }
+
+  private moveGroup(g: string, dir: number): void {
+    const shown: string[] = this.sections();
+    const idx: number = shown.indexOf(g);
+    if (idx < 0) { return; }
+    const to: number = idx + dir;
+    if (to < 0 || to >= shown.length) { return; }
+    const next: string[] = shown.slice();
+    const tmp: string = next[idx];
+    next[idx] = next[to];
+    next[to] = tmp;
+    this.groupOrder = next;
+    this.saveGroupOrderToDb();
+    this.savePrefs();
+    this.groupMenu = '';
+  }
+
   private isPinned(g: string): boolean {
     return this.pinnedGroups.indexOf(g) >= 0;
   }
@@ -3052,11 +3120,16 @@ struct Index {
       const g = this.hostGroupOf(this.hosts[i]);
       if (!out.includes(g)) { out.push(g); }
     }
-    // 官方 savedHostGroup.Pinned：固定分组排在前面（组内保持原有顺序）
+    // 排序优先级：固定分组 > 用户顺序（groupOrder）> 原有顺序（稳定排序）
     out.sort((a: string, b: string) => {
       const pa: number = this.isPinned(a) ? 0 : 1;
       const pb: number = this.isPinned(b) ? 0 : 1;
-      return pa - pb;
+      if (pa !== pb) { return pa - pb; }
+      const ia: number = this.groupOrder.indexOf(a);
+      const ib: number = this.groupOrder.indexOf(b);
+      const va: number = ia < 0 ? this.groupOrder.length + 1000 : ia;
+      const vb: number = ib < 0 ? this.groupOrder.length + 1000 : ib;
+      return va - vb;
     });
     return out;
   }
@@ -3530,6 +3603,10 @@ struct Index {
       const pinned: string = this.prefs.getSync('pinnedGroups', '') as string;
       this.pinnedGroups = pinned.length === 0 ? []
         : pinned.split('\u0001').filter((x: string) => x.length > 0);
+      const order: string = this.prefs.getSync('groupOrder', '') as string;
+      this.groupOrder = order.length === 0 ? []
+        : order.split('\u0001').filter((x: string) => x.length > 0);
+      hilog.info(DOMAIN, TAG, 'prefs loaded groupOrder=%{public}s pinned=%{public}s', this.groupOrder.join(','), this.pinnedGroups.join(','));
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'loadPrefs failed: %{public}s', JSON.stringify(e));
     }
@@ -3543,7 +3620,10 @@ struct Index {
       this.prefs.putSync('hostSort', this.hostSort);
       this.prefs.putSync('collapsedGroups', this.collapsedGroups.join('\u0001'));
       this.prefs.putSync('pinnedGroups', this.pinnedGroups.join('\u0001'));
-      await this.prefs.flush();
+      this.prefs.putSync('groupOrder', this.groupOrder.join('\u0001'));
+      // flushSync：实测 await flush() 之后进程被杀，重启仍会读到旧值（写盘未落地），同步刷更可靠
+      this.prefs.flushSync();
+      hilog.info(DOMAIN, TAG, 'prefs saved groupOrder=%{public}s', this.groupOrder.join(','));
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'savePrefs failed: %{public}s', JSON.stringify(e));
     }
@@ -4537,6 +4617,39 @@ struct Index {
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 
+
+  // 分组操作菜单（自定义弹出层：bindMenu 不在 uitest dump 里，无法自动化，所以自己做）
+  @Builder
+  groupMenuPopup() {
+    Column({ space: 2 }) {
+      Button(this.lang === 'zh' ? '上移分组' : 'Move group up')
+        .id('groupmenu/up').width('100%').fontSize(13)
+        .backgroundColor('#23262B').fontColor('#C7CBD1')
+        .onClick(() => { this.moveGroupFromMenu(-1); })
+      Button(this.lang === 'zh' ? '下移分组' : 'Move group down')
+        .id('groupmenu/down').width('100%').fontSize(13)
+        .backgroundColor('#23262B').fontColor('#C7CBD1')
+        .onClick(() => { this.moveGroupFromMenu(1); })
+      Button(this.lang === 'zh' ? '固定/取消固定' : 'Pin/Unpin')
+        .id('groupmenu/pin').width('100%').fontSize(13)
+        .backgroundColor('#23262B').fontColor('#C7CBD1')
+        .onClick(() => { this.togglePin(this.groupMenuTarget); this.groupMenu = ''; })
+      Button(this.lang === 'zh' ? '重命名分组' : 'Rename group')
+        .id('groupmenu/rename').width('100%').fontSize(13)
+        .backgroundColor('#23262B').fontColor('#C7CBD1')
+        .onClick(() => { const g = this.groupMenuTarget; this.groupMenu = ''; this.openRenameGroup(g); })
+      Button(this.lang === 'zh' ? '删除分组' : 'Delete group')
+        .id('groupmenu/delete').width('100%').fontSize(13)
+        .backgroundColor('#3A2226').fontColor('#E08A8A')
+        .onClick(() => { const g = this.groupMenuTarget; this.groupMenu = ''; this.askDeleteGroup(g); })
+      Button(this.t('hostkey.cancel')).id('groupmenu/close').width('100%').fontSize(12)
+        .backgroundColor('#1E2127').fontColor('#8A8F98')
+        .onClick(() => { this.groupMenu = ''; })
+    }
+    .id('groupmenu/panel').width(220).padding(10).backgroundColor('#1C1F24').borderRadius(10)
+    .shadow({ radius: 20, color: '#66000000', offsetY: 6 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -4636,6 +4749,10 @@ struct Index {
       if (this.groupDelName.length > 0) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
         this.groupDeleteDialog()
+      }
+      if (this.groupMenu.length > 0) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => { this.groupMenu = ''; })
+        this.groupMenuPopup()
       }
       if (this.knownDelKey.length > 0) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
