@@ -1668,3 +1668,30 @@ VNC 会话面板早就存在（`vnc/panel`），但只能从**调试页**进入�
 - 「跳板路由」仍是死链（跳板/代理链需要 SSH 侧支持 ProxyJump）；
 - 上游的 pane 拖拽分屏/多窗格 deck 未实现。
 
+---
+
+## Round 108 追加：会话日志「导出」到沙箱（JSON）
+
+### 为什么没做跳板路由
+「跳板路由」（ProxyJump）需要 SSH 侧支持"在另一条 SSH 连接上跑通道"。
+调研结论：libssh2 没有可插拔 transport，要在此之上实现 ProxyJump 得自己写 socket 抽象层，
+**远超单轮范围**；做半成品配置项（能存不能用）比不做更糟。⇒ 本轮改做完全可用的日志导出。
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 按钮 | `logs/export-file`（导出），在日志页标题栏 |
+| 方法 | `exportLogsToSandbox()`：把 `logs` 拼成 `{"format":"motty-session-logs","version":1,"count":N,"logs":[...]}`，写入 `cacheDir/motty-session-logs.json` |
+| 结果 | `logs/export-result` 显示 `logs-export: <path> (<N> bytes, <M> logs)` |
+
+### 用例
+`logs.export` **PASS**：连接一次产生日志 → 日志页点「导出」→ 断言出现
+`logs-export: …/motty-session-logs.json (N bytes …)`，且字节数为正。
+
+### 回归
+`logs.search / pages.logs-vault / ui.i18n => 3/3 PASS`
+
+### 说明
+文件在 `ctx.cacheDir`，可以用 `hdc file recv` 取出来看；用例只断言"写成功 + 非空"，
+不解析内容（避免把测试绑死在 JSON 细节上）。
+

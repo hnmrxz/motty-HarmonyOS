@@ -269,6 +269,7 @@ struct Index {
   @State termFontSize: number = 13;
   @State logs: LogItem[] = [];
   @State logsQuery: string = '';
+  @State logsExport: string = '';
   @State snippets: SnippetItem[] = [];
   @State notes: NoteItem[] = [];
   @State noteDialog: boolean = false;
@@ -3610,6 +3611,30 @@ struct Index {
     }
   }
 
+
+  // 会话日志导出到沙箱（JSON）：给"把日志带走分析"一个可用出口
+  private exportLogsToSandbox(): void {
+    try {
+      const ctx = getContext(this) as common.UIAbilityContext;
+      const path: string = ctx.cacheDir + '/motty-session-logs.json';
+      const rows: string[] = [];
+      for (let i = 0; i < this.logs.length; i++) {
+        const it: LogItem = this.logs[i];
+        rows.push('{"id":"' + it.id + '","label":"' + it.label.replace(/"/g, '\\"') +
+          '","address":"' + it.address + '","proto":"' + it.proto + '","startedAt":' + it.startedAt + '}');
+      }
+      const text: string = '{"format":"motty-session-logs","version":1,"count":' + this.logs.length +
+        ',"logs":[' + rows.join(',') + ']}';
+      const f = fileIo.openSync(path, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
+      fileIo.writeSync(f.fd, text);
+      fileIo.closeSync(f);
+      const stat = fileIo.statSync(path);
+      this.logsExport = 'logs-export: ' + path + ' (' + stat.size + ' bytes, ' + this.logs.length + ' logs)';
+    } catch (e) {
+      this.logsExport = 'logs-export failed: ' + JSON.stringify(e);
+    }
+  }
+
   private async importCatalogFromSandbox(): Promise<void> {
     try {
       const ctx = getContext(this) as common.UIAbilityContext;
@@ -3976,6 +4001,9 @@ struct Index {
         Button(this.lang === 'zh' ? '刷新' : 'Refresh').id('logs/refresh').height(30).fontSize(12)
           .backgroundColor('#1E2127').fontColor('#C7CBD1')
           .onClick(() => { this.reloadLogs(); })
+        Button(this.lang === 'zh' ? '导出' : 'Export').id('logs/export-file').height(30).fontSize(12)
+          .backgroundColor('#1E2127').fontColor('#C7CBD1')
+          .onClick(() => { this.exportLogsToSandbox(); })
         Button(this.lang === 'zh' ? '清空' : 'Clear').id('logs/clear').height(30).fontSize(12)
           .backgroundColor('#3A2226').fontColor('#E08A8A')
           .onClick(() => { this.clearLogs(); })
@@ -3987,6 +4015,10 @@ struct Index {
           Text(this.logsFiltered().length + ' / ' + this.logs.length)
             .id('logs/count').fontSize(11).fontColor('#6B7078')
         }.width('100%')
+      if (this.logsExport.length > 0) {
+        Text(this.logsExport).id('logs/export-result').fontSize(11).fontFamily('monospace')
+          .fontColor('#0A6C00').width('100%')
+      }
       if (this.logsFiltered().length === 0) {
         Text(this.logsQuery.trim().length > 0
           ? (this.lang === 'zh' ? '没有匹配的会话记录' : 'No matching sessions')

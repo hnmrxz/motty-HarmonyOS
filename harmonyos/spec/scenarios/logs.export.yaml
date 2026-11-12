@@ -1,0 +1,109 @@
+schema: 1
+id: logs.export
+title: 会话日志导出：写 JSON 到沙箱并显示大小/条数
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+fixture:
+  vncAuth: false
+  vncResize: false
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  # 先连一次产生日志（导出空文件也有意义，但这里要验证有内容）
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/clear
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/close
+  - action: wait
+    ms: 500
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: logs-export-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "logs-export-a"
+      withinMs: 12000
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "信任此主机|Trust this host|Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2500
+  # 到日志页导出
+  - action: click
+    target: id:nav/logs
+  - action: wait
+    ms: 1200
+  - action: click
+    target: id:logs/export-file
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "logs-export: .*motty-session-logs\\.json \\([1-9][0-9]* bytes"
+      withinMs: 10000
+asserts:
+  - kind: screenRegex
+    regex: "logs-export: .*motty-session-logs\\.json"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "logs \\)|[1-9][0-9]* logs"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：日志页"导出"按钮把日志写成 JSON 到 cacheDir，并显示路径/字节数/条数。
+    **不覆盖**：文件内容逐字段校验（只断言文件存在与大小>0）、导出后从外部读回。
+deviations:
+  - 只断言结果文本里的路径与正数字节数，不解析 JSON 内容。
+notes: >-
+  文件落在 ctx.cacheDir/motty-session-logs.json，可用 hdc file recv 取出查看。

@@ -1,0 +1,16 @@
+﻿feat(harmonyos/logs): 会话日志导出到沙箱(JSON) + 用例 PASS
+
+为什么没做跳板路由: ProxyJump 需要 SSH 侧"在另一条 SSH 连接上跑通道"; libssh2 没有可插拔 transport,
+  要在此之上实现得自己写 socket 抽象层, 远超单轮范围; 做半成品配置项(能存不能用)比不做更糟
+  => 本轮改做完全可用的日志导出
+
+实现:
+- 按钮 logs/export-file(导出), 在日志页标题栏
+- exportLogsToSandbox(): 把 logs 拼成 {"format":"motty-session-logs","version":1,"count":N,"logs":[...]},
+  写入 cacheDir/motty-session-logs.json
+- 结果 logs/export-result 显示 "logs-export: <path> (<N> bytes, <M> logs)"
+
+用例 logs.export PASS: 连接一次产生日志 -> 日志页点导出 -> 断言出现 logs-export: ...json (N bytes ...), 字节数为正
+回归: logs.search / pages.logs-vault / ui.i18n => 3/3 PASS
+
+说明: 文件在 ctx.cacheDir, 可用 hdc file recv 取出; 用例只断言"写成功 + 非空", 不解析内容
