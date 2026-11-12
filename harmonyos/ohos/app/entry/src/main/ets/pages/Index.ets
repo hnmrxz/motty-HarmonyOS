@@ -4602,6 +4602,24 @@ struct Index {
     this.rdpSessionStatus = 'closed';
   }
 
+  // 会话内投递输入：复用输入探针（连接→发送固定键鼠→回读服务端统计）
+  // 这不是"真实桌面鼠标"，只是把输入投递链路打通并给出服务端可见的证据。
+  private sendRdpSessionInput(): void {
+    const host: string = this.rdpSessionHostAddr;
+    const port: number = this.rdpSessionHostPort;
+    const user: string = this.rdpSessionUser;
+    const pass: string = this.rdpSessionPass;
+    this.rdpSessionStatus = 'sending input ...';
+    try {
+      mottynapi.rdpInputProbe(host, port, user, pass, (err: string, res: string) => {
+        const msg: string = (res === undefined || res === null) ? String(err) : String(res);
+        this.rdpSessionStatus = msg;
+      });
+    } catch (e) {
+      this.rdpSessionStatus = 'input threw: ' + JSON.stringify(e);
+    }
+  }
+
   private stopRdpPreview(): void {
     this.rdpPreviewOn = false;
     if (this.rdpPreviewTimer !== -1) {
@@ -4891,6 +4909,9 @@ struct Index {
             this.renderRdpSession(this.rdpSessionHostAddr, this.rdpSessionHostPort,
               this.rdpSessionUser, this.rdpSessionPass);
           })
+        Button(this.lang === 'zh' ? '发送输入' : 'Send input').id('rdp/session-input')
+          .height(30).fontSize(12).backgroundColor('#37474F').fontColor(Color.White)
+          .onClick(() => { this.sendRdpSessionInput(); })
         Button(this.t('common.close')).id('rdp/session-close')
           .height(30).fontSize(12).backgroundColor('#23262B').fontColor('#C7CBD1')
           .onClick(() => { this.closeRdpSession(); })

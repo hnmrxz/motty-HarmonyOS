@@ -1611,3 +1611,26 @@ VNC 会话面板早就存在（`vnc/panel`），但只能从**调试页**进入�
 路由分流（ssh / rdp / vnc）现在是 `openSession()` 里三段显式分支；
 新增协议时必须在这里加一段，否则会静默走 SSH 并报"no credentials"。
 
+---
+
+## Round 105 追加：RDP 会话视图内「发送输入」
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 按钮 | `rdp/session-input`（发送输入），在会话标题栏 |
+| 行为 | `sendRdpSessionInput()` → `mottynapi.rdpInputProbe(host, port, user, pass, cb)`，把返回串写进 `rdp/session-status` |
+| 返回串 | `input: sent key+mouse; serverSaw keys=N mouse=M sync=S (before …)` —— **服务端确实收到了键鼠** |
+
+### 用例（`rdp.session-view` 扩展）
+帧到达后点「发送输入」→ 断言 `serverSaw keys=N>0 mouse=M>0`。**PASS**。
+
+### 诚实边界（重要）
+- 这次投递用的是**独立连接**的输入探针（固定"移动+点击+一个键"序列），
+  与正在渲染的画面**不是同一个 RDP 会话**；
+- 所以它证明的是"输入能投递到 RDP 服务端并被看到"，**不是**"鼠标坐标映射到远端桌面上的对应位置"。
+- 真正的会话内键鼠映射需要把 render worker 改成**常驻会话**并暴露 SendInput，属于下一步的大改。
+
+### 回归
+`rdp.preview / rdp.client-input / ssh.connect-from-list / vnc.host-session => 4/4 PASS`
+

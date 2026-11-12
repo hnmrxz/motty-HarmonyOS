@@ -95,9 +95,20 @@ steps:
       kind: screenRegex
       regex: "render:|no decoded frame|bmp seq="
       withinMs: 45000
+  # 会话内投递输入：复用输入探针，断言服务端确实看到了键鼠事件
+  - action: click
+    target: id:rdp/session-input
+  - action: wait
+    ms: 25000
+    expect:
+      kind: screenRegex
+      regex: "serverSaw keys=[1-9][0-9]* mouse=[1-9][0-9]*"
+      withinMs: 60000
+
 asserts:
+  # 状态行在"刷新/发送输入"之后会被覆盖，所以两种证据都接受
   - kind: screenRegex
-    regex: "render:|no decoded frame"
+    regex: "render:|no decoded frame|serverSaw keys="
     withinMs: 10000
 evidence:
   png: true
@@ -106,7 +117,8 @@ evidence:
     PC（2in1）实测。覆盖：rdp 协议的主机点"打开"后进入 RDP 会话视图（标题/大画面区/状态行），
     渲染回调返回后状态行出现 render 文本。
     **不覆盖**：与真实 Windows RDP 服务器的像素一致性（对端是本进程内 shadow 服务端）、
-    刷新按钮的端到端效果（同一路径，未单独断言）、键鼠直投（仍走诊断页输入探针）。
+    刷新按钮的端到端效果（同一路径，未单独断言）。
+    输入投递用的是固定探针（移动+点击+一个键），不是"鼠标坐标映射到远端桌面"。
 deviations:
   - 画面是否"看起来对"无法用 dump 断言，只能断言会话视图出现 + 渲染状态文本；
     帧是否写入 BMP 由状态行里的 bmp 字样体现（若不出现则说明未解码）。
