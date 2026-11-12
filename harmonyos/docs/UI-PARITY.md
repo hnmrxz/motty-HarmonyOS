@@ -1538,3 +1538,26 @@ FAIL ui.i18n.panels step 18: 期望"信任此主机"对话框，未出现
 ### 备注
 搜索框同样遵守"非受控输入"约定（Round 79 的教训）；清空关键词用退格（2055），而不是全选删除。
 
+---
+
+## Round 98 追加：主机详情面板（只读信息卡）
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 入口 | 名称列第二行加 **ⓘ**（`host-info/<index>`），只占纵向空间，不增加行宽 |
+| 面板 | `hostdetail/panel`：标题 + `hostdetail/close` + 9 行只读字段（名称/地址:端口/协议/用户/分组/标签/图标/颜色/最近连接） |
+| 行组件 | `detailRow()` 生成 `hostdetail/<field>-k`（标签）与 `hostdetail/<field>`（值） |
+| 关闭 | 点 X 或点遮罩 |
+
+### 用例
+`host.detail` **PASS**：建 `proto=rdp` + ★ 图标 + 分组 DG + 标签 dev 的主机 → 点 ⓘ →
+断言面板出现且含 `detail-a` / `10.9.9.9` / `RDP` / `DG` / `dev` / `未连接`。
+
+### 回归
+`host.manage / host.icon / host.lastused / hosts.search => 4/4 PASS`
+
+### 备注
+ⓘ 放在名称列（纵向），延续 Round 70/71 的教训：**不要在定宽 Row 里横向加兄弟节点**。
+详情是只读的；编辑仍走 `host-edit`。
+

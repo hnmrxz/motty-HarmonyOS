@@ -1,0 +1,109 @@
+schema: 1
+id: host.detail
+title: 主机详情面板：名称列的 ⓘ 打开只读信息卡，展示各字段并可关闭
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1000
+  - action: click
+    target: id:diag/tab-debug
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:catalog/reset-hosts
+  - action: wait
+    ms: 1500
+  - action: click
+    target: id:diag/close
+  - action: wait
+    ms: 800
+  # 建一台信息较全的主机
+  - action: click
+    target: id:shell/add-host
+  - action: click
+    target: id:hostform/proto-rdp
+  - action: click
+    target: id:hostform/icon-star
+  - action: type
+    target: id:shell/dialog-label
+    text: detail-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.9.9.9
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-group
+    text: DG
+  - action: type
+    target: id:shell/dialog-tags
+    text: dev
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "detail-a"
+      withinMs: 12000
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 600
+  # 打开详情
+  - action: click
+    target: id:host-info/0
+  - action: wait
+    ms: 1000
+    expect:
+      kind: screenRegex
+      regex: "主机详情|Host details"
+      withinMs: 8000
+asserts:
+  - kind: screenRegex
+    regex: "detail-a"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "10.9.9.9"
+    withinMs: 6000
+  - kind: screenRegex
+    regex: "RDP"
+    withinMs: 6000
+  - kind: screenRegex
+    regex: "DG"
+    withinMs: 6000
+  - kind: screenRegex
+    regex: "dev"
+    withinMs: 6000
+  - kind: screenRegex
+    regex: "未连接|never connected"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：名称列 ⓘ 可打开详情面板；面板展示名称/地址:端口/协议/用户/分组/标签/图标/颜色/最近连接。
+    **不覆盖**：详情面板里的直接编辑（面板是只读的）、从详情跳转连接。
+deviations:
+  - RDP 协议的默认端口是 3389，断言只看协议文本，不断言端口号。
+notes: >-
+  详情是只读信息卡；编辑仍走原有的 host-edit 按钮。

@@ -280,6 +280,7 @@ struct Index {
   @State paletteQuery: string = '';
   @State paletteIndex: number = 0;
   @State paletteHover: number = -1;
+  @State hostDetailIndex: number = -1;
   @State snipName: string = '';
   @State snipCmd: string = '';
   @State snipEditingId: string = '';
@@ -2759,6 +2760,8 @@ struct Index {
                     Text(h.label).fontSize(15).fontColor('#E8EAED').fontWeight(FontWeight.Medium)
                       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).width('100%')
                     Text(this.lastUsedText(h)).id('host-lastused/' + h.id).fontSize(10)
+                    Text('ⓘ').id('host-info/' + index).fontSize(11).fontColor('#6B7078')
+                      .onClick(() => { this.hostDetailIndex = index; })
                       .fontColor('#6B7078').maxLines(1)
                     Text(h.user.length > 0 ? h.user : '-').fontSize(12).fontColor('#8A8F98')
                   }
@@ -4902,6 +4905,54 @@ struct Index {
     .shadow({ radius: 28, color: '#88000000', offsetY: 10 })
   }
 
+
+  // 主机详情（只读信息卡）：从名称列的 ⓘ 打开
+  @Builder
+  hostDetailPanel() {
+    Column({ space: 8 }) {
+      Row({ space: 10 }) {
+        Text(this.lang === 'zh' ? '主机详情' : 'Host details')
+          .id('hostdetail/title').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Blank()
+        Button(this.t('common.close')).id('hostdetail/close').height(28).fontSize(12)
+          .backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.hostDetailIndex = -1; })
+      }.width('100%')
+      if (this.hostDetailIndex >= 0 && this.hostDetailIndex < this.hosts.length) {
+        Column({ space: 6 }) {
+          this.detailRow('hostdetail/label', this.lang === 'zh' ? '名称' : 'Name', this.hosts[this.hostDetailIndex].label)
+          this.detailRow('hostdetail/address', this.lang === 'zh' ? '地址' : 'Address',
+            this.hosts[this.hostDetailIndex].address + ':' + this.hosts[this.hostDetailIndex].port)
+          this.detailRow('hostdetail/proto', this.lang === 'zh' ? '协议' : 'Protocol',
+            this.hosts[this.hostDetailIndex].proto.toUpperCase())
+          this.detailRow('hostdetail/user', this.lang === 'zh' ? '用户' : 'User',
+            this.hosts[this.hostDetailIndex].user.length > 0 ? this.hosts[this.hostDetailIndex].user : '-')
+          this.detailRow('hostdetail/group', this.lang === 'zh' ? '分组' : 'Group',
+            this.hosts[this.hostDetailIndex].group.length > 0 ? this.hosts[this.hostDetailIndex].group : '-')
+          this.detailRow('hostdetail/tags', this.lang === 'zh' ? '标签' : 'Tags',
+            this.hosts[this.hostDetailIndex].tags.length > 0 ? this.hosts[this.hostDetailIndex].tags : '-')
+          this.detailRow('hostdetail/icon', this.lang === 'zh' ? '图标' : 'Icon',
+            this.hosts[this.hostDetailIndex].icon.length > 0 ? this.hosts[this.hostDetailIndex].icon : '-')
+          this.detailRow('hostdetail/color', this.lang === 'zh' ? '颜色' : 'Color',
+            this.hosts[this.hostDetailIndex].color.length > 0 ? this.hosts[this.hostDetailIndex].color : '-')
+          this.detailRow('hostdetail/lastused', this.lang === 'zh' ? '最近连接' : 'Last used',
+            this.lastUsedText(this.hosts[this.hostDetailIndex]))
+        }.width('100%').alignItems(HorizontalAlign.Start)
+      }
+    }
+    .id('hostdetail/panel').width(460).padding(18).backgroundColor('#1C1F24').borderRadius(12)
+    .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
+  }
+
+  @Builder
+  detailRow(idName: string, k: string, v: string) {
+    Row({ space: 10 }) {
+      Text(k).id(idName + '-k').fontSize(12).fontColor('#8A8F98').width(90)
+      Text(v).id(idName).fontSize(12).fontColor('#E8EAED').layoutWeight(1)
+        .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+    }.width('100%')
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -5009,6 +5060,10 @@ struct Index {
       if (this.rdpSessionOpen) {
         Column().width('100%').height('100%').backgroundColor('#CC000000').onClick(() => {})
         this.rdpSessionView()
+      }
+      if (this.hostDetailIndex >= 0) {
+        Column().width('100%').height('100%').backgroundColor('#CC000000').onClick(() => { this.hostDetailIndex = -1; })
+        this.hostDetailPanel()
       }
       if (this.knownDelKey.length > 0) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})
