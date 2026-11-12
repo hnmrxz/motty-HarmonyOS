@@ -1,0 +1,11 @@
+﻿test(harmonyos): 全量回归 full90 = 84/84 全绿（第八次全通过）
+
+SUMMARY passed=84/84  failed=0
+包含 Round 88 的终端字号设置 与 Round 89 的用例加固(forward.double-start 显式等待主机出现)
+
+结论:
+- Round 89 的 83/84 确认为用例竞态, 加固后本轮 84/84
+- 字号设置的加减/持久化在 settings.font-size 中通过, 其余设置类用例无回归
+
+连续全绿: full68 76/76, full72 78/78, full75 79/79, full77 80/80,
+  full81 82/82, full84 83/83, full86 83/83, full90 84/84
