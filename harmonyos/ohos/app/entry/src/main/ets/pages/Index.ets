@@ -306,6 +306,14 @@ struct Index {
   private rdpProbeToken: number = 0;
   @State rdpFrameWrites: number = 0;
   @State rdpPreviewOn: boolean = false;
+  @State rdpSessionOpen: boolean = false;
+  @State rdpSessionTitle: string = '';
+  @State rdpSessionStatus: string = 'idle';
+  @State rdpSessionFrame: string = '';
+  @State rdpSessionHostAddr: string = '';
+  @State rdpSessionHostPort: number = 3389;
+  @State rdpSessionUser: string = '';
+  @State rdpSessionPass: string = '';
   @State rdpFrameSkips: number = 0;
   private rdpFrameLastSeq: number = -1;
   private rdpPreviewTimer: number = -1;
@@ -724,6 +732,11 @@ struct Index {
     this.pendingAction = 'open';
     const h = this.hosts[index];
     if (h === undefined) {
+      return;
+    }
+    // RDP 主机走会话视图（不建立 SSH 会话）
+    if (h.proto === 'rdp') {
+      this.openRdpSession(h);
       return;
     }
     this.recordSession(h);
@@ -4466,6 +4479,62 @@ struct Index {
 
   // 按需刷新：1.5s 一次（3MB/帧，太频繁会拖垮 UI；这是"能看"的最小实现）
 
+
+  // ---------------- RDP 会话视图 ----------------
+  private openRdpSession(h: HostItem): void {
+    const port: number = Number.parseInt(h.port, 10) || 3389;
+    this.rdpSessionOpen = true;
+    this.rdpSessionTitle = h.label;
+    this.rdpSessionFrame = '';
+    this.rdpSessionStatus = 'connecting ' + h.address + ':' + port;
+    const key: string = this.hostKey(h.address, h.port);
+    const cred = this.creds.get(key);
+    const user: string = cred !== undefined ? cred.user : h.user;
+    const pass: string = cred !== undefined ? cred.password : '';
+    this.rdpSessionHostAddr = h.address;
+    this.rdpSessionHostPort = port;
+    this.rdpSessionUser = user;
+    this.rdpSessionPass = pass;
+    this.renderRdpSession(h.address, port, user, pass);
+  }
+
+  private renderRdpSession(host: string, port: number, user: string, pass: string): void {
+    this.rdpSessionStatus = 'rendering ' + host + ':' + port + ' ...';
+    try {
+      mottynapi.rdpRender(host, port, user, pass, (err: string, res: string) => {
+        const msg: string = (res === undefined || res === null) ? String(err) : String(res);
+        this.rdpSessionStatus = 'render: ' + msg;
+        this.writeRdpSessionFrame();
+      });
+    } catch (e) {
+      this.rdpSessionStatus = 'render threw: ' + JSON.stringify(e);
+    }
+  }
+
+  private writeRdpSessionFrame(): void {
+    const ctx = getContext(this) as common.UIAbilityContext;
+    const dir: string = ctx !== undefined && ctx.cacheDir !== undefined ? ctx.cacheDir : '/data/storage/el2/base/cache';
+    const path: string = dir + '/rdp-session.bmp';
+    const seq: number = mottynapi.rdpFrameSeq();
+    if (seq < 0) {
+      this.rdpSessionStatus = this.rdpSessionStatus + ' | no decoded frame yet';
+      return;
+    }
+    const rc: number = mottynapi.rdpWriteBmp(path) as number;
+    if (rc === 0) {
+      this.rdpSessionFrame = 'file://' + path + '?v=' + Date.now();
+      this.rdpSessionStatus = this.rdpSessionStatus + ' | bmp seq=' + seq;
+    } else {
+      this.rdpSessionStatus = this.rdpSessionStatus + ' | bmp rc=' + rc;
+    }
+  }
+
+  private closeRdpSession(): void {
+    this.rdpSessionOpen = false;
+    this.rdpSessionFrame = '';
+    this.rdpSessionStatus = 'closed';
+  }
+
   private stopRdpPreview(): void {
     this.rdpPreviewOn = false;
     if (this.rdpPreviewTimer !== -1) {
@@ -4738,6 +4807,47 @@ struct Index {
     .shadow({ radius: 20, color: '#66000000', offsetY: 6 })
   }
 
+
+  // RDP 会话视图：大画面 + 刷新（上游的 RDP 会话窗口的最小实现）
+  @Builder
+  rdpSessionView() {
+    Column({ space: 8 }) {
+      Row({ space: 10 }) {
+        Text((this.lang === 'zh' ? 'RDP 会话：' : 'RDP session: ') + this.rdpSessionTitle)
+          .id('rdp/session-title').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Blank()
+        Button(this.lang === 'zh' ? '刷新' : 'Refresh').id('rdp/session-refresh')
+          .height(30).fontSize(12).backgroundColor('#1A6DD0').fontColor(Color.White)
+          .onClick(() => {
+            // 重新连接并渲染一帧（对端可能是 shadow 服务端或真实 RDP）
+            this.rdpSessionStatus = 'refreshing ...';
+            this.renderRdpSession(this.rdpSessionHostAddr, this.rdpSessionHostPort,
+              this.rdpSessionUser, this.rdpSessionPass);
+          })
+        Button(this.t('common.close')).id('rdp/session-close')
+          .height(30).fontSize(12).backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.closeRdpSession(); })
+      }.width('100%')
+      if (this.rdpSessionFrame.length > 0) {
+        Image(this.rdpSessionFrame).id('rdp/session-frame')
+          .width(700).height(525).objectFit(ImageFit.Contain)
+          .backgroundColor('#000000').border({ width: 1, color: '#3A3F46' })
+      } else {
+        Column() {
+          Text(this.lang === 'zh' ? '正在获取画面…' : 'fetching picture ...')
+            .fontSize(13).fontColor('#8A8F98')
+        }.width(700).height(525).justifyContent(FlexAlign.Center)
+        .backgroundColor('#0B0D10').border({ width: 1, color: '#3A3F46' })
+        .id('rdp/session-placeholder')
+      }
+      Text(this.rdpSessionStatus).id('rdp/session-status')
+        .fontSize(11).fontFamily('monospace').fontColor('#C7CBD1')
+    }
+    .id('rdp/session-view')
+    .padding(16).backgroundColor('#12141A').borderRadius(12)
+    .shadow({ radius: 28, color: '#88000000', offsetY: 10 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -4841,6 +4951,10 @@ struct Index {
       if (this.groupMenu.length > 0) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => { this.groupMenu = ''; })
         this.groupMenuPopup()
+      }
+      if (this.rdpSessionOpen) {
+        Column().width('100%').height('100%').backgroundColor('#CC000000').onClick(() => {})
+        this.rdpSessionView()
       }
       if (this.knownDelKey.length > 0) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => {})

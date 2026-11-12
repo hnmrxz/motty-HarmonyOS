@@ -1,0 +1,178 @@
+{
+  "spec": "rdp.session-view",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 8,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 11,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 12,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 13,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 14,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 15,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 16,
+      "action": "type",
+      "ok": true,
+      "detail": "secret: 已注入，未回读"
+    },
+    {
+      "i": 17,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 18,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 19,
+      "action": "key",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 20,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 21,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 22,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 23,
+      "action": "wait",
+      "ok": false,
+      "detail": "步骤内 expect 失败: 正则 'render:|no decoded frame|bmp seq=' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n调试\\n\\n\\n\\n会话日志\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）",
+      "expect": {
+        "ok": false,
+        "detail": "正则 'render:|no decoded frame|bmp seq=' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n调试\\n\\n\\n\\n会话日志\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）"
+      }
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：rdp 协议的主机点\"打开\"后进入 RDP 会话视图（标题/大画面区/状态行）， 渲染回调返回后状态行出现 render 文本。 **不覆盖**：与真实 Windows RDP 服务器的像素一致性（对端是本进程内 shadow 服务端）、 刷新按钮的端到端效果（同一路径，未单独断言）、键鼠直投（仍走诊断页输入探针）。"
+  },
+  "passed": false,
+  "error": "step 23 (wait) 失败: 步骤内 expect 失败: 正则 'render:|no decoded frame|bmp seq=' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n\\n\\n\\n已知主机\\n\\n\\n\\n调试\\n\\n\\n\\n会话日志\\n\\n\\n\\n笔记\\n\\n\\n\\n\\n本地终端\\n'）"
+}

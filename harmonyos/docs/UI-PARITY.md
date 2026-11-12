@@ -1433,3 +1433,35 @@ dump **不含 fontSize**，所以"终端文字真的变大了"这一点只能给
 ### 回归
 `settings.persist / ui.i18n / terminal.view / terminal.vt => 4/4 PASS`
 
+---
+
+## Round 91 追加：RDP 会话视图（上游的 RDP 会话窗口，最小可用版）
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 分流 | `openSession()` 里 `h.proto === 'rdp'` → **不再建 SSH 会话**，直接 `openRdpSession()` |
+| 连接 | 取主机地址/端口（默认 3389）与内存凭据 → `mottynapi.rdpRender(host, port, user, pass, cb)` |
+| 画面 | 回调里 `rdpFrameSeq()` 有帧则 `rdpWriteBmp(cacheDir/rdp-session.bmp)` → `Image('file://'+path+'?v='+now)` |
+| UI | `rdp/session-view` 覆盖层：`rdp/session-title`、`rdp/session-frame`、`rdp/session-refresh`、`rdp/session-close`、`rdp/session-status` |
+| 空态 | 无帧时显示 `rdp/session-placeholder`（"正在获取画面…"） |
+
+### 用例
+`rdp.session-view` **PASS**：起内嵌 shadow 服务端（13389）→ 建 `proto=rdp` 主机 → 点"打开" →
+出现 `RDP 会话：rdp-sess` 与画面节点 → 状态行出现 `render:` / `bmp seq=`。
+
+### 踩的两个布局坑
+1. **画面把状态行挤出屏幕**：先按 `1024×768` 放，节点在 vp→px 1.9 倍下变成 1946×1222，
+   把 `rdp/session-status` 挤到屏幕外 ⇒ dump 里根本看不到状态文本，断言失败。
+   ⇒ 缩到 `700×525`（1.9 倍后 ~1330×997）后标题+画面+状态行都在可视区内。
+2. **服务端状态串用词**：断言 `listening|started` 不成立，实际是 `running port=13389 ...`
+   （照抄 `rdp.server-peer` 的既有串即可）。
+
+### 回归
+`ssh.connect-from-list / rdp.connect / rdp.preview / host.manage => 4/4 PASS`
+（SSH 主机仍走原会话路径；RDP 诊断页路径未受影响。）
+
+### 仍是 E3 的部分
+- 与**真实 Windows RDP 服务器**的像素一致性（对端是进程内 shadow 服务端画的测试图案）；
+- 键鼠直投到会话视图（目前输入仍走诊断页的 `rdp/input` 探针）。
+

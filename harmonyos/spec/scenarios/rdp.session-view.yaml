@@ -1,0 +1,108 @@
+schema: 1
+id: rdp.session-view
+title: 打开 RDP 主机进入会话视图：大画面 + 刷新 + 关闭
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  # 起内嵌 shadow 服务端（13389）
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1000
+  - action: click
+    target: id:diag/tab-rdp
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:rdp/srv-start
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "running port=13389"
+      withinMs: 15000
+  - action: click
+    target: id:diag/close
+  - action: wait
+    ms: 700
+  # 建一台 RDP 主机指向 shadow 服务端
+  - action: click
+    target: id:shell/add-host
+  - action: click
+    target: id:hostform/proto-rdp
+  - action: type
+    target: id:shell/dialog-label
+    text: rdp-sess
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-port
+    text: "13389"
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "rdp-sess"
+      withinMs: 12000
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 600
+  # 打开主机 -> 应进入 RDP 会话视图
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "RDP 会话|RDP session"
+      withinMs: 12000
+  # 渲染要等对端产帧 + 客户端解码（实测 shadow 服务端约 20~25s 才回调）
+  - action: wait
+    ms: 25000
+    expect:
+      kind: screenRegex
+      regex: "render:|no decoded frame|bmp seq="
+      withinMs: 45000
+asserts:
+  - kind: screenRegex
+    regex: "render:|no decoded frame"
+    withinMs: 10000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：rdp 协议的主机点"打开"后进入 RDP 会话视图（标题/大画面区/状态行），
+    渲染回调返回后状态行出现 render 文本。
+    **不覆盖**：与真实 Windows RDP 服务器的像素一致性（对端是本进程内 shadow 服务端）、
+    刷新按钮的端到端效果（同一路径，未单独断言）、键鼠直投（仍走诊断页输入探针）。
+deviations:
+  - 画面是否"看起来对"无法用 dump 断言，只能断言会话视图出现 + 渲染状态文本；
+    帧是否写入 BMP 由状态行里的 bmp 字样体现（若不出现则说明未解码）。
+notes: >-
+  RDP 主机现在不再走 SSH 会话；openSession 里按 proto 分流。
