@@ -875,6 +875,15 @@ struct Index {
     }
   }
 
+  private closeAllTabs(): void {
+    for (let i = 0; i < this.tabs.length; i++) {
+      mottynapi.closeShell(this.tabs[i].shellId);
+      mottynapi.vtFree(this.tabs[i].vtId);
+    }
+    this.tabs = [];
+    if (this.activeId.length > 0) { this.activeId = ''; }
+  }
+
   private activeTab(): TabInfo | null {
     for (let i = 0; i < this.tabs.length; i++) {
       if (this.tabs[i].id === this.activeId) {
@@ -2897,7 +2906,7 @@ struct Index {
       }.width('100%').padding({ left: 14, right: 14, top: 18, bottom: 18 })
 
       this.pcNavItem('主机', 'nav/hosts', $r('app.media.ic_hosts'), true, () => { this.pcNav = '主机'; this.showHosts = true; })
-      this.pcNavItem('工作区', 'nav/workspace', $r('app.media.ic_workspace'), false, () => {})
+      this.pcNavItem('工作区', 'nav/workspace', $r('app.media.ic_workspace'), true, () => { this.pcNav = '工作区'; })
       this.pcNavItem('密钥链', 'nav/keys', $r('app.media.ic_keys'), true, () => { this.pcNav = '密钥链'; })
       this.pcNavItem('跳板路由', 'nav/jump', $r('app.media.ic_jump'), false, () => {})
       this.pcNavItem('快捷命令', 'nav/snippets', $r('app.media.ic_snippets'), true, () => { this.pcNav = '快捷命令'; this.reloadSnippets(); })
@@ -3918,6 +3927,45 @@ struct Index {
 
 
   // ---------------- 会话日志页（NavSessionLogs 的最小实现） ----------------
+
+  // ---------------- 工作区页（最小实现：会话标签概览 + 关闭） ----------------
+  @Builder
+  workspacePage() {
+    Column({ space: 10 }) {
+      Row({ space: 10 }) {
+        Text(this.lang === 'zh' ? '工作区' : 'Workspace').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Text('(' + this.tabs.length + ')').id('ws/count').fontSize(12).fontColor('#6B7078')
+        Blank()
+        Button(this.lang === 'zh' ? '全部关闭' : 'Close all').id('ws/close-all')
+          .height(30).fontSize(12).backgroundColor('#3A2226').fontColor('#E08A8A')
+          .onClick(() => { this.closeAllTabs(); })
+      }.width('100%')
+      if (this.tabs.length === 0) {
+        Text(this.lang === 'zh' ? '还没有打开的会话' : 'No open sessions').id('ws/empty')
+          .fontSize(13).fontColor('#6B7078').width('100%').padding({ top: 30 })
+      }
+      List({ space: 6 }) {
+        ForEach(this.tabs, (t: TabInfo, idx: number) => {
+          ListItem() {
+            Row({ space: 12 }) {
+              Text((idx + 1).toString()).fontSize(12).fontColor('#6B7078').width(24)
+              Text(t.label).id('ws/tab/' + idx).fontSize(14).fontColor('#E8EAED').layoutWeight(1)
+                .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+              Button(this.lang === 'zh' ? '切换' : 'Switch').id('ws/switch/' + idx)
+                .height(26).fontSize(11).backgroundColor('#2F6F4F').fontColor(Color.White)
+                .onClick(() => { this.activeId = t.id; this.pcNav = '主机'; this.showHosts = false; })
+              Button(this.lang === 'zh' ? '关闭' : 'Close').id('ws/close/' + idx)
+                .height(26).fontSize(11).backgroundColor('#23262B').fontColor('#C7CBD1')
+                .onClick(() => { this.closeTab(t.id); })
+            }.width('100%').height(44).padding({ left: 10, right: 10 })
+            .borderRadius(8).backgroundColor('#1C1F24')
+          }
+        }, (t: TabInfo) => t.id)
+      }.id('ws/list').layoutWeight(1).width('100%')
+    }
+    .width('100%').height('100%').padding({ left: 22, right: 22, top: 10 })
+  }
+
   @Builder
   logsPage() {
     Column({ space: 10 }) {
@@ -5019,7 +5067,9 @@ struct Index {
           if (this.tabs.length > 0) {
             this.tabBar()
           }
-          if (this.pcNav === '笔记') {
+          if (this.pcNav === '工作区') {
+            this.workspacePage()
+          } else if (this.pcNav === '笔记') {
             this.notesPage()
           } else if (this.pcNav === '快捷命令') {
             this.snippetsPage()

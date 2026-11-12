@@ -1,0 +1,126 @@
+schema: 1
+id: workspace.page
+title: 工作区页：列会话标签、可关闭单个/全部，空态提示
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+fixture:
+  vncAuth: false
+  vncResize: false
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  # 空态
+  - action: click
+    target: id:nav/workspace
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "还没有打开的会话|No open sessions"
+      withinMs: 8000
+  # 回到主机页再建主机（工作区页不渲染主机列表，`ws-host` 不会出现在屏幕上）
+  - action: click
+    target: id:nav/hosts
+  - action: wait
+    ms: 600
+  # 建主机并连接（产生一个会话标签）
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/clear
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/close
+  - action: wait
+    ms: 500
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: ws-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "ws-host"
+      withinMs: 12000
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "信任此主机|Trust this host|Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+  # 工作区页应列出该会话
+  - action: click
+    target: id:nav/workspace
+  - action: wait
+    ms: 1000
+    expect:
+      kind: screenRegex
+      regex: "ws-host"
+      withinMs: 10000
+  # 全部关闭 -> 回到空态
+  - action: click
+    target: id:ws/close-all
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "还没有打开的会话|No open sessions"
+      withinMs: 10000
+asserts:
+  - kind: screenRegex
+    regex: "还没有打开的会话|No open sessions"
+    withinMs: 8000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：工作区页空态、连接后列出会话标签、"全部关闭"后回到空态。
+    **不覆盖**：单个"关闭"按钮、单个"切换"按钮（同一实现路径，未逐一断言）、
+    上游的拖拽分屏/多窗格布局（far beyond 本轮范围）。
+deviations:
+  - 工作区页是本项目的最小实现（会话标签概览），不是上游的 pane 布局 deck。
+notes: >-
+  上游 workspace 是 pane/tab deck；这里先做"能看到/能关掉当前会话"的最小可用版本。

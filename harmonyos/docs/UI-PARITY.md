@@ -1634,3 +1634,37 @@ VNC 会话面板早就存在（`vnc/panel`），但只能从**调试页**进入�
 ### 回归
 `rdp.preview / rdp.client-input / ssh.connect-from-list / vnc.host-session => 4/4 PASS`
 
+---
+
+## Round 106 追加：把「工作区」从死链变成**会话标签概览页**
+
+### 背景
+侧栏里「工作区」和「跳板路由」两项是**禁用状态**（`false` + 空 onClick），点了没反应。
+上游 `internal/workspace` 是 pane/tab deck（拖拽分屏布局），完整复刻远超单轮范围；
+但"打开着哪些会话、怎么关掉"是用户每天要用的，先补这个最小可用版本。
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 导航 | `nav/workspace` 启用，`pcNav = '工作区'` |
+| 页面 | `workspacePage()`：标题 + `ws/count`、`ws/list`、空态 `ws/empty`、`ws/close-all` |
+| 行 | 每行 `ws/tab/<i>`（标签名）、`ws/switch/<i>`（切到该会话）、`ws/close/<i>`（关闭） |
+| 全部关闭 | `closeAllTabs()`：逐个 `closeShell`/`vtFree`，清空 `tabs`/`activeId` |
+
+### 用例
+`workspace.page` **PASS**：空态 → 建主机连接（`hostkey/trust`）→ 工作区页列出 `ws-host` →
+`ws/close-all` → 回到空态。
+
+### 回归
+`session.tabs / ui.i18n / ssh.connect-from-list => 3/3 PASS`
+
+### 两个踩坑
+1. **在工作区页建主机后等"主机名出现"永远等不到**：工作区页不渲染主机列表。
+   ⇒ 用例必须先 `nav/hosts` 回到主机页再建。
+2. 方法插入又一次落到了类外（`closeAllTabs` 定义没进类内，build 报属性不存在）。
+   ⇒ 行内插入后必须 build 验证，不能只看"字符串已写入"。
+
+### 仍缺（诚实）
+- 「跳板路由」仍是死链（跳板/代理链需要 SSH 侧支持 ProxyJump）；
+- 上游的 pane 拖拽分屏/多窗格 deck 未实现。
+
