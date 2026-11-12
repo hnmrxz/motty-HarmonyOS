@@ -1,0 +1,9 @@
+﻿test(harmonyos): 全量回归 full86 = 83/83 全绿（第七次全通过）
+
+SUMMARY passed=83/83  failed=0
+本轮包含: 备份配置排除 preferences、设置持久化迁 DB、分组排序
+所有含重启断言的用例(settings.persist / host.group-order / host.group-pin)通过
+
+连续全绿: full68 76/76, full72 78/78, full75 79/79, full77 80/80,
+  full81 82/82, full84 83/83, full86 83/83
+基线(沿用): 用例数 83; 全量 83/83
