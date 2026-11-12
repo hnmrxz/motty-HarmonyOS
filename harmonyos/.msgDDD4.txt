@@ -1,8 +1,0 @@
-﻿test(harmonyos): 全量回归 full97 = 88/88 全绿（第十一次全通过）
-
-SUMMARY passed=88/88  failed=0
-包含 Round 96 的会话日志搜索过滤
-
-连续全绿(11 次): full68 76/76, full72 78/78, full75 79/79, full77 80/80, full81 82/82,
-  full84 83/83, full86 83/83, full90 84/84, full93 86/86, full95 87/87, full97 88/88
-基线(更新): 用例数 88; 全量 88/88
