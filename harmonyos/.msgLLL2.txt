@@ -1,0 +1,14 @@
+﻿fix(harmonyos/ui): 修掉转发表单输入重复注入(改非受控输入) + 用例 PASS
+
+根因: 转发面板三个 TextInput 用了受控写法 TextInput({text: this.fwdX}) + onChange 写回;
+  IME 连续注入时每敲一个字符触发一次 text: 回填, 注入与回填叠加,
+  最终落库值变成"旧值前缀+新值"(实测 2300->22012300, 127.0.0.1->127.0.127.0.0.10.1, 2222->22222223)
+
+修法: 三个输入改为非受控(去掉 text: 绑定, 只保留 onChange 写状态 + placeholder);
+  默认值仍在 @State(2201/127.0.0.1/2223), 用户不输入时行为不变
+
+用例 forward.typed PASS: 填 2300/127.0.0.1/2222 -> 保存 -> 规则串恰好 2300->127.0.0.1:2222, saved rules: 1
+回归: forward.local / http / socks5 / stop / persist / double-start => 6/6 PASS
+
+经验: 需要接收 IME 文本的输入框不要做受控回填; 用 onChange 单向写状态 + placeholder 展示默认值,
+  输入才稳定。主机表单目前是受控的但用例一直通过; 若后续发现串值, 优先同样改非受控

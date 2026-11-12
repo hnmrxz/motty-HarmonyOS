@@ -1,0 +1,60 @@
+schema: 1
+id: forward.typed
+title: 转发表单输入可靠：填 2300 / 127.0.0.1 / 2222 后保存，规则串与输入完全一致
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:fwd/open
+  - action: wait
+    ms: 1000
+  - action: type
+    target: id:fwd/listen
+    text: "2300"
+  - action: type
+    target: id:fwd/target-host
+    text: 127.0.0.1
+  - action: type
+    target: id:fwd/target-port
+    text: "2222"
+  - action: click
+    target: id:fwd/save
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "2300->127.0.0.1:2222"
+      withinMs: 10000
+asserts:
+  - kind: screenRegex
+    regex: "2300->127.0.0.1:2222"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "saved rules: 1"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：转发表单三个输入框连续注入后保存，规则串与输入一致（无重复/串位）。
+    **不覆盖**：编辑已有规则（功能未实现）、模式切换后的行为、隧道真实连通性（由 forward.* 其它用例覆盖）。
+deviations:
+  - 这三个输入已改为非受控（去掉 text 绑定）：受控时 IME 注入会被重渲染回填成“旧值前缀+新值”
+    （实测 2300 会变成 22012300 这类），改成非受控后输入可靠。
+notes: >-
+  这条用例的存在理由就是"输入可靠性"：它守护转发面板三个输入框不再出现重复注入。

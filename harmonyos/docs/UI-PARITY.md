@@ -1260,3 +1260,35 @@ fwd/target-port 期望 2222   ->  实际 '22222223'
 ### 教训
 新增功能前先确认**它依赖的输入路径本身是可靠的**；否则测不出来会被误判成"功能写错了"。
 
+---
+
+## Round 79 追加：修掉「转发表单输入重复注入」——非受控输入
+
+### 根因
+转发面板三个 `TextInput` 都用了**受控写法**：
+```
+TextInput({ text: this.fwdListen }) .onChange(v => this.fwdListen = v)
+```
+在 IME 连续注入时，每敲一个字符都会触发一次 `text:` 回填，注入与回填叠加，最终落库值变成
+"旧值前缀 + 新值"（实测 `2300` → `22012300`、`127.0.0.1` → `127.0.127.0.0.10.1`、`2222` → `22222223`）。
+
+### 修法
+把这 3 个输入改为**非受控**：去掉 `text:` 绑定，只保留 `onChange` 写状态 + `placeholder`：
+```
+TextInput({ placeholder: 'listen port' }).id('fwd/listen')
+  .onChange(v => this.fwdListen = v)
+```
+默认值仍在 `@State`（`2201 / 127.0.0.1 / 2223`），用户不输入时行为不变。
+
+### 用例
+`forward.typed` **PASS**：填 `2300 / 127.0.0.1 / 2222` → 保存 → 规则串**恰好**是
+`2300->127.0.0.1:2222`，`saved rules: 1`。
+
+### 回归
+`forward.local / forward.http / forward.socks5 / forward.stop / forward.persist / forward.double-start => 6/6 PASS`
+
+### 结论（可复用的经验）
+**需要接收 IME 文本的输入框不要做受控回填**；用 `onChange` 单向写状态 + `placeholder` 展示默认值，
+输入才稳定。主机表单的字段目前是受控的，但它的用例一直通过（输入较慢、字段不相邻），
+如果后续发现类似串值，优先按同样方式改非受控。
+

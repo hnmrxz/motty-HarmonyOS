@@ -2178,13 +2178,13 @@ struct Index {
       }.width('100%')
       Row({ space: 8 }) {
         Text('listen').fontSize(11).fontColor('#666666')
-        TextInput({ text: this.fwdListen }).id('fwd/listen').width(80)
+        TextInput({ placeholder: 'listen port' }).id('fwd/listen').width(80)
           .onChange((v: string) => { this.fwdListen = v; })
         Text('->').fontSize(11).fontColor('#666666')
-        TextInput({ text: this.fwdTargetHost }).id('fwd/target-host').width(120)
+        TextInput({ placeholder: 'target host' }).id('fwd/target-host').width(120)
           .onChange((v: string) => { this.fwdTargetHost = v; })
         Text(':').fontSize(11).fontColor('#666666')
-        TextInput({ text: this.fwdTargetPort }).id('fwd/target-port').width(80)
+        TextInput({ placeholder: 'target port' }).id('fwd/target-port').width(80)
           .onChange((v: string) => { this.fwdTargetPort = v; })
       }.width('100%')
       Row({ space: 8 }) {
