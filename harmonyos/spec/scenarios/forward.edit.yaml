@@ -1,0 +1,93 @@
+schema: 1
+id: forward.edit
+title: 端口转发规则可编辑：点 Edit 后切换模式并保存为更新（不新增第二条规则）
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:fwd/open
+  - action: wait
+    ms: 1000
+  - action: type
+    target: id:fwd/listen
+    text: "2300"
+  - action: type
+    target: id:fwd/target-host
+    text: 127.0.0.1
+  - action: type
+    target: id:fwd/target-port
+    text: "2222"
+  - action: click
+    target: id:fwd/save
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "2300->127.0.0.1:2222"
+      withinMs: 8000
+  # 收起输入法：不收起时面板会随 IME 上移，后面的按钮点击会落空（实测）
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 600
+  # 点 Edit 进入编辑态
+  - action: click
+    target: id:fwd/rule-edit/0
+  - action: wait
+    ms: 700
+    expect:
+      kind: screenRegex
+      regex: "editing rule"
+      withinMs: 6000
+  # 只切模式（不碰输入框）
+  - action: click
+    target: id:fwd/mode-socks5
+  - action: wait
+    ms: 500
+    expect:
+      kind: screenRegex
+      regex: "mode=socks5"
+      withinMs: 6000
+  - action: click
+    target: id:fwd/save
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "socks5\\|2300->127.0.0.1:2222"
+      withinMs: 8000
+asserts:
+  - kind: screenRegex
+    regex: "saved rules: 1"
+    withinMs: 8000
+  - kind: absent
+    value: "local|2300->127.0.0.1:2222"
+    withinMs: 4000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：规则行有 Edit；点 Edit 进入 editing；切换模式后保存为 update
+    （模式变 socks5、规则总数仍为 1、旧的 local 串消失）。
+    **不覆盖**：编辑时改端口/目标（转发面板输入在编辑态会与 type 重试叠加，属已知输入缺陷）、
+    编辑后隧道随新参数生效。
+deviations:
+  - 编辑验证只用"切模式"，不碰输入框：编辑态下对输入框注入会被 type 的失败重试反复追加。
+  - 切模式前先按 Esc 收起输入法，否则 IME 会把面板顶起、按钮点击落空。
+notes: >-
+  编辑走 update；若误做成 insert，断言 "saved rules: 1" 会变成 2。

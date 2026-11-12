@@ -1,0 +1,17 @@
+﻿feat(harmonyos/ui): 端口转发规则编辑(第三次尝试落地) + 用例 PASS
+
+实现:
+- 每条规则行加 Edit (id fwd/rule-edit/<索引>; 索引 id 因为规则 id 是 Date.now() 不可预知)
+- editRule(): 把模式/监听/目标填回 @State, fwdResult 显示 editing rule <id>
+- saveRule(): 检测 editingRuleId 非空 -> 走 UPDATE(不新增), 完成后清空编辑态
+
+用例 forward.edit PASS(第三次尝试): 建 local|2300->127.0.0.1:2222 -> 先按 Esc 收起输入法
+  -> 点 Edit -> 切 SOCKS5(断言 mode=socks5) -> 保存 -> 规则变 socks5|2300->127.0.0.1:2222,
+  saved rules 仍为 1, 旧的 local 串消失
+
+为什么前两次失败(关键经验):
+1) 编辑态往输入框注入: 输入框非受控, type 回读不匹配会重试注入 -> 被追加成 23023010 这类串值
+   => 编辑验证只用"切模式", 不碰输入框; "编辑时改端口"明确写进 limits
+2) 输入法没收起: 面板随 IME 上移, 后续按钮点击落空 => 用例在点 Edit 前先 key 2070(Esc)
+
+回归: forward.typed / forward.local / forward.stop / forward.persist => 4/4 PASS

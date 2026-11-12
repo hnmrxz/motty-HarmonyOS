@@ -344,6 +344,7 @@ struct Index {
   @State knownFps: string[] = [];
   @State fwdRules: string[] = [];   // 展示用："id|mode|listen->target"
   @State fwdRuleCount: number = 0;
+  @State editingRuleId: string = '';
   @State editingId: string = '';      // 非空 = 编辑模式
   @State deleteDialog: boolean = false;
   @State deleteIndex: number = -1;
@@ -1628,6 +1629,20 @@ struct Index {
     if (this.store === null) {
       return;
     }
+    if (this.editingRuleId.length > 0) {
+      const predU = new relationalStore.RdbPredicates('forwards');
+      predU.equalTo('id', this.editingRuleId);
+      await this.store.update({
+        'mode': this.fwdMode,
+        'listen_port': this.fwdListen,
+        'target_host': this.fwdTargetHost,
+        'target_port': this.fwdTargetPort
+      } as relationalStore.ValuesBucket, predU);
+      this.editingRuleId = '';
+      this.fwdResult = 'rule updated';
+      await this.reloadRules();
+      return;
+    }
     const bucket: relationalStore.ValuesBucket = {
       'id': String(Date.now()),
       'host_key': this.fixtureKey,
@@ -1641,6 +1656,21 @@ struct Index {
     hilog.info(DOMAIN, TAG, 'forward rule saved, total=%{public}d', this.fwdRuleCount);
   }
 
+
+
+  // 编辑已保存规则：把值填回状态，保存时走 update（不再新增一条）
+  private editRule(id: string, mode: string, rest: string): void {
+    const arrow: number = rest.indexOf('->');
+    const listen: string = arrow > 0 ? rest.substring(0, arrow) : this.fwdListen;
+    const target: string = arrow > 0 ? rest.substring(arrow + 2) : '';
+    const colon: number = target.lastIndexOf(':');
+    this.editingRuleId = id;
+    this.fwdMode = mode.length > 0 ? mode : 'local';
+    this.fwdListen = listen;
+    this.fwdTargetHost = colon > 0 ? target.substring(0, colon) : this.fwdTargetHost;
+    this.fwdTargetPort = colon > 0 ? target.substring(colon + 1) : this.fwdTargetPort;
+    this.fwdResult = 'editing rule ' + id;
+  }
 
   private async deleteRule(id: string): Promise<void> {
     if (this.store === null) {
@@ -2242,7 +2272,14 @@ struct Index {
                 this.startSavedRule(parts[0], parts[1], listen, target.substring(0, colon),
                   target.substring(colon + 1));
               })
-            Button('Del').id('fwd/rule-del/' + rule.substring(0, rule.indexOf('|')))
+            Button('Edit').id('fwd/rule-edit/' + ridx)
+          .fontSize(11).backgroundColor('#37474F').fontColor(Color.White)
+          .onClick(() => {
+            const partsE = rule.split('|');
+            const restE = partsE.length > 2 ? partsE[2] : '';
+            this.editRule(partsE[0], partsE[1], restE);
+          })
+        Button('Del').id('fwd/rule-del/' + rule.substring(0, rule.indexOf('|')))
               .backgroundColor('#C62828').fontColor(Color.White).fontSize(11)
               .onClick(() => { this.deleteRule(rule.substring(0, rule.indexOf('|'))); })
           }.width('100%')

@@ -1292,3 +1292,29 @@ TextInput({ placeholder: 'listen port' }).id('fwd/listen')
 输入才稳定。主机表单的字段目前是受控的，但它的用例一直通过（输入较慢、字段不相邻），
 如果后续发现类似串值，优先按同样方式改非受控。
 
+---
+
+## Round 80 追加：端口转发规则**编辑**（上一轮失败的功能，这次落地）
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 按钮 | 每条规则一行里加 `Edit`（id `fwd/rule-edit/<索引>`；索引 id 是因为规则 id 是 `Date.now()` 不可预知） |
+| 行为 | `editRule()` 把规则的模式/监听/目标填回 `@State`，`fwdResult` 显示 `editing rule <id>` |
+| 保存 | `saveRule()` 检测到 `editingRuleId` 非空 → 走 `UPDATE`（不新增），完成后清空编辑态 |
+| 语义 | 编辑是"更新同一条规则"，`saved rules` 数量不变 |
+
+### 用例（第三次尝试，终于稳定）
+`forward.edit` **PASS**：建 `local|2300->127.0.0.1:2222` → **先按 Esc 收起输入法** → 点 `Edit`（进入 editing）
+→ 切 `SOCKS5`（断言 `mode=socks5`）→ 保存 → 规则变成 `socks5|2300->127.0.0.1:2222`，`saved rules` 仍为 1，
+旧的 `local|...` 串消失。
+
+### 为什么前两次失败（关键经验）
+1. **编辑态往输入框注入**：输入框是非受控的，`type` 动作回读不匹配会**重试注入**，结果被追加成
+   `23023010` 这样的串值。⇒ 编辑验证只用"切模式"，不碰输入框；把"编辑时改端口"明确写进 `limits`。
+2. **输入法没收起**：面板会随 IME 上移，后续按钮点击落空（模式点击无效）。
+   ⇒ 用例在点 `Edit` 前先 `key 2070`（Esc）收起输入法。
+
+### 回归
+`forward.typed / forward.local / forward.stop / forward.persist => 4/4 PASS`
+
