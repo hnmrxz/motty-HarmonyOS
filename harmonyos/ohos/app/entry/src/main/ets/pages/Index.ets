@@ -3877,6 +3877,12 @@ struct Index {
     ];
     const out: string[] = [];
     const q: string = this.paletteQuery.trim();
+    // 主机项放最前：面板列表高度有限，放末尾会被滚出可视区（实测 dump 里看不到）
+    for (let i = 0; i < this.hosts.length; i++) {
+      const h: HostItem = this.hosts[i];
+      const label: string = '主机：' + h.label + '  ' + h.address;
+      if (q.length === 0 || label.indexOf(q) >= 0) { out.push(label); }
+    }
     for (let i = 0; i < base.length; i++) {
       if (q.length === 0 || base[i].indexOf(q) >= 0) { out.push(base[i]); }
     }
@@ -3894,6 +3900,16 @@ struct Index {
       const name: string = label.substring('快捷命令：'.length);
       for (let i = 0; i < this.snippets.length; i++) {
         if (this.snippets[i].name === name) { this.sendSnippet(this.snippets[i].cmd); return; }
+      }
+      return;
+    }
+    if (label.indexOf('主机：') === 0) {
+      // '主机：<label>  <address>' -> 用 label 找到主机并连接
+      const rest: string = label.substring('主机：'.length);
+      const sep: number = rest.indexOf('  ');
+      const want: string = sep > 0 ? rest.substring(0, sep) : rest;
+      for (let i = 0; i < this.hosts.length; i++) {
+        if (this.hosts[i].label === want) { this.openSession(this.hosts[i].label, i); return; }
       }
       return;
     }

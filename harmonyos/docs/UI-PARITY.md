@@ -1212,3 +1212,25 @@ Row { Text(iconGlyph).id('host-icon-card/<id>')  Text(lastUsedText).id('host-las
 ### 回归
 `host.group-pin / host.group-collapse / host.group-filter / host.manage => 4/4 PASS`
 
+---
+
+## Round 76 追加：命令面板列出主机（`主机：<名称>  <地址>`）
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 列表 | `paletteLabels()` 里**主机项排在最前**，格式 `主机：<label>  <地址>`；后面才是静态命令与「快捷命令：」 |
+| 执行 | `runPalette()` 认出 `主机：` 前缀 → 按 label 找主机 → `openSession` |
+| 为什么排最前 | 面板列表高度有限：放在末尾会被滚出可视区（实测 dump 里看不到，用例失败） |
+
+### 用例
+`command.palette-hosts` **PASS**：建一台 pal-host → 打开面板 → 断言出现 `主机：pal-host`（且面板标题还在）。
+
+### 回归
+`command.palette / command.palette-keys / command.palette-esc / host.catalog => 4/4 PASS`
+（`command.palette` 与 `-keys` 都假设"无主机时第 0 项是新建主机/第 9 项是设置"，空库下仍成立。）
+
+### 说明
+主机项进入面板后，**列表索引会随主机数变化**——以后写面板相关用例时不要依赖固定下标，
+除非 spec 明确先清空主机（`catalog/reset-hosts`）。
+

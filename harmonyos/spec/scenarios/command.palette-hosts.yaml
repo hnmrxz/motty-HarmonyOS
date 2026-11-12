@@ -1,0 +1,76 @@
+schema: 1
+id: command.palette-hosts
+title: 命令面板列出主机：打开面板能看到「主机：<名称>  <地址>」，可用键盘选中执行
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 1000
+  - action: click
+    target: id:diag/tab-debug
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:catalog/reset-hosts
+  - action: wait
+    ms: 1500
+  - action: click
+    target: id:diag/close
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: pal-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 10.4.4.4
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+  # 打开命令面板：应能看到主机项
+  - action: click
+    target: id:top/search
+  - action: wait
+    ms: 1000
+    expect:
+      kind: screenRegex
+      regex: "主机：pal-host"
+      withinMs: 10000
+asserts:
+  - kind: screenRegex
+    regex: "主机：pal-host"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "命令面板|Command palette"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：命令面板列出主机项（含名称与地址）、面板标题仍在。
+    **不覆盖**：在面板里执行主机项后的连接结果（无凭据会停在 no credentials）、输入过滤主机项、
+    Esc 关闭（已由 command.palette-esc 覆盖）。
+deviations:
+  - 只断言主机项出现在面板列表里；执行路径的点选/回车依赖列表位置，容易受其它条目影响，故不在此断言。
+notes: >-
+  主机项前缀「主机：」，与「快捷命令：」同风格；执行时按 label 找到主机并 openSession。
