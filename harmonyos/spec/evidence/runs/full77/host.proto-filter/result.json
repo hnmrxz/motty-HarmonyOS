@@ -1,0 +1,266 @@
+{
+  "spec": "host.proto-filter",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 11,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 12,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 13,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 14,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 15,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 16,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 17,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 18,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 19,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 20,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 21,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 22,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 23,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 24,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 25,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 26,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 27,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 28,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 29,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 30,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 31,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 32,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 33,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 34,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 35,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 36,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：表单里可切 SSH/RDP/VNC 并落库（端口按协议给默认值）， 协议 chips 选 RDP / VNC 时只显示对应主机，选「全部协议」后三台都回来。 **不覆盖**：编辑主机时改协议、协议 chips 与搜索/分组组合、协议状态持久化。"
+  },
+  "passed": true
+}

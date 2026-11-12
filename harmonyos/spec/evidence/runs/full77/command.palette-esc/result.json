@@ -1,0 +1,74 @@
+{
+  "spec": "command.palette-esc",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 4,
+      "action": "key",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：面板打开后按 Esc（2070）关闭，关闭后标题文案消失。 **不覆盖**：鼠标悬停高亮（uitest 不注入 hover 事件）、Esc 关闭后焦点落点、连续开关多次。"
+  },
+  "passed": true
+}

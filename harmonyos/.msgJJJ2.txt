@@ -1,0 +1,7 @@
+﻿test(harmonyos): 全量回归 full77 = 80/80 全绿（第四次全通过, 用例数+1）
+
+SUMMARY passed=80/80  failed=0
+新增 command.palette-hosts 在内全部通过; 命令面板"列主机"改动没有引入回归
+
+基线(更新): 用例数 80; 全量 80/80
+连续全绿: full68 76/76, full72 78/78, full75 79/79, full77 80/80
