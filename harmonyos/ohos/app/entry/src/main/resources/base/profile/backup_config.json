@@ -1,3 +1,9 @@
 {
-  "allowToBackupRestore": true
+  "allowToBackupRestore": true,
+  "excludes": [
+    "preferences",
+    "cache",
+    "temp"
+  ],
+  "fullBackupOnly": false
 }

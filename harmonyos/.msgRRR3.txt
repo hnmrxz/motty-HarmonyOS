@@ -1,0 +1,18 @@
+﻿chore(harmonyos/backup): 备份配置排除 preferences/cache/temp(避免损坏文件被反复带回)
+
+改动: resources/base/profile/backup_config.json
+  { allowToBackupRestore: true, excludes: ["preferences","cache","temp"], fullBackupOnly: false }
+- preferences 排除: Round 82 发现的 .broken 损坏文件不会再被备份/恢复带回来
+- cache/temp 排除: 本来就不该备份
+
+为什么可以排除 preferences: Round 83 已把 lang/hostView/hostSort/collapsed/pinned/groupOrder
+  全部迁到 DB ui_state, preferences 只剩兼容兜底, 丢了不影响设置
+
+验证(E1+E2):
+- E1(实测): 全新安装 -> 切 English + 网格视图 -> hdc install -r(覆盖更新, 保数据) -> 重启进程 ->
+  New Host 仍在、host-grid/view 仍在 => 设置在覆盖安装后保持(数据来自 DB); 随后已恢复中文/列表
+- E2(配置/构建): backup_config.json 已生效于构建产物;
+  settings.persist / ui.i18n / host.grid-meta => 3/3 PASS
+
+局限(诚实记录): 备份/恢复行为没有端到端自动化用例(用例框架没有"卸载再重装" action),
+  所以"排除生效"目前是 E2 + 手工 E1 的组合证据, 不是全自动回归
