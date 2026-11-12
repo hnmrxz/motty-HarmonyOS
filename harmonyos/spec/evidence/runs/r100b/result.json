@@ -1,0 +1,258 @@
+{
+  "spec": "host.detail",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 11,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 12,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 13,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 14,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 15,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 16,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 17,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 18,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 19,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 20,
+      "action": "key",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 21,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 22,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 23,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 24,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 25,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 26,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 27,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 28,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 29,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 30,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 31,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：名称列 ⓘ 可打开详情面板；面板展示名称/地址:端口/协议/用户/分组/标签/图标/颜色/最近连接。 **不覆盖**：详情里\"打开\"后的会话结果（与列表按钮同一路径）、删除确认后的实际删除。"
+  },
+  "passed": true
+}

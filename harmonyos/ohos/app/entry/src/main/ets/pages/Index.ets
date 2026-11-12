@@ -4938,6 +4938,29 @@ struct Index {
           this.detailRow('hostdetail/lastused', this.lang === 'zh' ? '最近连接' : 'Last used',
             this.lastUsedText(this.hosts[this.hostDetailIndex]))
         }.width('100%').alignItems(HorizontalAlign.Start)
+        Row({ space: 10 }) {
+          Button(this.t('host.open')).id('hostdetail/open').height(30).fontSize(12)
+            .backgroundColor('#2F6F4F').fontColor(Color.White)
+            .onClick(() => {
+              const idx: number = this.hostDetailIndex;
+              this.hostDetailIndex = -1;
+              this.openSession(this.hosts[idx].label, idx);
+            })
+          Button(this.t('host.edit')).id('hostdetail/edit').height(30).fontSize(12)
+            .backgroundColor('#23262B').fontColor('#C7CBD1')
+            .onClick(() => {
+              const idx: number = this.hostDetailIndex;
+              this.hostDetailIndex = -1;
+              this.openEditHost(idx);
+            })
+          Button(this.t('host.del')).id('hostdetail/delete').height(30).fontSize(12)
+            .backgroundColor('#3A2226').fontColor('#E08A8A')
+            .onClick(() => {
+              const idx: number = this.hostDetailIndex;
+              this.hostDetailIndex = -1;
+              this.askDeleteHost(idx);
+            })
+        }.width('100%').justifyContent(FlexAlign.End).margin({ top: 6 })
       }
     }
     .id('hostdetail/panel').width(460).padding(18).backgroundColor('#1C1F24').borderRadius(12)

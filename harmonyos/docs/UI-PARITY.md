@@ -1561,3 +1561,27 @@ FAIL ui.i18n.panels step 18: 期望"信任此主机"对话框，未出现
 ⓘ 放在名称列（纵向），延续 Round 70/71 的教训：**不要在定宽 Row 里横向加兄弟节点**。
 详情是只读的；编辑仍走 `host-edit`。
 
+---
+
+## Round 100 追加：详情面板快捷入口（打开 / 编辑 / 删除）
+
+### 实现
+详情面板底部加三个按钮：
+| id | 行为 |
+|---|---|
+| `hostdetail/open` | 关面板 → `openSession(idx)`（RDP 主机会进 RDP 会话视图） |
+| `hostdetail/edit` | 关面板 → `openEditHost(idx)` |
+| `hostdetail/delete` | 关面板 → `askDeleteHost(idx)` |
+
+### 用例（`host.detail` 扩展）
+新增：详情里点「编辑」→ 出现编辑对话框（`编辑主机|Edit host|保存`）→ 取消 →
+再开详情 → 点 X 关闭 → 面板消失。**PASS**。
+
+### 回归
+`host.manage / host.icon / host.lastused => 3/3 PASS`
+
+### 里程碑：Round 100
+- 用例 **89**，全量 **89/89**（连续 12 次全通过）；
+- PC 端已覆盖：主机/分组/终端/SFTP/转发/VNC/RDP（含会话视图）/命令面板/设置/日志/密钥链/已知主机/调试面板；
+- 仍未达成（诚实）：真实 Windows RDP 像素一致性、RDP 会话键鼠直投、arm64 真机、平板形态。
+

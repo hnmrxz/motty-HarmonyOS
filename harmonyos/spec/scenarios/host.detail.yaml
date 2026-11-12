@@ -78,6 +78,29 @@ steps:
       kind: screenRegex
       regex: "主机详情|Host details"
       withinMs: 8000
+  # 详情里点"编辑"应打开编辑对话框并带上该主机
+  - action: click
+    target: id:hostdetail/edit
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "编辑主机|Edit host|保存|Save"
+      withinMs: 10000
+  - action: click
+    target: id:shell/dialog-cancel
+  - action: wait
+    ms: 800
+  # 再打开详情并关闭
+  - action: click
+    target: id:host-info/0
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:hostdetail/close
+  - action: wait
+    ms: 600
+
 asserts:
   - kind: screenRegex
     regex: "detail-a"
@@ -102,7 +125,7 @@ evidence:
   tree: true
   limits: >-
     PC（2in1）实测。覆盖：名称列 ⓘ 可打开详情面板；面板展示名称/地址:端口/协议/用户/分组/标签/图标/颜色/最近连接。
-    **不覆盖**：详情面板里的直接编辑（面板是只读的）、从详情跳转连接。
+    **不覆盖**：详情里"打开"后的会话结果（与列表按钮同一路径）、删除确认后的实际删除。
 deviations:
   - RDP 协议的默认端口是 3389，断言只看协议文本，不断言端口号。
 notes: >-
