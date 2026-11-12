@@ -1,8 +1,0 @@
-﻿test(harmonyos): 全量回归 full81 = 82/82 全绿（第五次全通过, 用例数+2）
-
-SUMMARY passed=82/82  failed=0
-新增 forward.typed(转发表单输入可靠)与 forward.edit(规则编辑)都在其中通过;
-转发面板输入重复注入缺陷修复没有引入回归
-
-基线(更新): 用例数 82; 全量 82/82
-连续全绿: full68 76/76, full72 78/78, full75 79/79, full77 80/80, full81 82/82
