@@ -1,0 +1,86 @@
+schema: 1
+id: vnc.host-session
+title: 打开 vnc 协议主机进入 VNC 会话视图（地址/端口取自主机记录）
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+fixture:
+  vncAuth: true
+  vncResize: false
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  # 建一台 VNC 主机（5901 是需要密码的 VNC 夹具）
+  - action: click
+    target: id:shell/add-host
+  - action: click
+    target: id:hostform/proto-vnc
+  - action: type
+    target: id:shell/dialog-label
+    text: vnc-host
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-port
+    text: "5901"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "vnc-host"
+      withinMs: 12000
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 600
+  # 打开主机 -> VNC 会话
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "VNC|vnc:"
+      withinMs: 12000
+  - action: wait
+    ms: 6000
+asserts:
+  - kind: screenRegex
+    regex: "drawn=[1-9][0-9]*"
+    withinMs: 20000
+  - kind: screenRegex
+    regex: "canvas=[1-9][0-9]+x[1-9][0-9]+"
+    withinMs: 12000
+  - kind: screenRegex
+    regex: "vnc: connected|connected|auth"
+    withinMs: 12000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：vnc 协议主机点"打开"进入 VNC 会话面板，连接成功后画布尺寸与绘制计数 > 0。
+    **不覆盖**：RDP 式大画面布局、VNC 自适应 DesktopSize（已有 vnc.adapt 用例覆盖）、
+    主机记录端口经主机路由传入（本例 5901）。
+deviations:
+  - 端口显式填 5901（夹具的带密码 VNC 监听口），避免依赖表单默认值。
+notes: >-
+  依赖带密码的 VNC 夹具（-vnc-auth secret，5901）。

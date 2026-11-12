@@ -1585,3 +1585,29 @@ FAIL ui.i18n.panels step 18: 期望"信任此主机"对话框，未出现
 - PC 端已覆盖：主机/分组/终端/SFTP/转发/VNC/RDP（含会话视图）/命令面板/设置/日志/密钥链/已知主机/调试面板；
 - 仍未达成（诚实）：真实 Windows RDP 像素一致性、RDP 会话键鼠直投、arm64 真机、平板形态。
 
+---
+
+## Round 103 追加：VNC 主机也能"打开"进会话视图
+
+### 发现
+VNC 会话面板早就存在（`vnc/panel`），但只能从**调试页**进入，而且地址写死为 `127.0.0.1:5901`。
+主机列表里 `proto=vnc` 的主机点"打开"走的还是 SSH 路径 —— 这是真实的功能缺口。
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 签名 | `startVnc(pwd, host = '127.0.0.1', port = 5901)` |
+| 路由 | `openSession()` 增加 `h.proto === 'vnc'` 分支：从内存凭据取密码、端口取主机记录（默认 5900），调 `startVnc` |
+| 复用 | 复用既有 VNC 面板（画布、指针、键盘、剪贴板、DesktopSize） |
+
+### 用例
+`vnc.host-session` **PASS**：建 `proto=vnc` 主机（`127.0.0.1:5901`，密码 secret）→ 点"打开" →
+进入 VNC 面板，`drawn=N>0`、`canvas=WxH`、状态含 connected/auth。
+
+### 回归（VNC 夹具按需切换）
+`vnc.session / vnc.adapt / ssh.connect-from-list / rdp.session-view => 4/4 PASS`
+
+### 关联经验
+路由分流（ssh / rdp / vnc）现在是 `openSession()` 里三段显式分支；
+新增协议时必须在这里加一段，否则会静默走 SSH 并报"no credentials"。
+

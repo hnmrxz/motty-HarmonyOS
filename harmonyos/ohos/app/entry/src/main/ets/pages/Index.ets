@@ -741,6 +741,16 @@ struct Index {
       this.openRdpSession(h);
       return;
     }
+    // VNC 主机走 VNC 会话视图（地址/端口取自主机记录）
+    if (h.proto === 'vnc') {
+      const vkey: string = this.hostKey(h.address, h.port);
+      const vcred = this.creds.get(vkey);
+      const vpass: string = vcred !== undefined ? vcred.password : '';
+      const vport: number = Number.parseInt(h.port, 10) || 5900;
+      this.stopRdpPreview();
+      this.startVnc(vpass, h.address, vport);
+      return;
+    }
     this.recordSession(h);
     const key = this.hostKey(h.address, h.port);
     const cred = this.creds.get(key);
@@ -1471,14 +1481,14 @@ struct Index {
   }
 
   // ---------------- VNC 会话（自研 RFB 后端）----------------
-  private startVnc(pwd: string): void {
+  private startVnc(pwd: string, host: string = '127.0.0.1', port: number = 5901): void {
     this.vncOpen = true;
     this.vncReady = false;
     this.vncStatus = 'connecting...';
     this.vncFrameInfo = '';
     this.vncDrawn = 0;
     try {
-      this.vncId = mottynapi.vncStart('127.0.0.1', 5901, pwd,
+      this.vncId = mottynapi.vncStart(host, port, pwd,
         (frameStr: string) => {
           const sep = frameStr.indexOf(':');
           if (sep <= 0 || !this.vncReady) {
