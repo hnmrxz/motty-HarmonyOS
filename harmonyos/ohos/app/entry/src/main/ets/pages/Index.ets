@@ -3085,6 +3085,44 @@ struct Index {
     }
   }
 
+
+  // 通用设置存取：优先 DB（preferences 在设备上出现过 .broken，写入不落盘），
+  // preferences 仅作向后兼容/兜底。
+  private async setUiState(k: string, v: string): Promise<void> {
+    if (this.store === null) { return; }
+    try {
+      const pred = new relationalStore.RdbPredicates('ui_state');
+      pred.equalTo('k', k);
+      const rs = await this.store.query(pred, ['k']);
+      const exists: boolean = rs.goToNextRow();
+      rs.close();
+      if (exists) {
+        const p2 = new relationalStore.RdbPredicates('ui_state');
+        p2.equalTo('k', k);
+        await this.store.update({ 'v': v } as relationalStore.ValuesBucket, p2);
+      } else {
+        await this.store.insert('ui_state', { 'k': k, 'v': v } as relationalStore.ValuesBucket);
+      }
+    } catch (e) {
+      hilog.error(DOMAIN, TAG, 'setUiState failed k=%{public}s', k);
+    }
+  }
+
+  private async getUiState(k: string): Promise<string> {
+    if (this.store === null) { return ''; }
+    try {
+      const pred = new relationalStore.RdbPredicates('ui_state');
+      pred.equalTo('k', k);
+      const rs = await this.store.query(pred, ['v']);
+      let v: string = '';
+      if (rs.goToNextRow()) { v = rs.getString(0); }
+      rs.close();
+      return v;
+    } catch (e) {
+      return '';
+    }
+  }
+
   private moveGroup(g: string, dir: number): void {
     const shown: string[] = this.sections();
     const idx: number = shown.indexOf(g);
@@ -3588,46 +3626,68 @@ struct Index {
 
   // ---------------- 偏好持久化（对应官方 state.save()） ----------------
   private async loadPrefs(): Promise<void> {
+    // 设置来源：DB ui_state 优先（preferences 在设备上损坏过：.broken 后写入不落盘），
+    // preferences 仅作兜底与向后兼容。
     try {
       const ctx = getContext(this) as common.UIAbilityContext;
       this.prefs = await preferences.getPreferences(ctx, 'motty-ui');
-      const lang: string = this.prefs.getSync('lang', this.lang) as string;
-      const view: string = this.prefs.getSync('hostView', this.hostView) as string;
-      const sort: string = this.prefs.getSync('hostSort', this.hostSort) as string;
-      if (lang === 'zh' || lang === 'en') { this.lang = lang; }
-      if (view === 'list' || view === 'grid') { this.hostView = view; }
-      if (sort === 'manual' || sort === 'name' || sort === 'ip') { this.hostSort = sort; }
-      const collapsed: string = this.prefs.getSync('collapsedGroups', '') as string;
-      this.collapsedGroups = collapsed.length === 0 ? []
-        : collapsed.split('\u0001').filter((x: string) => x.length > 0);
-      const pinned: string = this.prefs.getSync('pinnedGroups', '') as string;
-      this.pinnedGroups = pinned.length === 0 ? []
-        : pinned.split('\u0001').filter((x: string) => x.length > 0);
-      const order: string = this.prefs.getSync('groupOrder', '') as string;
-      this.groupOrder = order.length === 0 ? []
-        : order.split('\u0001').filter((x: string) => x.length > 0);
-      hilog.info(DOMAIN, TAG, 'prefs loaded groupOrder=%{public}s pinned=%{public}s', this.groupOrder.join(','), this.pinnedGroups.join(','));
     } catch (e) {
-      hilog.error(DOMAIN, TAG, 'loadPrefs failed: %{public}s', JSON.stringify(e));
+      this.prefs = null;
     }
+    const dbLang: string = await this.getUiState('lang');
+    const dbView: string = await this.getUiState('hostView');
+    const dbSort: string = await this.getUiState('hostSort');
+    const dbCollapsed: string = await this.getUiState('collapsedGroups');
+    const dbPinned: string = await this.getUiState('pinnedGroups');
+    const dbOrder: string = await this.getUiState('groupOrder');
+    let lang: string = dbLang;
+    let view: string = dbView;
+    let sort: string = dbSort;
+    let collapsed: string = dbCollapsed;
+    let pinned: string = dbPinned;
+    if (this.prefs !== null) {
+      if (lang.length === 0) { lang = this.prefs.getSync('lang', this.lang) as string; }
+      if (view.length === 0) { view = this.prefs.getSync('hostView', this.hostView) as string; }
+      if (sort.length === 0) { sort = this.prefs.getSync('hostSort', this.hostSort) as string; }
+      if (collapsed.length === 0) { collapsed = this.prefs.getSync('collapsedGroups', '') as string; }
+      if (pinned.length === 0) { pinned = this.prefs.getSync('pinnedGroups', '') as string; }
+    }
+    if (lang === 'zh' || lang === 'en') { this.lang = lang; }
+    if (view === 'list' || view === 'grid') { this.hostView = view; }
+    if (sort === 'manual' || sort === 'name' || sort === 'ip') { this.hostSort = sort; }
+    this.collapsedGroups = collapsed.length === 0 ? []
+      : collapsed.split('\u0001').filter((x: string) => x.length > 0);
+    this.pinnedGroups = pinned.length === 0 ? []
+      : pinned.split('\u0001').filter((x: string) => x.length > 0);
+    if (dbOrder.length > 0) {
+      this.groupOrder = dbOrder.split('\u0001').filter((x: string) => x.length > 0);
+    }
+    hilog.info(DOMAIN, TAG, 'settings loaded lang=%{public}s order=%{public}s',
+      this.lang, this.groupOrder.join(','));
   }
 
   private async savePrefs(): Promise<void> {
+    // 同时写 DB 与 preferences：DB 是可靠来源，preferences 保留给旧数据/其它会话
+    await this.setUiState('lang', this.lang);
+    await this.setUiState('hostView', this.hostView);
+    await this.setUiState('hostSort', this.hostSort);
+    await this.setUiState('collapsedGroups', this.collapsedGroups.join('\u0001'));
+    await this.setUiState('pinnedGroups', this.pinnedGroups.join('\u0001'));
+    await this.setUiState('groupOrder', this.groupOrder.join('\u0001'));
+    if (this.prefs === null) { return; }
     try {
-      if (this.prefs === null) { return; }
       this.prefs.putSync('lang', this.lang);
       this.prefs.putSync('hostView', this.hostView);
       this.prefs.putSync('hostSort', this.hostSort);
       this.prefs.putSync('collapsedGroups', this.collapsedGroups.join('\u0001'));
       this.prefs.putSync('pinnedGroups', this.pinnedGroups.join('\u0001'));
       this.prefs.putSync('groupOrder', this.groupOrder.join('\u0001'));
-      // flushSync：实测 await flush() 之后进程被杀，重启仍会读到旧值（写盘未落地），同步刷更可靠
       this.prefs.flushSync();
-      hilog.info(DOMAIN, TAG, 'prefs saved groupOrder=%{public}s', this.groupOrder.join(','));
     } catch (e) {
-      hilog.error(DOMAIN, TAG, 'savePrefs failed: %{public}s', JSON.stringify(e));
+      hilog.error(DOMAIN, TAG, 'savePrefs(prefs) failed: %{public}s', JSON.stringify(e));
     }
   }
+
 
 
   @Builder

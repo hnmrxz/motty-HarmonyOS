@@ -1350,3 +1350,33 @@ TextInput({ placeholder: 'listen port' }).id('fwd/listen')
 ### 回归
 `host.group-pin / host.group-collapse / settings.persist / host.manage => 4/4 PASS`
 
+---
+
+## Round 83 追加：设置持久化**迁到 DB**，绕开已损坏的 preferences
+
+### 背景（Round 82 的发现）
+设备上 `preferences/motty-ui.broken`：写入成功但重启后读空值，`flush()`/`flushSync()` 都无效，
+且 hdc 无权删除、重装会被备份恢复。
+
+### 做法
+`ui_state(k, v)` 表作为**唯一可靠来源**，preferences 降级为"向后兼容 + 兜底":
+| 键 | 说明 |
+|---|---|
+| `lang` / `hostView` / `hostSort` | 语言、默认视图、排序方式 |
+| `collapsedGroups` / `pinnedGroups` / `groupOrder` | 折叠/固定/分组顺序（`\u0001` 分隔） |
+
+- `loadPrefs()`：先读 DB，**DB 为空才**回退读 preferences（兼容旧数据）；
+- `savePrefs()`：**两边都写**（DB 必写、prefs best-effort）。
+
+### 为什么这样做（而不是"修好 prefs"）
+preferences 的损坏文件在应用侧无法清理（`rm` 无权限，重装恢复备份）。
+把关键状态放应用自己的 DB，既绕开损坏，也让"重启保持"变成可测、可解释的行为。
+
+### 验证
+`settings.persist` / `host.group-order` / `host.group-pin` **3/3 PASS**（都含重启断言）；
+`host.group-collapse` / `host.proto-filter` / `ui.i18n` **3/3 PASS**。
+
+### 仍需跟进
+- `EntryBackupAbility` 会把损坏的 prefs 一起备份/恢复 —— 应在其里排除或重建；
+- 如果有用户已经处于 `.broken` 状态，首次启动应能"重建存储并写入 DB"（当前 DB 路径已自然实现这一点）。
+
