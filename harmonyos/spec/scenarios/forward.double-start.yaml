@@ -40,6 +40,12 @@ steps:
   - action: click
     target: id:shell/dialog-submit
   - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "fwddbl-host"
+      withinMs: 12000
+  - action: wait
     ms: 800
   - action: click
     target: id:host-open/0

@@ -377,3 +377,28 @@ SUMMARY passed=83/83   failed=0
 ### 基线（沿用）
 - 用例数：**83**；全量：**83/83**
 
+---
+
+## 全量回归 full89：**83/84**（1 条竞态失败，已加固用例）
+
+```
+SUMMARY passed=83/84   failed=1
+FAIL forward.double-start  step 10 (click)：id:host-open/0 未命中
+```
+- 同一用例**单跑 PASS**（`runs/r89a`）；
+- 失败现场 dump 显示：提交表单后对话框关闭，但列表仍是"还没有主机"——
+  即**点击建行时"新增主机"尚未落到列表**的竞态，不是产品功能坏了。
+
+### 处置（用例加固，而不是放宽断言）
+在 `forward.double-start` 的 `shell/dialog-submit` 之后插入显式等待：
+```yaml
+- action: wait
+  ms: 1500
+  expect: { kind: screenRegex, regex: "fwddbl-host", withinMs: 12000 }
+```
+这样"主机出现"是**断言**出来的，而非假设出来的；加固后单跑 **PASS**（`runs/r89c`）。
+
+### 结论
+- 本轮 **没有产品回归**；full89 的 1 条失败是**用例对时序的隐含假设**；
+- 下一轮需要再跑一次全量，确认 84/84。
+
