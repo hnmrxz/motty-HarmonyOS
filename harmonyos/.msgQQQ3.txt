@@ -1,0 +1,8 @@
+﻿test(harmonyos): 全量回归 full84 = 83/83 全绿（第六次全通过）
+
+SUMMARY passed=83/83  failed=0
+本轮包含 设置持久化迁到 DB(绕开损坏的 preferences)与 分组排序;
+host.group-order / settings.persist / host.group-pin 等含重启断言的用例全部通过
+
+基线(更新): 用例数 83; 全量 83/83
+连续全绿: full68 76/76, full72 78/78, full75 79/79, full77 80/80, full81 82/82, full84 83/83
