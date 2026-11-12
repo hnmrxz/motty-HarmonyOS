@@ -22,6 +22,12 @@ steps:
   - action: click
     target: id:diag/open
   - action: wait
+    ms: 500
+    expect:
+      kind: screenRegex
+      regex: "catalog reset hosts|RDP 服务启动"
+      withinMs: 10000
+  - action: wait
     ms: 900
   - action: click
     target: id:rdp/srv-start

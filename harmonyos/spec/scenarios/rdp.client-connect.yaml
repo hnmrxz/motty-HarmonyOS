@@ -22,6 +22,12 @@ steps:
   - action: click
     target: id:diag/open
   - action: wait
+    ms: 500
+    expect:
+      kind: screenRegex
+      regex: "catalog reset hosts|RDP 服务启动"
+      withinMs: 10000
+  - action: wait
     ms: 800
   # 启动内嵌 RDP 服务端（FreeRDP shadow + 自定义 capture；出帧由 JS 定时器驱动）
   - action: click

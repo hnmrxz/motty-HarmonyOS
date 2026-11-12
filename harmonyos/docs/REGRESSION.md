@@ -555,3 +555,29 @@ SUMMARY passed=89/89   failed=0
 ### 基线（更新）
 - 用例数：**89**；全量：**89/89**
 
+---
+
+## 全量回归 full101：**88/89**（1 条 flake：`notes.crud` 打开诊断页后点空）
+
+```
+FAIL notes.crud step 8 (click)：id:diag/close 未命中
+```
+失败 dump 显示：诊断面板根本没打开（`diag/close` 不在树上），说明 `diag/open` 或
+`diag/tab-debug` 的点击在当时**没生效**（单跑 PASS）。
+
+### 处置（批量硬化，不降断言）
+给所有涉及诊断面板的用例，在 `diag/open` 与 `diag/tab-debug` 之后各插入一条**存在性断言**：
+```yaml
+- action: wait
+  ms: 500
+  expect: { kind: screenRegex, regex: "catalog reset hosts|RDP 服务启动", withinMs: 10000 }
+```
+共**47 条**用例被加固；`lint` 全绿。
+
+### 抽样回归
+`notes.crud / diag.tabs / host.batch-delete / host.detail / knownhosts.clear => 5/5 PASS`
+
+### 结论
+本轮**无产品回归**；这条 flake 的根因是"点完面板没等它出现就继续点"。
+加固后，"面板已打开"成为可断言的中间状态。下一轮再跑全量确认 89/89。
+

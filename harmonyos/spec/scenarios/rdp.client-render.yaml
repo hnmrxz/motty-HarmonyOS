@@ -22,6 +22,12 @@ steps:
   - action: click
     target: id:diag/open
   - action: wait
+    ms: 500
+    expect:
+      kind: screenRegex
+      regex: "catalog reset hosts|RDP 服务启动"
+      withinMs: 10000
+  - action: wait
     ms: 900
   # 启动内置 shadow 服务端（本机 13389），客户端随后连它自己
   - action: click

@@ -39,10 +39,22 @@ steps:
   - action: click
     target: id:diag/open
   - action: wait
+    ms: 500
+    expect:
+      kind: screenRegex
+      regex: "catalog reset hosts|RDP 服务启动"
+      withinMs: 10000
+  - action: wait
     ms: 600
   # 面板已分页：调试类按钮在「调试」页
   - action: click
     target: id:diag/tab-debug
+  - action: wait
+    ms: 500
+    expect:
+      kind: screenRegex
+      regex: "catalog reset hosts"
+      withinMs: 10000
   - action: click
     target: id:ssh/hostkey-check
   - action: wait

@@ -1,0 +1,62 @@
+{
+  "spec": "net.reachability",
+  "profile": "2in1",
+  "serial": "127.0.0.1:10100",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 2,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "模拟器双画像（x86_64, API 26）。本 spec 只证明\"设备→宿主 TCP 通路 + SSH banner 可达\"， 不覆盖 SSH 握手/认证/密钥交换，不覆盖 pty 行为；对端是 harmonyos/tools/design/sshfixture （Windows 可跑的最小对端，**不是** e2esshd，没有 SFTP/SCP/转发/X11）；未在 arm64 真机执行。"
+  },
+  "passed": true
+}

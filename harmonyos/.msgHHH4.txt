@@ -1,0 +1,14 @@
+﻿test(harmonyos): full101 = 88/89, 唯一失败是"打开诊断页后点空"的 flake(已批量硬化 47 条用例)
+
+FAIL notes.crud step 8 (click): id:diag/close 未命中
+- 失败 dump 显示: 诊断面板根本没打开(diag/close 不在树上) => diag/open 或 diag/tab-debug 的点击没生效
+- 单跑 PASS
+
+处置(批量硬化, 不降断言): 给所有涉及诊断面板的用例, 在 diag/open 与 diag/tab-debug 之后各插入一条存在性断言
+  - action: wait / expect screenRegex "catalog reset hosts|RDP 服务启动" / withinMs 10000
+  共 47 条用例被加固; lint 全绿
+
+抽样回归: notes.crud / diag.tabs / host.batch-delete / host.detail / knownhosts.clear => 5/5 PASS
+
+结论: 本轮无产品回归; 根因是"点完面板没等它出现就继续点", 加固后"面板已打开"成为可断言的中间状态
+下一轮再跑全量确认 89/89

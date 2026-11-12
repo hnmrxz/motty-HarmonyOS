@@ -15,6 +15,12 @@ steps:
   - action: launch
   - action: click
     target: id:diag/open
+  - action: wait
+    ms: 500
+    expect:
+      kind: screenRegex
+      regex: "catalog reset hosts|RDP 服务启动"
+      withinMs: 10000
   # 面板已分页且更高，打开后要等它真的渲染出来再点里面的按钮
   - action: wait
     ms: 2500
