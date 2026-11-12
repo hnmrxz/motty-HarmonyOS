@@ -1494,3 +1494,25 @@ FAIL ui.i18n.panels step 18: 期望"信任此主机"对话框，未出现
 **用例不要假设"数据库是空的"**：本项目的重装会恢复数据。
 凡涉及"首次"行为（首次信任、首次写入），用例必须显式清理对应表。
 
+---
+
+## Round 94 追加：端口转发「清空全部规则」
+
+### 实现
+| 项 | 说明 |
+|---|---|
+| 按钮 | `fwd/clear-all`（清空全部规则），放在 `saved rules: N` 计数旁 |
+| 方法 | `clearAllRules()`：`delete` 整张 `forwards` → `reloadRules()` → 结果区 `all rules cleared` |
+| 语义 | 只删规则，**不停止已启动的隧道**（清规则 ≠ 断连接） |
+
+### 用例
+`forward.clear-all` **PASS**：先清空（空态）→ 建两条规则（`saved rules: 2`）→ 清空 → `saved rules: 0`、
+列表回到 `(no saved rules)`、旧规则串消失。
+
+### 回归
+`forward.typed / forward.edit / forward.local / forward.persist => 4/4 PASS`
+
+### 说明
+这是把 Round 92 的「用户需要的清理动作」模式推广到第二处；
+`logs/clear` 原本就有，`known/clear` 是 Round 92 新增，`fwd/clear-all` 是本轮新增。
+

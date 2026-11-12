@@ -1,0 +1,92 @@
+schema: 1
+id: forward.clear-all
+title: 端口转发「清空全部规则」：清空后规则计数与空态同步
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:fwd/open
+  - action: wait
+    ms: 1000
+  # 先清一次，保证从空态开始（重装会恢复数据）
+  - action: click
+    target: id:fwd/clear-all
+  - action: wait
+    ms: 1000
+    expect:
+      kind: screenRegex
+      regex: "no saved rules|还没有规则"
+      withinMs: 8000
+  # 建两条规则
+  - action: type
+    target: id:fwd/listen
+    text: "2400"
+  - action: type
+    target: id:fwd/target-host
+    text: 127.0.0.1
+  - action: type
+    target: id:fwd/target-port
+    text: "2222"
+  - action: click
+    target: id:fwd/save
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "saved rules: 1"
+      withinMs: 8000
+  - action: type
+    target: id:fwd/listen
+    text: "2401"
+  - action: click
+    target: id:fwd/save
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "saved rules: 2"
+      withinMs: 8000
+  # 清空
+  - action: click
+    target: id:fwd/clear-all
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "saved rules: 0"
+      withinMs: 8000
+asserts:
+  - kind: screenRegex
+    regex: "saved rules: 0"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "no saved rules|还没有规则"
+    withinMs: 6000
+  - kind: absent
+    value: "2400->127.0.0.1:2222"
+    withinMs: 4000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：清空前置（空态）、建两条规则计数为 2、点"清空全部规则"后计数为 0 且列表空。
+    **不覆盖**：清空时正在运行的隧道（清规则不停止已建立的转发，属设计选择，未断言）。
+deviations:
+  - 第二条规则只改监听端口（沿用 host/port 状态），因此保存后是两条不同监听端口的 local 规则。
+notes: >-
+  清空只删 forwards 表，不影响已启动的隧道进程。

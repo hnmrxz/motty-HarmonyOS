@@ -1705,6 +1705,21 @@ struct Index {
     this.fwdResult = 'editing rule ' + id;
   }
 
+
+  // 清空全部转发规则（用户需要的清理动作，也让用例可重复）
+  private async clearAllRules(): Promise<void> {
+    if (this.store === null) { return; }
+    try {
+      const pred = new relationalStore.RdbPredicates('forwards');
+      await this.store.delete(pred);
+      this.editingRuleId = '';
+      this.fwdResult = 'all rules cleared';
+      await this.reloadRules();
+    } catch (e) {
+      hilog.error(DOMAIN, TAG, 'clearAllRules failed: %{public}s', JSON.stringify(e));
+    }
+  }
+
   private async deleteRule(id: string): Promise<void> {
     if (this.store === null) {
       return;
@@ -2287,6 +2302,9 @@ struct Index {
       }.width('100%')
       Text('saved rules: ' + this.fwdRuleCount)
         .id('fwd/rule-count').fontSize(11).fontColor('#0A6C00').width('100%')
+        Button(this.lang === 'zh' ? '清空全部规则' : 'Clear all rules')
+          .id('fwd/clear-all').height(26).fontSize(11).backgroundColor('#C62828').fontColor(Color.White)
+          .onClick(() => { this.clearAllRules(); })
       Column({ space: 4 }) {
         ForEach(this.fwdRules, (rule: string, ridx: number) => {
           Row({ space: 8 }) {
