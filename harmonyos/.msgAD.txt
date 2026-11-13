@@ -1,0 +1,7 @@
+﻿feat(harmonyos/tabs): 会话分屏(左当前 + 右另一标签, 只读快照) + 用例(E2)
+
+- splitOn/splitId/splitText; toggleSplit() 取下一个标签并排; 不足两个会话时提示
+- splitPane: split/title, split/body(随 refreshTab 同步), split/close; 标签栏 session/split 按钮
+- splitOn=false 时 DOM 结构不变, 避免坐标抖动
+- 已知差异: 右侧 pane 只读(上游两侧均可输入); 并排渲染未实测
+验证: check-all.ps1 七项全绿(117 场景)

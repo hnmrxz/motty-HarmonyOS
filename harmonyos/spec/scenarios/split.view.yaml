@@ -1,0 +1,103 @@
+schema: 1
+id: split.view
+title: 分屏：两个会话并排显示，单会话时给出提示
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+fixture:
+  vncAuth: false
+  vncResize: false
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:diag/open
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:diag/tab-debug
+  - action: wait
+    ms: 500
+  - action: click
+    target: id:catalog/reset-hosts
+  - action: wait
+    ms: 1200
+  - action: click
+    target: id:diag/close
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: split-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "split-a"
+      withinMs: 12000
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 500
+  # 第一个会话
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "信任此主机|Trust this host|Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+  # 单会话时分屏应给提示（先测这个分支，避免依赖第二会话）
+  - action: click
+    target: id:session/split
+  - action: wait
+    ms: 900
+asserts:
+  - kind: screenRegex
+    regex: "至少需要两个会话|need two sessions"
+    withinMs: 8000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：分屏按钮存在；单会话时点击给出"至少需要两个会话"提示。
+    **不覆盖**：两个会话并排渲染（`split/title`、`split/body`）——需要第二会话稳定产生输出，
+    当前用例不做断言，须设备上人工确认。
+deviations:
+  - 只测单会话提示分支；并排渲染靠设备目视。
+notes: >-
+  toggleSplit() 需要 >=2 个标签；分屏内容在 refreshTab() 时同步刷新。

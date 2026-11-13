@@ -298,3 +298,16 @@ SFTP 面板 / 会话相关的 `creds.get(fixtureKey)` 分支原本在**未连接
 - `exec(...)` 演示回调和另一处 vt 回调同样补上 else 分支
 - 现在 `this.markUnread(` 共 3 处调用（真实 shell + 演示 vt + 演示 exec），覆盖全部输出路径
 
+## Round 168 追加（E2）：会话**分屏**（左侧当前会话 + 右侧另一个标签）
+
+- 新状态：`splitOn` / `splitId` / `splitText`
+- `toggleSplit()`：切到「另一个标签」并排；**不足两个会话时提示**「至少需要两个会话才能分屏」
+- 分屏 pane：`split/title`（被分屏的会话名）、`split/body`（该会话 vt 视图，随 `refreshTab()` 同步）、`split/close`
+- 标签栏新增按钮 `session/split`（激活时变绿并显示「取消分屏」）
+- 布局只在 `splitOn` 时插入 `Row{ 终端 | splitPane }`；关闭时 DOM 结构与原来完全一致，避免坐标抖动
+
+### 已知边界（诚实）
+- 并排渲染**未实测**（设备不可用）：需要两个会话都有输出才能目视确认
+- 右侧 pane 是**只读快照**（不能输入）；上游分屏两侧都可输入 —— 这是与上游的已知差异
+- 用例 `split.view` 只覆盖「单会话点分屏 → 提示」这一分支
+

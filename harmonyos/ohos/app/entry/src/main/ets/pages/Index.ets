@@ -315,6 +315,9 @@ struct Index {
   @State hostDetailIndex: number = -1;
   @State hostMenuIndex: number = -1;
   @State hoverHost: number = -1;
+  @State splitOn: boolean = false;
+  @State splitId: string = '';
+  @State splitText: string = '';
   @State snipName: string = '';
   @State snipCmd: string = '';
   @State snipEditingId: string = '';
@@ -848,10 +851,52 @@ struct Index {
     this.tabs = next;
   }
 
+
+  // 分屏：把"另一个标签"的终端并排放到右侧（单标签时不可用）
+  private toggleSplit(): void {
+    if (this.splitOn) {
+      this.splitOn = false;
+      this.splitId = '';
+      this.splitText = '';
+      return;
+    }
+    if (this.tabs.length < 2) {
+      this.hint(this.lang === 'zh' ? '至少需要两个会话才能分屏' : 'need two sessions to split');
+      return;
+    }
+    let idx: number = 0;
+    for (let i = 0; i < this.tabs.length; i++) {
+      if (this.tabs[i].id === this.activeId) { idx = i; }
+    }
+    const cand = this.tabs[(idx + 1) % this.tabs.length];
+    this.splitId = cand.id;
+    this.splitOn = true;
+    this.splitText = mottynapi.vtView(cand.vtId, 0);
+    this.hint(this.lang === 'zh' ? '已分屏（右侧为另一会话）' : 'split on');
+  }
+
+  private refreshSplit(): void {
+    if (!this.splitOn || this.splitId.length === 0) { return; }
+    for (let i = 0; i < this.tabs.length; i++) {
+      if (this.tabs[i].id === this.splitId) {
+        this.splitText = mottynapi.vtView(this.tabs[i].vtId, 0);
+        return;
+      }
+    }
+  }
+
+  private splitTabLabel(): string {
+    for (let i = 0; i < this.tabs.length; i++) {
+      if (this.tabs[i].id === this.splitId) { return this.tabs[i].label; }
+    }
+    return '';
+  }
+
   private refreshTab(vtId: number): void {
     this.termText = mottynapi.vtScreen(vtId);
     this.vtStatus = mottynapi.vtStatus(vtId);
     this.vtHistory = mottynapi.vtScrollBack(vtId, this.termScrollback);
+    this.refreshSplit();
   }
 
 
@@ -2868,6 +2913,11 @@ struct Index {
       }
       .scrollable(ScrollDirection.Horizontal)
       .layoutWeight(1)
+      Button(this.splitOn ? (this.lang === 'zh' ? '取消分屏' : 'Unsplit') : (this.lang === 'zh' ? '分屏' : 'Split'))
+        .id('session/split').height(26).fontSize(11)
+        .backgroundColor(this.splitOn ? '#2F6F4F' : this.th('#23262B'))
+        .fontColor(this.splitOn ? Color.White : this.th('#C7CBD1'))
+        .onClick(() => { this.toggleSplit(); })
       if (this.showTabCount) {
         Text(this.tabs.length > 1 ? this.tabs.length + ' sessions' : '1 session')
         .id('session/count').fontSize(11).fontColor('#666666')
@@ -5824,6 +5874,28 @@ struct Index {
     .shadow({ radius: 20, color: '#66000000', offsetY: 6 })
   }
 
+
+  @Builder
+  splitPane() {
+    Column({ space: 6 }) {
+      Row({ space: 8 }) {
+        Text(this.splitTabLabel()).id('split/title').fontSize(this.fs(12))
+          .fontColor(this.th('#C7CBD1')).fontWeight(FontWeight.Medium)
+        Blank()
+        Button(this.lang === 'zh' ? '关闭分屏' : 'Close split').id('split/close')
+          .height(24).fontSize(11).backgroundColor(this.th('#23262B')).fontColor(this.th('#C7CBD1'))
+          .onClick(() => { this.toggleSplit(); })
+      }.width('100%')
+      Scroll() {
+        Text(this.splitText).id('split/body').fontSize(this.termFontSize)
+          .fontFamily('monospace').fontColor('#D4D4D4').width('100%')
+      }.layoutWeight(1).width('100%').backgroundColor('#1E1E1E')
+      .border({ width: 1, color: '#333333' }).padding(8).align(Alignment.TopStart)
+    }
+    .width('44%').height('100%').padding(8).backgroundColor(this.th('#14161A'))
+    .border({ width: { left: 1 }, color: this.th('#22252A') })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -5859,6 +5931,11 @@ struct Index {
             } else {
               this.hostListView()
             }
+          } else if (this.splitOn) {
+            Row() {
+              Column() { this.terminalView() }.layoutWeight(1).height('100%')
+              this.splitPane()
+            }.width('100%').height('100%')
           } else {
             this.terminalView()
           }
