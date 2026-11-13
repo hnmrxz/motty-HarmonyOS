@@ -184,3 +184,9 @@ Output 2 / Share 2 / Shortcuts 1`
 - 表单 6 个中文 placeholder 全部双语化（显示名/主机名或 IP/登录账户/密码提示/标签示例/分组提示）
 - 表单加入两个分区标题：**基础**（名称/地址/凭据）、**外观与归类**（分组/图标/协议/标签/颜色）
 
+## Round 146 追加（E2）：按钮样式收敛
+
+- 新增三个统一 builder：`btnPrimary`（主 `#2F6F4F`）、`btnSecondary`（次 `#23262B`）、`btnDanger`（危险 `#3A2226`），统一 `height 30 / fontSize 12`
+- 已把 `hostMoreMenu`（打开/编辑/删除）、`tabRenameDialog`、`vaultAddDialog` 的 7 个按钮改为使用它们（id/文案不变）
+- `check-ids` 增强：识别通过 `btnPrimary/btnSecondary/btnDanger/settingsOpt` 参数传入的 id
+

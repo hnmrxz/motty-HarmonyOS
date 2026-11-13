@@ -1,0 +1,6 @@
+﻿refactor(harmonyos/ui): 统一按钮 builder(btnPrimary/btnSecondary/btnDanger) 并替换 7 处
+
+- 三个 builder 统一 height 30/fontSize 12 与主次危险色, 减少样式漂移
+- hostMoreMenu(打开/编辑/删除)、tabRenameDialog、vaultAddDialog 共 7 个按钮改为使用它们(id/文案不变)
+- check-ids 增强: 识别 btnPrimary/btnSecondary/btnDanger/settingsOpt 参数传入的 id
+验证: check-all.ps1 五项全绿(111 场景)

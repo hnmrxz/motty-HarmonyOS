@@ -3962,6 +3962,29 @@ struct Index {
 
 
 
+
+  // 统一按钮样式：主操作 / 次操作 / 危险操作（高度与圆角一致，减少样式漂移）
+  @Builder
+  btnPrimary(label: string, idName: string, onTap: () => void) {
+    Button(label).id(idName).height(30).fontSize(12)
+      .backgroundColor('#2F6F4F').fontColor(Color.White)
+      .onClick(() => { onTap(); })
+  }
+
+  @Builder
+  btnSecondary(label: string, idName: string, onTap: () => void) {
+    Button(label).id(idName).height(30).fontSize(12)
+      .backgroundColor('#23262B').fontColor('#C7CBD1')
+      .onClick(() => { onTap(); })
+  }
+
+  @Builder
+  btnDanger(label: string, idName: string, onTap: () => void) {
+    Button(label).id(idName).height(30).fontSize(12)
+      .backgroundColor('#3A2226').fontColor('#E08A8A')
+      .onClick(() => { onTap(); })
+  }
+
   @Builder
   settingsSection(title: string) {
     Text(title).fontSize(12).fontColor('#8A8F98').width('100%').margin({ top: 4 })
@@ -5446,11 +5469,8 @@ struct Index {
         .id('vaultadd/pw').width('100%').height(36).type(InputType.Password)
         .onChange((v: string) => { this.vaultPw = v; })
       Row({ space: 12 }) {
-        Button(this.t('hostkey.cancel')).id('vaultadd/cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
-          .onClick(() => { this.vaultAddOpen = false; })
-        Button(this.lang === 'zh' ? '保存' : 'Save').id('vaultadd/save')
-          .backgroundColor('#2F6F4F').fontColor(Color.White)
-          .onClick(() => { this.saveVaultEntry(); })
+        this.btnSecondary(this.t('hostkey.cancel'), 'vaultadd/cancel', () => { this.vaultAddOpen = false; })
+        this.btnPrimary(this.lang === 'zh' ? '保存' : 'Save', 'vaultadd/save', () => { this.saveVaultEntry(); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
     .id('vaultadd/dialog').width(420).padding(18).backgroundColor('#1C1F24').borderRadius(12)
@@ -5467,11 +5487,8 @@ struct Index {
         .id('tabrename/input').width('100%').height(36)
         .onChange((v: string) => { this.tabRenameText = v; })
       Row({ space: 12 }) {
-        Button(this.t('hostkey.cancel')).id('tabrename/cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
-          .onClick(() => { this.tabRenameOpen = false; })
-        Button(this.lang === 'zh' ? '保存' : 'Save').id('tabrename/save')
-          .backgroundColor('#2F6F4F').fontColor(Color.White)
-          .onClick(() => { this.submitTabRename(); })
+        this.btnSecondary(this.t('hostkey.cancel'), 'tabrename/cancel', () => { this.tabRenameOpen = false; })
+        this.btnPrimary(this.lang === 'zh' ? '保存' : 'Save', 'tabrename/save', () => { this.submitTabRename(); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
     .id('tabrename/dialog').width(400).padding(18).backgroundColor('#1C1F24').borderRadius(12)
@@ -5483,21 +5500,15 @@ struct Index {
   @Builder
   hostMoreMenu() {
     Column({ space: 2 }) {
-      Button(this.t('host.open')).id('hostmenu/open').width('100%').fontSize(13)
-        .backgroundColor('#23262B').fontColor('#C7CBD1')
-        .onClick(() => { const i = this.hostMenuIndex; this.hostMenuIndex = -1; this.openSession(this.hosts[i].label, i); })
-      Button(this.t('host.edit')).id('hostmenu/edit').width('100%').fontSize(13)
-        .backgroundColor('#23262B').fontColor('#C7CBD1')
-        .onClick(() => { const i = this.hostMenuIndex; this.hostMenuIndex = -1; this.openEditHost(i); })
+      this.btnSecondary(this.t('host.open'), 'hostmenu/open', () => { const i = this.hostMenuIndex; this.hostMenuIndex = -1; this.openSession(this.hosts[i].label, i); })
+      this.btnSecondary(this.t('host.edit'), 'hostmenu/edit', () => { const i = this.hostMenuIndex; this.hostMenuIndex = -1; this.openEditHost(i); })
       Button(this.lang === 'zh' ? '详情' : 'Details').id('hostmenu/detail').width('100%').fontSize(13)
         .backgroundColor('#23262B').fontColor('#C7CBD1')
         .onClick(() => { const i = this.hostMenuIndex; this.hostMenuIndex = i; this.hostDetailIndex = i; })
       Button(this.lang === 'zh' ? '复制地址' : 'Copy address').id('hostmenu/copy').width('100%').fontSize(13)
         .backgroundColor('#23262B').fontColor('#C7CBD1')
         .onClick(() => { const i = this.hostMenuIndex; this.hostMenuIndex = -1; this.copyHostAddress(this.hosts[i]); })
-      Button(this.t('host.del')).id('hostmenu/delete').width('100%').fontSize(13)
-        .backgroundColor('#3A2226').fontColor('#E08A8A')
-        .onClick(() => { const i = this.hostMenuIndex; this.hostMenuIndex = -1; this.askDeleteHost(i); })
+      this.btnDanger(this.t('host.del'), 'hostmenu/delete', () => { const i = this.hostMenuIndex; this.hostMenuIndex = -1; this.askDeleteHost(i); })
       Button(this.t('common.close')).id('hostmenu/close').width('100%').fontSize(12)
         .backgroundColor('#1E2127').fontColor('#8A8F98')
         .onClick(() => { this.hostMenuIndex = -1; })
