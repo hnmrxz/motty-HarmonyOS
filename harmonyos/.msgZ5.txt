@@ -1,0 +1,6 @@
+﻿feat(harmonyos/settings): 回滚行数改为 -/+ 两端按钮并标注范围(0-100), 边界禁用
+
+- 原实现"到 100 归零"的回绕交互改为: settings/scrollback-dec(-) 与 settings/scrollback(+), 0/100 处禁用置灰
+- 新增 settings/scrollback-value 显示 "回滚 N (0–100)"
+- settings.scrollback/labels 同步; UI-GAPS 增加"有范围状态"规范表(字号 10-24, 回滚 0-100)
+验证: check-all.ps1 七项全绿(114 场景)

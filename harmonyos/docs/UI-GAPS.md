@@ -261,3 +261,10 @@ Output 2 / Share 2 / Shortcuts 1`
 
 门禁顺序：build → lint → check-ids → check-paging → **check-theme** → check-contrast → check-actions
 
+## Round 159~160 追加（E2）：有范围的状态补"当前值 + 范围 + 边界禁用"
+
+| 状态 | 范围 | 交互 |
+|---|---|---|
+| 终端字号 `termFontSize` | 10–24 | `font-dec`/`font-inc`，边界禁用并置灰，值旁标注 `(10–24)` |
+| 回滚行数 `termScrollback` | 0–100 | `scrollback-dec`/`scrollback`（+），边界禁用，值旁标注 `(0–100)`；不再"循环归零" |
+

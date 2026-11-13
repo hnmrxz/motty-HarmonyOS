@@ -4146,11 +4146,22 @@ struct Index {
           .enabled(this.termFontSize < 24)
           .opacity(this.termFontSize < 24 ? 1 : 0.4)
           .onClick(() => { this.changeTermFont(1); })
-        Button(this.lang === 'zh' ? '回滚 ' + this.termScrollback : 'scrollback ' + this.termScrollback)
-          .id('settings/scrollback').height(30).fontSize(12)
+        Text((this.lang === 'zh' ? '回滚 ' + this.termScrollback : 'scrollback ' + this.termScrollback) + ' (0–100)')
+          .id('settings/scrollback-value').fontSize(12).fontColor(this.th('#C7CBD1'))
+        Button('−').id('settings/scrollback-dec').height(30).width(40).fontSize(13)
           .backgroundColor(this.th('#23262B')).fontColor(this.th('#C7CBD1'))
+          .enabled(this.termScrollback > 0)
+          .opacity(this.termScrollback > 0 ? 1 : 0.4)
           .onClick(() => {
-            this.termScrollback = this.termScrollback >= 100 ? 0 : this.termScrollback + 10;
+            this.termScrollback = Math.max(0, this.termScrollback - 10);
+            this.savePrefs();
+          })
+        Button('+').id('settings/scrollback').height(30).width(40).fontSize(13)
+          .backgroundColor(this.th('#23262B')).fontColor(this.th('#C7CBD1'))
+          .enabled(this.termScrollback < 100)
+          .opacity(this.termScrollback < 100 ? 1 : 0.4)
+          .onClick(() => {
+            this.termScrollback = Math.min(100, this.termScrollback + 10);
             this.savePrefs();
           })
       }.width('100%')
