@@ -1,0 +1,218 @@
+{
+  "spec": "settings.tab-side",
+  "profile": "2in1",
+  "serial": "127.0.0.1:5555",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 11,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 12,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 13,
+      "action": "type",
+      "ok": true,
+      "detail": "secret: 已注入，未回读"
+    },
+    {
+      "i": 14,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 15,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 16,
+      "action": "key",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 17,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 18,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 19,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 20,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 21,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 22,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 23,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 24,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 25,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 26,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 27,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 28,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 29,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "absent",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：设置里开启「侧栏标签」后有会话时顶部标签栏消失（不再出现 \"1 session\"）， 标签改在左侧竖排（会话名仍可见）。 **不覆盖**：侧栏标签的点击切换/关闭（同一 selectTab/closeTab 路径）、重启后保持（DB 持久化同路径）。"
+  },
+  "passed": true
+}

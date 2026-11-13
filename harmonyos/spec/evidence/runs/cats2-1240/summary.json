@@ -1,0 +1,50 @@
+{
+  "total": 7,
+  "passed": 5,
+  "failed": 2,
+  "results": [
+    {
+      "spec": "settings.categories",
+      "passed": true,
+      "seconds": 19.7,
+      "error": ""
+    },
+    {
+      "spec": "settings.display-toggles",
+      "passed": true,
+      "seconds": 75.1,
+      "error": ""
+    },
+    {
+      "spec": "settings.font-size",
+      "passed": false,
+      "seconds": 46.4,
+      "error": "step 16 (wait) 失败: 步骤内 expect 失败: 正则 '字号 14' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n监控\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端"
+    },
+    {
+      "spec": "settings.scrollback",
+      "passed": false,
+      "seconds": 40.6,
+      "error": "assert 0 (screenRegex) 失败: 正则 '回滚 [0-9]+|scrollback [0-9]+' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n监控\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n"
+    },
+    {
+      "spec": "settings.startup-view",
+      "passed": true,
+      "seconds": 31.1,
+      "error": ""
+    },
+    {
+      "spec": "settings.tab-numbers",
+      "passed": true,
+      "seconds": 73.2,
+      "error": ""
+    },
+    {
+      "spec": "settings.tab-side",
+      "passed": true,
+      "seconds": 68.2,
+      "error": ""
+    }
+  ],
+  "at": "2026-11-13T12:46:03"
+}

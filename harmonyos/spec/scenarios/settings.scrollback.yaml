@@ -23,6 +23,10 @@ steps:
     target: id:nav/settings
   - action: wait
     ms: 800
+  - action: click
+    target: id:settings/cat-terminal
+  - action: wait
+    ms: 600
     expect:
       kind: screenRegex
       regex: "回滚 [0-9]+|scrollback [0-9]+"

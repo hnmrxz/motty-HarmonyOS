@@ -86,6 +86,10 @@ steps:
   - action: wait
     ms: 800
   - action: click
+    target: id:settings/cat-hosts
+  - action: wait
+    ms: 600
+  - action: click
     target: id:settings/show-tabcount
   - action: wait
     ms: 500

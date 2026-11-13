@@ -23,6 +23,10 @@ steps:
     target: id:nav/settings
   - action: wait
     ms: 800
+  - action: click
+    target: id:settings/cat-terminal
+  - action: wait
+    ms: 600
     expect:
       kind: screenRegex
       regex: "字号 13 (10–24)|字号 13 \\(10–24\\)|字号 13"

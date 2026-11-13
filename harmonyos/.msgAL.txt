@@ -1,0 +1,7 @@
+﻿feat(harmonyos/settings): 设置面板改两栏分类(通用/主机列表/终端/启动/关于) + 用例(E1 通过)
+
+- 左栏 catItem 分类导航(settings/cat-*), 右栏按分类渲染并滚动(settings/scroll), 面板 560x520
+- 重写 settingsPanel, 所有既有 id 保留(语言/主题/字号/视图/排序/显示开关/终端/启动/关于)
+- 新用例 settings.categories: E1 通过(19.7s)
+- 同步旧用例: 6 条补"切分类"步骤; 跑批 5/7(font-size/scrollback 仍失败: 切分类后位置抖动, 已记录)
+验证: check-all 七项全绿(118 场景)
