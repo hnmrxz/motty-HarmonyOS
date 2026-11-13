@@ -1,0 +1,11 @@
+﻿chore(harmonyos): 新增 check-ids 静态校验 + E1 待验清单; 模拟器仍无法启动
+
+模拟器状态: 重启后 Emulator.exe 有进程但 qemu 未起, hdc list targets 一直为空,
+  -wipe-data / 重启 hdc server 均无效 => 需要 DevEco GUI 重新启动或重建镜像
+
+本轮产出(设备无关):
+1) tools/check-ids.py: 静态交叉检查 spec 的 target:id 是否都存在于 Index.ets
+   结果: defined ids 356 / dynamic 44 / 缺失 0 (OK)
+2) docs/E1-BACKLOG.md: 8 条待 E1 用例 + 一条命令
+   --only vault,settings.tab,jump,knownhosts,logs,settings.scrollback
+3) README 用例数更新为 99, 并标注 E1 待验入口
