@@ -1,0 +1,5 @@
+﻿feat(harmonyos): 日志"仅最近 200 条"提示 + SFTP 空路径提示
+
+- reloadLogs(): 多读一行判断是否被截断, 置 logsCapped; logs/count 追加"（仅最近 200 条）"
+- requireSftpPath(): 路径为空写 sftp/status 提示, 接入 refreshListing()/goUp()
+验证: check-all.ps1 七项全绿(115 场景)

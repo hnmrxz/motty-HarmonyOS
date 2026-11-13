@@ -279,3 +279,10 @@ SFTP 面板 / 会话相关的 `creds.get(fixtureKey)` 分支原本在**未连接
 - `startForward()` 与 `saveRule()` 先校验：不合格时把错误写进 `fwd/events` 或 `fwd/result`，不再带着无效参数去连接/入库
 - **未加用例**：输入框是非受控的，自动化无法「清空已有内容」，构造非法值不稳定；列为 E2 代码级保证
 
+## Round 164 追加（E2）
+
+| 项 | 实现 |
+|---|---|
+| 日志上限提示 | `reloadLogs()` 最多取 200 条，并置 `logsCapped`；计数处追加「（仅最近 200 条）/ (latest 200 only)」 |
+| SFTP 路径校验 | `requireSftpPath()`：路径为空时把提示写进 `sftp/status`（「请先填写远端路径」），已接入 `refreshListing()` 与 `goUp()` |
+

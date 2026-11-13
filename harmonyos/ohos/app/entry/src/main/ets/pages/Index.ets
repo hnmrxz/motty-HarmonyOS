@@ -293,6 +293,7 @@ struct Index {
   @State termFontSize: number = 13;
   @State logs: LogItem[] = [];
   @State logsQuery: string = '';
+  @State logsCapped: boolean = false;
   @State logsProto: string = '';
   @State logsHost: string = '';
   @State notesQuery: string = '';
@@ -1425,7 +1426,17 @@ struct Index {
     this.refreshListing(cred, fp);
   }
 
+  // SFTP 路径为空时明确提示（不再静默）
+  private requireSftpPath(): boolean {
+    if (this.sftpPath.trim().length === 0) {
+      this.sftpStatus = this.lang === 'zh' ? '请先填写远端路径' : 'remote path is required';
+      return false;
+    }
+    return true;
+  }
+
   private refreshListing(cred: Cred, fp: string): void {
+    if (!this.requireSftpPath()) { return; }
     this.sftpStatus = 'listing ' + this.sftpPath;
     mottynapi.sftp(cred.address, cred.port, cred.user, cred.password, fp, 'list', this.sftpPath,
       (result: string) => {
@@ -1451,6 +1462,7 @@ struct Index {
   }
 
   private goUp(cred: Cred, fp: string): void {
+    if (!this.requireSftpPath()) { return; }
     const p = this.sftpPath;
     if (p === '.' || p === '/' || p.length === 0) {
       this.sftpStatus = 'already at root';
@@ -4301,14 +4313,17 @@ struct Index {
     pred.orderByDesc('started_at');
     const rs = await this.store.query(pred, LOG_COLUMNS);
     const out: LogItem[] = [];
+    let more: boolean = false;
     while (rs.goToNextRow() && out.length < 200) {
       out.push({
         id: rs.getString(0), label: rs.getString(1), address: rs.getString(2),
         proto: rs.getString(3), startedAt: rs.getLong(4)
       });
     }
+    more = rs.goToNextRow();
     rs.close();
     this.logs = out;
+    this.logsCapped = more;
   }
 
 
