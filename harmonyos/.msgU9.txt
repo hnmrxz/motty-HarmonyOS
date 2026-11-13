@@ -1,0 +1,8 @@
+﻿docs(harmonyos): 定位模拟器无法启动的根因(vmcompute 停止且无权限启动) + 待补 E1 清单 9 条
+
+根因: Hyper-V 主机计算服务 vmcompute 处于 Stopped, Start-Service 报"无法打开服务"(需提权);
+  Get-WindowsOptionalFeature 也报 requires elevation。Emulator.exe 只是外壳, qemu 没能起来。
+需要用户: 以管理员身份开 DevEco Studio 启动 motty_pc, 或管理员 PowerShell 里 Start-Service vmcompute
+
+待补 E1(9 条): vault.add, settings.tab-numbers, settings.tab-side, settings.scrollback,
+  settings.display-toggles, settings.startup-view, jump.page, knownhosts.export, logs.proto-filter

@@ -25,3 +25,29 @@ python harmonyos\tools\run-all.py --only vault,settings.tab,jump,knownhosts,logs
 2. 更新 `docs/REGRESSION.md` 基线（用例数 99 → 全绿数）；
 3. 更新 `README.md` 的用例数/能力表；
 4. 视情况跑一次全量（约 80 分钟）。
+
+## 模拟器起不来的**根因**（Round 120 定位）
+
+```
+Get-Service vmcompute  -> Stopped
+Start-Service vmcompute -> 无法打开计算机"."上的 vmcompute 服务
+```
+`Hyper-V 主机计算服务 (vmcompute)` 处于停止状态，且当前会话**没有权限启动它**
+（`Get-WindowsOptionalFeature` 也报 "requires elevation"）。
+Emulator.exe 只是外壳，真正跑虚拟机的 qemu 需要该服务 ⇒ 进程在但虚拟机没起来。
+
+### 需要用户做的（任选其一）
+1. **以管理员身份打开 DevEco Studio**，从 Device Manager 启动 `motty_pc`；
+2. 或在**管理员 PowerShell** 里：`Start-Service vmcompute`，然后再启动模拟器；
+3. 若仍失败，检查「启用或关闭 Windows 功能」里 *Hyper-V* / *Windows 虚拟机监控程序平台* 是否被关闭（重启后有时被系统关闭）。
+
+### 待补 E1 的用例（共 9 条）
+`vault.add`、`settings.tab-numbers`、`settings.tab-side`、`settings.scrollback`、
+`settings.display-toggles`、`settings.startup-view`、`jump.page`、`knownhosts.export`、`logs.proto-filter`
+（`logs.export` 此前已 E1，回归时一并确认）
+
+一条命令：
+```powershell
+python harmonyos\tools\run-all.py --only vault,settings.tab,settings.scrollback,settings.display,settings.startup,jump,knownhosts,logs
+```
+
