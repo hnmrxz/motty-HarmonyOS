@@ -1,0 +1,205 @@
+{
+  "spec": "group.move-boundary",
+  "profile": "2in1",
+  "serial": "127.0.0.1:5555",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 10,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 11,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 12,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 13,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 14,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 15,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 16,
+      "action": "key",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 17,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 18,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 19,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 20,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 21,
+      "action": "type",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 22,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 23,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 24,
+      "action": "key",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 25,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 26,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 27,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 28,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 29,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": false,
+      "detail": "正则 '已经是第一个分组|already the first group' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n  \\n\\n\\n'）"
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：分组在列表顶部时点上移，顶栏出现\"已经是第一个分组\"提示（不再静默）。 **不覆盖**：底部下移提示（同源分支）、分组顺序变化本身（由 group-order 覆盖）。"
+  },
+  "passed": false,
+  "error": "assert 0 (screenRegex) 失败: 正则 '已经是第一个分组|already the first group' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n  \\n\\n\\n'）"
+}

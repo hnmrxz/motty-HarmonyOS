@@ -1,0 +1,64 @@
+{
+  "spec": "settings.theme",
+  "profile": "2in1",
+  "serial": "127.0.0.1:5555",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": false,
+      "detail": "选择器未命中: id:settings/close"
+    }
+  ],
+  "asserts": [],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：设置外观分区有深/浅两个按钮，切到浅色后重启仍保持（按钮状态需目视确认）。 **不覆盖**：浅色下的像素级配色正确性（需截图目视）、各弹层在浅色下的对比度。"
+  },
+  "passed": false,
+  "error": "step 6 (click) 失败: 选择器未命中: id:settings/close"
+}

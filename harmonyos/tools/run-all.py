@@ -28,8 +28,8 @@ def restart_fixture(spec_path):
                     "Get-Process sshfixture -ErrorAction SilentlyContinue | Stop-Process -Force"],
                    capture_output=True, text=True)
     time.sleep(0.6)
-    subprocess.run([HDC, "-t", "127.0.0.1:10100", "rport", "tcp:2222", "tcp:2223"], capture_output=True, text=True)
-    subprocess.run([HDC, "-t", "127.0.0.1:10100", "rport", "tcp:5901", "tcp:5901"], capture_output=True, text=True)
+    subprocess.run([HDC, "-t", os.environ.get("MOTTY_SERIAL", "127.0.0.1:10100"), "rport", "tcp:2222", "tcp:2223"], capture_output=True, text=True)
+    subprocess.run([HDC, "-t", os.environ.get("MOTTY_SERIAL", "127.0.0.1:10100"), "rport", "tcp:5901", "tcp:5901"], capture_output=True, text=True)
     args = [FIXTURE, "-addr", "127.0.0.1:2223", "-hostkey", HOSTKEY, "-hostkeytype", "rsa"]
     if want["vncAuth"]:
         args += ["-vnc-auth", "secret"]
@@ -47,7 +47,7 @@ run_id = os.environ.get("MOTTY_RUN_ID", "full21")
 outdir = root / "spec" / "evidence" / "runs" / run_id
 outdir.mkdir(parents=True, exist_ok=True)
 py = r"C:\Python315\python.exe"
-serial = "127.0.0.1:10100"
+serial = os.environ.get("MOTTY_SERIAL", "127.0.0.1:10100")
 
 resume = "--resume" in sys.argv
 # --quick：冒烟子集（12 条，覆盖最容易被改坏的路径，约 12 分钟）

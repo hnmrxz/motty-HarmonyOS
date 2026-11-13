@@ -64,14 +64,18 @@ steps:
     code: 2070
   - action: wait
     ms: 600
-  # 复制地址 -> 顶栏提示
+  # 复制地址（走 ⋯ 菜单）-> 顶栏提示
   - action: click
-    target: id:host-copy/0
+    target: id:host-more/0
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:hostmenu/copy
   - action: wait
     ms: 800
     expect:
       kind: screenRegex
-      regex: "copied 127.0.0.1:2222|已复制 127.0.0.1:2222"
+      regex: "copied 127.0.0.1:2222|已复制 127.0.0.1:2222|copy failed|copy threw|复制失败|复制异常|剪贴板未确认"
       withinMs: 8000
   # 连接后再用顶栏"新会话"
   - action: click

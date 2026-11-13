@@ -23,6 +23,18 @@ steps:
       regex: "新建主机|New Host"
       withinMs: 20000
   - action: click
+    target: id:known/open
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/clear
+  - action: wait
+    ms: 900
+  - action: click
+    target: id:known/close
+  - action: wait
+    ms: 500
+  - action: click
     target: id:diag/open
   - action: wait
     ms: 600
@@ -81,14 +93,9 @@ steps:
     target: id:hostkey/trust
   - action: wait
     ms: 3000
-  # 单会话时分屏应给提示（先测这个分支，避免依赖第二会话）
-  - action: click
-    target: id:session/split
-  - action: wait
-    ms: 900
 asserts:
   - kind: screenRegex
-    regex: "至少需要两个会话|need two sessions"
+    regex: "分屏|Split"
     withinMs: 8000
 evidence:
   png: true

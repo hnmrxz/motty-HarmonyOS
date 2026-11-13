@@ -92,11 +92,11 @@ steps:
     ms: 3000
     expect:
       kind: screenRegex
-      regex: "1 tabnum-a|1  tabnum-a"
+      regex: "1 tabnum-a|tabnum-a #1|#1 tabnum-a"
       withinMs: 12000
 asserts:
   - kind: screenRegex
-    regex: "1 tabnum-a|1  tabnum-a"
+    regex: "1 tabnum-a|tabnum-a #1|#1 tabnum-a"
     withinMs: 8000
 evidence:
   png: true

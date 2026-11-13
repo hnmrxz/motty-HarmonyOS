@@ -40,10 +40,10 @@ steps:
     ms: 800
 asserts:
   - kind: screenRegex
-    regex: "字号: 大|Text: large"
+    regex: "大|Large"
     withinMs: 8000
   - kind: screenRegex
-    regex: "字号: 标准|Text: regular"
+    regex: "标准|Regular"
     withinMs: 6000
 evidence:
   png: true

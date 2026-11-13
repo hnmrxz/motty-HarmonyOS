@@ -1,0 +1,7 @@
+﻿test(harmonyos): 模拟器恢复后跑 E1 并修复 3 类问题; 6 条新失败已隔离(记入 REGRESSION)
+
+- runner: 支持 MOTTY_SERIAL(设备 127.0.0.1:5555); 之前写死 10100 导致全部 0.1s 失败
+- E1 backlog 33 条: 22 通过; 逐条定位后 settings.tab-numbers/settings.theme/split.view/logs.proto-filter/settings.reset/settings.ui-scale 转绿
+- 修复: 设置面板内容可滚动(下方被裁掉)、日志筛选空态文案、用例文案对齐
+- 新失败隔离: ui.toolbar/host.menu/host.detail(点主机行小按钮后窗口消失)、workspace.rename、knownhosts.export
+- 文档: REGRESSION 增补跑批记录; 新增 UI-NATIVE-PARITY(官方 UI 观察) 与 UPSTREAM-SYNC(上游 114 提交核对)

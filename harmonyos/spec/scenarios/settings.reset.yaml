@@ -46,7 +46,7 @@ steps:
       withinMs: 6000
 asserts:
   - kind: screenRegex
-    regex: "settings reset to defaults"
+    regex: "settings reset to defaults|设置已恢复默认"
     withinMs: 6000
   - kind: screenRegex
     regex: "字号 13"

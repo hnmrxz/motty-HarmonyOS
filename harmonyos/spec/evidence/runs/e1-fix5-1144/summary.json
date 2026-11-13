@@ -1,0 +1,20 @@
+{
+  "total": 2,
+  "passed": 0,
+  "failed": 2,
+  "results": [
+    {
+      "spec": "host.menu",
+      "passed": false,
+      "seconds": 50.4,
+      "error": "step 20 (wait) 失败: 步骤内 expect 失败: 正则 'copied 10.30.30.30|已复制 10.30.30.30|copy failed|copy threw|复制失败|复制异常|剪贴板未确认' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\"
+    },
+    {
+      "spec": "ui.toolbar",
+      "passed": false,
+      "seconds": 64.0,
+      "error": "step 19 (wait) 失败: 步骤内 expect 失败: 正则 'copied 127.0.0.1:2222|已复制 127.0.0.1:2222|copy failed|copy threw|复制失败|复制异常|剪贴板未确认' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\"
+    }
+  ],
+  "at": "2026-11-13T11:46:06"
+}

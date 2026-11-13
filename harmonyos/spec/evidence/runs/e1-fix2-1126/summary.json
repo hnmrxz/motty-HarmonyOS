@@ -1,0 +1,50 @@
+{
+  "total": 7,
+  "passed": 1,
+  "failed": 6,
+  "results": [
+    {
+      "spec": "host.menu",
+      "passed": false,
+      "seconds": 51.2,
+      "error": "step 20 (wait) 失败: 步骤内 expect 失败: 正则 'copied 10.30.30.30|已复制 10.30.30.30|copy failed|copy threw|复制失败|复制异常' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\"
+    },
+    {
+      "spec": "knownhosts.export",
+      "passed": false,
+      "seconds": 26.1,
+      "error": "step 7 (wait) 失败: 步骤内 expect 失败: 正则 'known-export: .*motty-known-hosts\\\\\\\\.json \\\\([1-9][0-9]* bytes' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n"
+    },
+    {
+      "spec": "settings.tab-numbers",
+      "passed": true,
+      "seconds": 70.8,
+      "error": ""
+    },
+    {
+      "spec": "settings.theme",
+      "passed": false,
+      "seconds": 22.7,
+      "error": "assert 0 (screenRegex) 失败: 正则 '深色|Dark' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\"
+    },
+    {
+      "spec": "split.view",
+      "passed": false,
+      "seconds": 82.1,
+      "error": "assert 0 (screenRegex) 失败: 正则 '至少需要两个会话|need two sessions' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n"
+    },
+    {
+      "spec": "ui.toolbar",
+      "passed": false,
+      "seconds": 63.9,
+      "error": "step 19 (wait) 失败: 步骤内 expect 失败: 正则 'copied 127.0.0.1:2222|已复制 127.0.0.1:2222|copy failed|copy threw|复制失败|复制异常' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\"
+    },
+    {
+      "spec": "workspace.rename",
+      "passed": false,
+      "seconds": 88.0,
+      "error": "step 28 (wait) 失败: 步骤内 expect 失败: 正则 'wsren-renamed' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转"
+    }
+  ],
+  "at": "2026-11-13T11:33:34"
+}

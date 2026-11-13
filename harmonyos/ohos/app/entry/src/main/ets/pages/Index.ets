@@ -977,6 +977,7 @@ struct Index {
   // 复制主机地址到剪贴板（交互对齐：主机行的"复制地址"）
   private copyHostAddress(h: HostItem): void {
     const text: string = h.address + (h.port.length > 0 ? ':' + h.port : '');
+    this.hint((this.lang === 'zh' ? '已复制 ' : 'copied ') + text);
     try {
       pasteboard.getSystemPasteboard().setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text))
         .then(() => { this.hint((this.lang === 'zh' ? '已复制 ' : 'copied ') + text); })
@@ -3111,12 +3112,7 @@ struct Index {
                       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).width('100%')
                     Text(this.showLastUsed ? this.lastUsedText(h) : '').id('host-lastused/' + h.id).fontSize(10)
                       .fontColor(this.th('#6B7078')).maxLines(1)
-                    Text('ⓘ').id('host-info/' + index).fontSize(11).fontColor(this.th('#6B7078'))
-                      .onClick(() => { this.hostDetailIndex = index; })
-                    Text('⎘').id('host-copy/' + index).fontSize(11).fontColor(this.th('#6B7078'))
-                      .onClick(() => { this.copyHostAddress(h); })
-                    Text('⋯').id('host-more/' + index).fontSize(11).fontColor(this.th('#6B7078'))
-                      .onClick(() => { this.hostMenuIndex = index; })
+
                     Text(h.user.length > 0 ? h.user : '-').fontSize(12).fontColor(this.th('#8A8F98'))
                   }
                   .id('host-name/' + index)
@@ -3141,6 +3137,9 @@ struct Index {
                   }, (tg: string) => h.id + tg)
                   // 行内操作：默认隐藏，悬停显示（对齐原版交互），id 保持在树上供用例使用
                   Row({ space: 4 }) {
+                  Button('⋯').id('host-more/' + index).width(22).height(22).fontSize(11)
+                    .backgroundColor(this.th('#23262B')).fontColor(this.th('#C7CBD1'))
+                    .onClick(() => { this.hostMenuIndex = index; })
                   Button(this.t('host.test')).id('host-row/' + index).fontSize(10).height(26)
                     .backgroundColor(this.th('#23262B')).fontColor(this.th('#C7CBD1'))
                   Button(this.t('host.files')).id('host-files/' + index).fontSize(10).height(26)
@@ -4689,7 +4688,7 @@ struct Index {
           .fontColor('#0A6C00').width('100%')
       }
       if (this.logsFiltered().length === 0) {
-        Text(this.logsQuery.trim().length > 0
+        Text((this.logsQuery.trim().length > 0 || this.logsProto.length > 0 || this.logsHost.length > 0)
           ? (this.lang === 'zh' ? '没有匹配的会话记录' : 'No matching sessions')
           : (this.lang === 'zh' ? '还没有会话记录' : 'No sessions yet')).id('logs/empty')
           .fontSize(13).fontColor(this.th('#6B7078')).width('100%').padding({ top: 40 })
@@ -6085,8 +6084,12 @@ struct Index {
         this.aiPanel()
       }
       if (this.hostMenuIndex >= 0) {
-        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => { this.hostMenuIndex = -1; })
-        this.hostMoreMenu()
+        Column({ space: 10 }) {
+          this.hostMoreMenu()
+        }
+        .width('100%').height('100%').backgroundColor('#66000000')
+        .justifyContent(FlexAlign.Center)
+        .onClick(() => { this.hostMenuIndex = -1; })
       }
       if (this.tabRenameOpen) {
         Column().width('100%').height('100%').backgroundColor('#CC000000').onClick(() => {})

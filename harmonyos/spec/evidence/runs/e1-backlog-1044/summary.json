@@ -1,0 +1,206 @@
+{
+  "total": 33,
+  "passed": 22,
+  "failed": 11,
+  "results": [
+    {
+      "spec": "group.move-boundary",
+      "passed": false,
+      "seconds": 81.2,
+      "error": "assert 0 (screenRegex) 失败: 正则 '已经是第一个分组|already the first group' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n"
+    },
+    {
+      "spec": "host.menu",
+      "passed": false,
+      "seconds": 51.9,
+      "error": "step 20 (wait) 失败: 步骤内 expect 失败: 正则 'copied 10.30.30.30|已复制 10.30.30.30' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n"
+    },
+    {
+      "spec": "jump.page",
+      "passed": true,
+      "seconds": 13.8,
+      "error": ""
+    },
+    {
+      "spec": "knownhosts.clear",
+      "passed": true,
+      "seconds": 72.8,
+      "error": ""
+    },
+    {
+      "spec": "knownhosts.export",
+      "passed": false,
+      "seconds": 26.4,
+      "error": "step 7 (wait) 失败: 步骤内 expect 失败: 正则 'known-export: .*motty-known-hosts\\\\\\\\.json \\\\([1-9][0-9]* bytes' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n"
+    },
+    {
+      "spec": "knownhosts.manage",
+      "passed": true,
+      "seconds": 71.4,
+      "error": ""
+    },
+    {
+      "spec": "logs.export",
+      "passed": true,
+      "seconds": 71.8,
+      "error": ""
+    },
+    {
+      "spec": "logs.filters-combo",
+      "passed": true,
+      "seconds": 81.9,
+      "error": ""
+    },
+    {
+      "spec": "logs.host-filter",
+      "passed": true,
+      "seconds": 70.7,
+      "error": ""
+    },
+    {
+      "spec": "logs.proto-filter",
+      "passed": false,
+      "seconds": 79.1,
+      "error": "step 27 (wait) 失败: 步骤内 expect 失败: 正则 '没有匹配的会话记录|No matching sessions' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n"
+    },
+    {
+      "spec": "logs.search",
+      "passed": true,
+      "seconds": 92.4,
+      "error": ""
+    },
+    {
+      "spec": "notes.search",
+      "passed": true,
+      "seconds": 40.3,
+      "error": ""
+    },
+    {
+      "spec": "page.local-terminal",
+      "passed": true,
+      "seconds": 14.5,
+      "error": ""
+    },
+    {
+      "spec": "pages.search",
+      "passed": true,
+      "seconds": 31.1,
+      "error": ""
+    },
+    {
+      "spec": "settings.display-toggles",
+      "passed": true,
+      "seconds": 73.3,
+      "error": ""
+    },
+    {
+      "spec": "settings.font-size",
+      "passed": true,
+      "seconds": 36.0,
+      "error": ""
+    },
+    {
+      "spec": "settings.persist",
+      "passed": true,
+      "seconds": 66.4,
+      "error": ""
+    },
+    {
+      "spec": "settings.reset",
+      "passed": false,
+      "seconds": 26.6,
+      "error": "assert 0 (screenRegex) 失败: 正则 'settings reset to defaults' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\"
+    },
+    {
+      "spec": "settings.scrollback",
+      "passed": true,
+      "seconds": 31.4,
+      "error": ""
+    },
+    {
+      "spec": "settings.startup-view",
+      "passed": true,
+      "seconds": 29.0,
+      "error": ""
+    },
+    {
+      "spec": "settings.tab-numbers",
+      "passed": false,
+      "seconds": 82.0,
+      "error": "step 27 (wait) 失败: 步骤内 expect 失败: 正则 '1 tabnum-a|1  tabnum-a' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n"
+    },
+    {
+      "spec": "settings.tab-side",
+      "passed": true,
+      "seconds": 71.7,
+      "error": ""
+    },
+    {
+      "spec": "settings.theme",
+      "passed": false,
+      "seconds": 14.6,
+      "error": "step 6 (click) 失败: 选择器未命中: id:settings/close"
+    },
+    {
+      "spec": "settings.ui-scale",
+      "passed": false,
+      "seconds": 37.1,
+      "error": "assert 0 (screenRegex) 失败: 正则 '字号: 大|Text: large' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转发\\n"
+    },
+    {
+      "spec": "split.view",
+      "passed": false,
+      "seconds": 77.3,
+      "error": "assert 0 (screenRegex) 失败: 正则 '至少需要两个会话|need two sessions' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n"
+    },
+    {
+      "spec": "ui.ai-panel",
+      "passed": true,
+      "seconds": 13.6,
+      "error": ""
+    },
+    {
+      "spec": "ui.toolbar",
+      "passed": false,
+      "seconds": 64.3,
+      "error": "step 19 (wait) 失败: 步骤内 expect 失败: 正则 'copied 127.0.0.1:2222|已复制 127.0.0.1:2222' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n"
+    },
+    {
+      "spec": "ui.view-options",
+      "passed": true,
+      "seconds": 14.8,
+      "error": ""
+    },
+    {
+      "spec": "vault.add",
+      "passed": true,
+      "seconds": 45.9,
+      "error": ""
+    },
+    {
+      "spec": "vault.persist",
+      "passed": true,
+      "seconds": 62.9,
+      "error": ""
+    },
+    {
+      "spec": "workspace.close-others",
+      "passed": true,
+      "seconds": 78.4,
+      "error": ""
+    },
+    {
+      "spec": "workspace.page",
+      "passed": true,
+      "seconds": 73.1,
+      "error": ""
+    },
+    {
+      "spec": "workspace.rename",
+      "passed": false,
+      "seconds": 89.3,
+      "error": "step 28 (wait) 失败: 步骤内 expect 失败: 正则 'wsren-renamed' 未命中（屏幕文本: '\\n\\n\\n\\n\\n\\n\\n\\nMotty\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\nM\\nmotty\\n\\n\\n\\n主机\\n\\n\\n\\n工作区\\n\\n\\n\\n密钥链\\n\\n\\n\\n跳板路由\\n\\n\\n\\n快捷命令\\n\\n\\n\\n端口转"
+    }
+  ],
+  "at": "2026-11-13T11:14:46"
+}

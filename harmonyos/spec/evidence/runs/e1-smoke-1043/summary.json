@@ -1,0 +1,20 @@
+{
+  "total": 2,
+  "passed": 0,
+  "failed": 2,
+  "results": [
+    {
+      "spec": "settings.font-size",
+      "passed": false,
+      "seconds": 0.1,
+      "error": ""
+    },
+    {
+      "spec": "ui.toolbar",
+      "passed": false,
+      "seconds": 0.1,
+      "error": ""
+    }
+  ],
+  "at": "2026-11-13T10:44:00"
+}

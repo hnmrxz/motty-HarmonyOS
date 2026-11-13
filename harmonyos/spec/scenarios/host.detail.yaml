@@ -83,7 +83,11 @@ steps:
     ms: 600
   # 打开详情
   - action: click
-    target: id:host-info/0
+    target: id:host-more/0
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:hostmenu/detail
   - action: wait
     ms: 1000
     expect:
@@ -105,7 +109,11 @@ steps:
     ms: 800
   # 再打开详情并关闭
   - action: click
-    target: id:host-info/0
+    target: id:host-more/0
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:hostmenu/detail
   - action: wait
     ms: 800
   - action: click

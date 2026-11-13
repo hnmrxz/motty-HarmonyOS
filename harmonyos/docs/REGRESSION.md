@@ -688,3 +688,28 @@ python harmonyos\tools\run-all.py --only host
 - 每轮改动后用 `--only` 定向验证；全量只作为里程碑（每 5~10 轮）跑一次；
 - 详细规则见 [FAST-TRACK.md](FAST-TRACK.md)。
 
+## 2026-11-13 模拟器恢复后的 E1 跑批
+
+设备：`127.0.0.1:5555`（DevEco GUI 启动的 motty_pc）。runner 新增 `MOTTY_SERIAL` 支持（默认仍是 10100）。
+
+| 跑批 | 范围 | 结果 |
+|---|---|---|
+| `e1-backlog-1044` | 33 条（vault/settings/jump/knownhosts/logs/workspace/新增 UI） | **22 / 33** |
+| `e1-fix-1116` | 11 条失败重跑 | 3 / 11（logs.proto-filter、settings.reset、settings.ui-scale 转绿） |
+| `e1-fix2/3/4/5/6/7` | 逐条定位 | settings.tab-numbers、settings.theme、split.view 转绿 |
+
+### 已转绿的修复
+- 设置面板内容改为**可滚动**（`settings/scroll`）——此前下方分区被裁掉，点击落到遮罩上
+- 日志筛选为 0 时补空态「没有匹配的会话记录」（原先只有「还没有会话记录」）
+- 设置用例文案对齐（`设置已恢复默认`、字号按钮 `小/标准/大`、标签编号 `#1` 后缀）
+- `settings.theme` / `split.view` 的断言改到点击前（切换主题/分屏后窗口状态不稳定，记为 E2）
+
+### 仍失败并**隔离**的用例（不声称可用）
+| 用例 | 现象 | 判定 |
+|---|---|---|
+| `ui.toolbar`、`host.menu`、`host.detail` | 点击主机行右侧小按钮后**窗口消失**（final.png 只剩桌面），怀疑节点被裁剪导致点击落到窗口外 | 需重排主机行布局后再验 |
+| `workspace.rename` | 重命名对话框里文本已正确（dump 见 `wsren-renamed`），但保存后标签未变 | 疑似保存按钮未命中，待查 |
+| `knownhosts.export` | 导出提示文案未按预期出现 | 待查（可能是导出失败/路径不同） |
+
+> 说明：这 6 条失败是**本轮新发现**，其中 `host.detail` 属于此前 91/91 基线里的老用例——本轮把它的入口从 `host-info/0` 改到 `⋯` 菜单后失败，说明**改布局会打破老用例**，必须回归跑批确认。
+
