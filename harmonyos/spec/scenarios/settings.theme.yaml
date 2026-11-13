@@ -1,0 +1,61 @@
+schema: 1
+id: settings.theme
+title: 深色/浅色主题切换：选择后重启保持
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:nav/settings
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "深色|Dark"
+      withinMs: 8000
+  - action: click
+    target: id:settings/theme-light
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:settings/close
+  - action: wait
+    ms: 500
+  - action: restart
+  - action: wait
+    ms: 7000
+  - action: click
+    target: id:nav/settings
+  - action: wait
+    ms: 800
+asserts:
+  - kind: screenRegex
+    regex: "深色|Dark"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "浅色|Light"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：设置外观分区有深/浅两个按钮，切到浅色后重启仍保持（按钮状态需目视确认）。
+    **不覆盖**：浅色下的像素级配色正确性（需截图目视）、各弹层在浅色下的对比度。
+deviations:
+  - 主题只覆盖主要表面/文字色（通过 th() 映射 11 个基准色），彩色强调色不随主题变化。
+notes: >-
+  themeMode 存 DB；th(dark) 在浅色模式下把 11 个深色基准映射为浅色。
