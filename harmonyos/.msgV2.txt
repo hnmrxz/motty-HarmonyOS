@@ -1,0 +1,5 @@
+﻿feat(harmonyos/workspace): "关闭其他"标签 + 用例(E2)
+
+实现: 工作区每行 ws/close-others/<i> -> closeOtherTabs(keepId): 非保留标签依次 closeShell + vtFree,
+  保留的置为 active
+验证: build SUCCESSFUL + spec/lint + check-ids 全绿; 模拟器仍不可用 -> E2

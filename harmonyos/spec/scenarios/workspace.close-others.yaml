@@ -1,0 +1,118 @@
+schema: 1
+id: workspace.close-others
+title: 工作区「关闭其他」：只保留指定标签，计数回落
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+fixture:
+  vncAuth: false
+  vncResize: false
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/clear
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/close
+  - action: wait
+    ms: 500
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: closeothers-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "closeothers-a"
+      withinMs: 12000
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 600
+  # 第一个会话（需要信任）
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "信任此主机|Trust this host|Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+  # 再开一个会话（凭据已在内存，不再弹信任）
+  - action: click
+    target: id:nav/hosts
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 3000
+    expect:
+      kind: screenRegex
+      regex: "2 sessions"
+      withinMs: 15000
+  # 关闭其他
+  - action: click
+    target: id:nav/workspace
+  - action: wait
+    ms: 1000
+  - action: click
+    target: id:ws/close-others/0
+  - action: wait
+    ms: 1200
+asserts:
+  - kind: screenRegex
+    regex: "1 session"
+    withinMs: 10000
+  - kind: absent
+    value: "2 sessions"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：开两个会话后工作区"关闭其他"，只剩 1 个标签（计数从 2 sessions 回到 1 session）。
+    **不覆盖**：多标签时保留的是哪一个（本用例只保留第 0 个）、被关闭会话的进程清理细节。
+deviations:
+  - 第二个会话复用内存凭据，因此不出现信任对话框（与首次连接路径不同）。
+notes: >-
+  closeOtherTabs 对非保留标签依次 closeShell + vtFree。

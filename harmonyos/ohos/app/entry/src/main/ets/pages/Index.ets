@@ -912,6 +912,20 @@ struct Index {
     this.tabRenameText = '';
   }
 
+
+  // 关闭除指定标签外的其它标签
+  private closeOtherTabs(keepId: string): void {
+    const keep: TabInfo[] = [];
+    for (let i = 0; i < this.tabs.length; i++) {
+      const t: TabInfo = this.tabs[i];
+      if (t.id === keepId) { keep.push(t); continue; }
+      mottynapi.closeShell(t.shellId);
+      mottynapi.vtFree(t.vtId);
+    }
+    this.tabs = keep;
+    if (keep.length > 0) { this.activeId = keep[0].id; }
+  }
+
   private closeAllTabs(): void {
     for (let i = 0; i < this.tabs.length; i++) {
       mottynapi.closeShell(this.tabs[i].shellId);
@@ -4234,6 +4248,9 @@ struct Index {
               Text((idx + 1).toString()).fontSize(12).fontColor('#6B7078').width(24)
               Text((this.tabNumbers ? (this.tabs.indexOf(t) + 1).toString() + ' ' : '') + t.label).id('ws/tab/' + idx).fontSize(14).fontColor('#E8EAED').layoutWeight(1)
                 .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+              Button(this.lang === 'zh' ? '关闭其他' : 'Close others').id('ws/close-others/' + idx)
+                .height(26).fontSize(11).backgroundColor('#23262B').fontColor('#C7CBD1')
+                .onClick(() => { this.closeOtherTabs(t.id); })
               Button(this.lang === 'zh' ? '重命名' : 'Rename').id('ws/rename/' + idx)
                 .height(26).fontSize(11).backgroundColor('#23262B').fontColor('#C7CBD1')
                 .onClick(() => { this.tabRenameId = t.id; this.tabRenameText = ''; this.tabRenameOpen = true; })
