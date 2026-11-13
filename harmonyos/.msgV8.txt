@@ -1,0 +1,7 @@
+﻿docs(harmonyos): 阶段报告 FINAL-REPORT(交付概览/唯一阻塞/待补 E1/未完成项/诚实性说明)
+
+- 概览: 105 条用例, 最近完整全量 91/91, build 成功, 三项静态校验全绿
+- 阻塞: vmcompute(Hyper-V 主机计算服务) Manual/Stopped, sc start 被拒(需提权);
+  emulator -list 显示 isRunning=true 但 -uiLayout 报 not started, qemu 未起
+- 待补 E1 13 条 + 一条命令
+- 未完成项按成本列出
