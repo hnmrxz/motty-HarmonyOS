@@ -277,6 +277,7 @@ struct Index {
   @State startupView: string = 'hosts';
   @State settingsReset: string = '';
   @State toolbarHint: string = '';
+  @State toolbarHintTimer: number = -1;
   @State uiScaleKey: string = 'regular';
   @State viewMenuOpen: boolean = false;
   @State themeMode: string = 'dark';
@@ -846,8 +847,24 @@ struct Index {
     this.setToolbarHint('session ' + label + ' has no saved host');
   }
 
+
+  // 顶栏提示：4 秒后自动消失（避免操作反馈长期挂在标题栏），点击可立即关闭
+  private hint(msg: string): void {
+    this.hint(msg);
+    if (this.toolbarHintTimer !== -1) { clearTimeout(this.toolbarHintTimer); }
+    this.toolbarHintTimer = setTimeout(() => {
+      this.hint('');
+      this.toolbarHintTimer = -1;
+    }, 4000);
+  }
+
+  private dismissHint(): void {
+    if (this.toolbarHintTimer !== -1) { clearTimeout(this.toolbarHintTimer); this.toolbarHintTimer = -1; }
+    this.hint('');
+  }
+
   private setToolbarHint(msg: string): void {
-    this.toolbarHint = msg;
+    this.hint(msg);
   }
 
   // 复制主机地址到剪贴板（交互对齐：主机行的"复制地址"）
@@ -855,10 +872,10 @@ struct Index {
     const text: string = h.address + (h.port.length > 0 ? ':' + h.port : '');
     try {
       pasteboard.getSystemPasteboard().setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text))
-        .then(() => { this.toolbarHint = (this.lang === 'zh' ? '已复制 ' : 'copied ') + text; })
-        .catch(() => { this.toolbarHint = this.lang === 'zh' ? '复制失败' : 'copy failed'; });
+        .then(() => { this.hint((this.lang === 'zh' ? '已复制 ' : 'copied ') + text); })
+        .catch(() => { this.hint(this.lang === 'zh' ? '复制失败' : 'copy failed'); });
     } catch (e) {
-      this.toolbarHint = this.lang === 'zh' ? '复制异常' : 'copy threw';
+      this.hint(this.lang === 'zh' ? '复制异常' : 'copy threw');
     }
   }
 
@@ -869,11 +886,11 @@ struct Index {
         .then((data: pasteboard.PasteData) => {
           const text: string = data.getPrimaryText();
           this.termInput = this.termInput + (text ?? '');
-          this.toolbarHint = (this.lang === 'zh' ? '已粘贴 ' : 'pasted ') + String((text ?? '').length) + (this.lang === 'zh' ? ' 个字符' : ' chars');
+          this.hint((this.lang === 'zh' ? '已粘贴 ' : 'pasted ') + String((text ?? '').length) + (this.lang === 'zh' ? ' 个字符' : ' chars'));
         })
-        .catch(() => { this.toolbarHint = this.lang === 'zh' ? '粘贴失败' : 'paste failed'; });
+        .catch(() => { this.hint(this.lang === 'zh' ? '粘贴失败' : 'paste failed'); });
     } catch (e) {
-      this.toolbarHint = this.lang === 'zh' ? '粘贴异常' : 'paste threw';
+      this.hint(this.lang === 'zh' ? '粘贴异常' : 'paste threw');
     }
   }
 
@@ -2984,7 +3001,7 @@ struct Index {
       Image($r('app.media.ic_sort')).id('top/order').width(16).height(16)
         .onClick(() => {
           this.hostSort = this.hostSort === 'manual' ? 'name' : (this.hostSort === 'name' ? 'ip' : 'manual');
-          this.toolbarHint = 'sort: ' + this.hostSort;
+          this.hint('sort: ' + this.hostSort);
           this.savePrefs();
         })
       Image($r('app.media.ic_columns')).id('top/paste').width(16).height(16)
@@ -3004,6 +3021,7 @@ struct Index {
         .onClick(() => { this.reload(); })
       if (this.toolbarHint.length > 0) {
         Text(this.toolbarHint).id('top/hint').fontSize(10).fontColor(this.th('#8A8F98'))
+          .onClick(() => { this.dismissHint(); })
       }
     }
     .width('100%').height(38).padding({ left: 14, right: 14 })

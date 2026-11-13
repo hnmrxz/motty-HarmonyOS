@@ -109,10 +109,19 @@ steps:
       regex: "pasted [0-9]+ chars|paste failed|paste threw"
       withinMs: 8000
 
+  # 提示 4 秒后自动消失（先确认出现过，再等 5 秒断言消失）
+  - action: wait
+    ms: 5000
+  - action: click
+    target: id:top/new-session
+  - action: wait
+    ms: 4500
+
 asserts:
   - kind: screenRegex
     regex: "2 sessions"
     withinMs: 12000
+  # 提示行的自动消失无法稳定断言（时序），列入 limits
 evidence:
   png: true
   tree: true
@@ -120,7 +129,8 @@ evidence:
     PC（2in1）实测。覆盖：主机行"复制地址"写剪贴板并在顶栏提示 copied <addr:port>；
     顶栏"新会话"用已有主机再开一个会话（出现 2 sessions）。
     **不覆盖**：剪贴板内容的外部读取校验（只断言提示文本）、顶栏"刷新"（与 reload 同路径）、
-    顶栏"AI"/"通知"（分别打开 AI 面板与会话日志页，同一路径未逐项断言）。
+    顶栏"AI"/"通知"（分别打开 AI 面板与会话日志页，同一路径未逐项断言）、
+    提示行 4 秒自动消失（时序相关，未断言）。
 deviations:
   - 复制只断言提示文本，不读取系统剪贴板（避免依赖剪贴板权限与实现细节）。
 notes: >-

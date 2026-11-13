@@ -1,0 +1,6 @@
+﻿feat(harmonyos/ui): 顶栏提示 4 秒自动消失 + 点击立即关闭
+
+- 新增 hint(msg)/dismissHint(): 设提示并 4 秒后清空(重复设提示会重置计时)
+- 所有 toolbarHint 直接赋值改为 hint(...); top/hint 点击可立即关闭
+- ui.toolbar 用例补一次点击与等待, limits 说明"自动消失未断言(时序相关)"
+验证: check-all.ps1 七项全绿(114 场景)
