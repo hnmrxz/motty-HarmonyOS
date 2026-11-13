@@ -274,6 +274,7 @@ struct Index {
   @State termScrollback: number = 3;
   @State showLastUsed: boolean = true;
   @State showTabCount: boolean = true;
+  @State startupView: string = 'hosts';
   @State hoverRow: number = -1;
   @State selectAll: boolean = false;
   @State selectedIds: string[] = [];
@@ -421,6 +422,7 @@ struct Index {
       await this.reloadRules();
       await this.loadPrefs();
       await this.loadGroupOrderFromDb();
+    this.applyStartupView();
     hilog.info(DOMAIN, TAG, 'store ready, hosts=%{public}d', this.hosts.length);
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'store init failed: %{public}s', JSON.stringify(e));
@@ -3857,6 +3859,7 @@ struct Index {
     const dbSb: string = await this.getUiState('termScrollback');
     const dbLU: string = await this.getUiState('showLastUsed');
     const dbTC: string = await this.getUiState('showTabCount');
+    const dbStart: string = await this.getUiState('startupView');
     let lang: string = dbLang;
     let view: string = dbView;
     let sort: string = dbSort;
@@ -3886,8 +3889,23 @@ struct Index {
     if (sbN >= 0 && sbN <= 100) { this.termScrollback = sbN; }
     this.showLastUsed = dbLU !== '0';
     this.showTabCount = dbTC !== '0';
+    if (dbStart === 'logs' || dbStart === 'workspace' || dbStart === 'hosts') { this.startupView = dbStart; }
     hilog.info(DOMAIN, TAG, 'settings loaded lang=%{public}s order=%{public}s',
       this.lang, this.groupOrder.join(','));
+  }
+
+
+  // 启动视图：把 loadPrefs 读到的 startupView 落到页面
+  private applyStartupView(): void {
+    if (this.startupView === 'logs') {
+      this.pcNav = '会话日志';
+      this.reloadLogs();
+    } else if (this.startupView === 'workspace') {
+      this.pcNav = '工作区';
+    } else {
+      this.pcNav = '主机';
+      this.showHosts = true;
+    }
   }
 
   private async savePrefs(): Promise<void> {
@@ -3903,6 +3921,7 @@ struct Index {
     await this.setUiState('termScrollback', String(this.termScrollback));
     await this.setUiState('showLastUsed', this.showLastUsed ? '1' : '0');
     await this.setUiState('showTabCount', this.showTabCount ? '1' : '0');
+    await this.setUiState('startupView', this.startupView);
     if (this.prefs === null) { return; }
     try {
       this.prefs.putSync('lang', this.lang);
@@ -3968,7 +3987,22 @@ struct Index {
             .backgroundColor(this.hostView === 'list' ? '#2F6F4F' : '#23262B')
             .fontColor(this.hostView === 'list' ? Color.White : '#C7CBD1')
             .onClick(() => { this.hostView = 'list'; this.savePrefs(); })
-          Button(this.lang === 'zh' ? '显示最近连接' : 'Show last used').id('settings/show-lastused')
+          Button(this.lang === 'zh' ? '启动: 主机' : 'Start: hosts').id('settings/start-hosts')
+          .height(30).fontSize(12)
+          .backgroundColor(this.startupView === 'hosts' ? '#2F6F4F' : '#23262B')
+          .fontColor(this.startupView === 'hosts' ? Color.White : '#C7CBD1')
+          .onClick(() => { this.startupView = 'hosts'; this.savePrefs(); })
+        Button(this.lang === 'zh' ? '启动: 日志' : 'Start: logs').id('settings/start-logs')
+          .height(30).fontSize(12)
+          .backgroundColor(this.startupView === 'logs' ? '#2F6F4F' : '#23262B')
+          .fontColor(this.startupView === 'logs' ? Color.White : '#C7CBD1')
+          .onClick(() => { this.startupView = 'logs'; this.savePrefs(); })
+        Button(this.lang === 'zh' ? '启动: 工作区' : 'Start: workspace').id('settings/start-workspace')
+          .height(30).fontSize(12)
+          .backgroundColor(this.startupView === 'workspace' ? '#2F6F4F' : '#23262B')
+          .fontColor(this.startupView === 'workspace' ? Color.White : '#C7CBD1')
+          .onClick(() => { this.startupView = 'workspace'; this.savePrefs(); })
+        Button(this.lang === 'zh' ? '显示最近连接' : 'Show last used').id('settings/show-lastused')
           .height(30).fontSize(12)
           .backgroundColor(this.showLastUsed ? '#2F6F4F' : '#23262B')
           .fontColor(this.showLastUsed ? Color.White : '#C7CBD1')

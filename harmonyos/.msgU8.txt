@@ -1,0 +1,5 @@
+﻿feat(harmonyos/settings): 启动打开什么(主机/日志/工作区) + 用例(E2)
+
+实现: settings/start-hosts|logs|workspace 三个按钮; startupView 存 DB;
+  启动时 applyStartupView() 落到 pcNav(日志分支顺带 reloadLogs())
+验证: build SUCCESSFUL + spec/lint + check-ids 全绿; 模拟器仍不可用 -> E2

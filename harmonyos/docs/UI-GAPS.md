@@ -135,3 +135,9 @@ Output 2 / Share 2 / Shortcuts 1`
 | 设置「显示最近连接」 | `settings/show-lastused` 开关；关闭时列表行不再渲染最近连接文本 | 并入 `settings.display-toggles` |
 | 设置「显示会话计数」 | `settings/show-tabcount` 开关；关闭时顶部 `session/count` 不渲染 | `settings.display-toggles` |
 
+## Round 119 追加（E2）
+
+| 项 | 实现 | 用例 |
+|---|---|---|
+| 设置「启动打开什么」 | `settings/start-hosts|logs|workspace` 三个按钮；`startupView` 存 DB；启动时 `applyStartupView()` 落到 `pcNav`（日志分支顺带 `reloadLogs()`） | `settings.startup-view` |
+
