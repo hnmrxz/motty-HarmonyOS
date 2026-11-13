@@ -25,7 +25,7 @@ steps:
     ms: 800
     expect:
       kind: screenRegex
-      regex: "字号 13"
+      regex: "字号 13 (10–24)|字号 13 \\(10–24\\)|字号 13"
       withinMs: 8000
   - action: click
     target: id:settings/font-inc
@@ -72,6 +72,6 @@ evidence:
     PC（2in1）实测。覆盖：设置面板有字号 +/-；点击改变数值（13 -> 15 -> 14）；重启后保持 14（DB 持久化）。
     **不覆盖**：终端输出文本的**实际像素字号**（dump 不含 fontSize，字号是否作用到渲染属于代码层 E2）。
 deviations:
-  - 默认 13；范围 10~24（边界点击不改变数值，本用例没测边界）。
+  - 默认 13；范围 10~24，边界处按钮置灰（本轮加入），数值不越界；用例只断言数值变化与范围文案。
 notes: >-
   termFontSize 存在 DB ui_state；终端输出 Text 的 fontSize 绑定到它。

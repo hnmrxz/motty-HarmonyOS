@@ -1,0 +1,6 @@
+﻿feat(harmonyos/settings): 终端字号显示范围(10-24)并在边界禁用按钮
+
+- settings/font-value 文案加 " (10–24)"
+- font-dec 在 10 处禁用并置灰, font-inc 在 24 处禁用并置灰
+- settings.font-size 用例正则兼容范围文案, deviations 更新
+验证: check-all.ps1 七项全绿(114 场景)
