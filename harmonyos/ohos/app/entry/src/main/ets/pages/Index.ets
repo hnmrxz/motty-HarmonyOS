@@ -275,6 +275,9 @@ struct Index {
   @State showLastUsed: boolean = true;
   @State showTabCount: boolean = true;
   @State startupView: string = 'hosts';
+  @State tabRenameOpen: boolean = false;
+  @State tabRenameId: string = '';
+  @State tabRenameText: string = '';
   @State hoverRow: number = -1;
   @State selectAll: boolean = false;
   @State selectedIds: string[] = [];
@@ -890,6 +893,23 @@ struct Index {
         this.termText = '';
       }
     }
+  }
+
+
+  private submitTabRename(): void {
+    const next: string = this.tabRenameText.trim();
+    if (next.length === 0 || this.tabRenameId.length === 0) { this.tabRenameOpen = false; return; }
+    const out: TabInfo[] = [];
+    for (let i = 0; i < this.tabs.length; i++) {
+      const t: TabInfo = this.tabs[i];
+      out.push(t.id === this.tabRenameId
+        ? { id: t.id, label: next, shellId: t.shellId, vtId: t.vtId } as TabInfo
+        : t);
+    }
+    this.tabs = out;
+    this.tabRenameOpen = false;
+    this.tabRenameId = '';
+    this.tabRenameText = '';
   }
 
   private closeAllTabs(): void {
@@ -4214,6 +4234,9 @@ struct Index {
               Text((idx + 1).toString()).fontSize(12).fontColor('#6B7078').width(24)
               Text((this.tabNumbers ? (this.tabs.indexOf(t) + 1).toString() + ' ' : '') + t.label).id('ws/tab/' + idx).fontSize(14).fontColor('#E8EAED').layoutWeight(1)
                 .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+              Button(this.lang === 'zh' ? '重命名' : 'Rename').id('ws/rename/' + idx)
+                .height(26).fontSize(11).backgroundColor('#23262B').fontColor('#C7CBD1')
+                .onClick(() => { this.tabRenameId = t.id; this.tabRenameText = ''; this.tabRenameOpen = true; })
               Button(this.lang === 'zh' ? '切换' : 'Switch').id('ws/switch/' + idx)
                 .height(26).fontSize(11).backgroundColor('#2F6F4F').fontColor(Color.White)
                 .onClick(() => { this.activeId = t.id; this.pcNav = '主机'; this.showHosts = false; })
@@ -5382,6 +5405,27 @@ struct Index {
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 
+
+  @Builder
+  tabRenameDialog() {
+    Column({ space: 10 }) {
+      Text(this.lang === 'zh' ? '重命名会话' : 'Rename session')
+        .id('tabrename/title').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED').width('100%')
+      TextInput({ placeholder: this.lang === 'zh' ? '新的会话名' : 'new session name' })
+        .id('tabrename/input').width('100%').height(36)
+        .onChange((v: string) => { this.tabRenameText = v; })
+      Row({ space: 12 }) {
+        Button(this.t('hostkey.cancel')).id('tabrename/cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.tabRenameOpen = false; })
+        Button(this.lang === 'zh' ? '保存' : 'Save').id('tabrename/save')
+          .backgroundColor('#2F6F4F').fontColor(Color.White)
+          .onClick(() => { this.submitTabRename(); })
+      }.width('100%').justifyContent(FlexAlign.End)
+    }
+    .id('tabrename/dialog').width(400).padding(18).backgroundColor('#1C1F24').borderRadius(12)
+    .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -5496,6 +5540,10 @@ struct Index {
       if (this.rdpSessionOpen) {
         Column().width('100%').height('100%').backgroundColor('#CC000000').onClick(() => {})
         this.rdpSessionView()
+      }
+      if (this.tabRenameOpen) {
+        Column().width('100%').height('100%').backgroundColor('#CC000000').onClick(() => {})
+        this.tabRenameDialog()
       }
       if (this.vaultAddOpen) {
         Column().width('100%').height('100%').backgroundColor('#CC000000').onClick(() => {})

@@ -1,0 +1,5 @@
+﻿feat(harmonyos/workspace): 工作区支持重命名会话 + 用例(E2)
+
+实现: 工作区每行加 ws/rename/<i> 打开 tabrename/dialog(input/save/cancel);
+  提交只改 TabInfo.label, 不动主机记录
+验证: build SUCCESSFUL + spec/lint + check-ids 全绿; 模拟器仍不可用(vmcompute 停止, 需提权) -> E2

@@ -1,0 +1,115 @@
+schema: 1
+id: workspace.rename
+title: 工作区重命名会话：改名后工作区列表与标签栏都显示新名字
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+fixture:
+  vncAuth: false
+  vncResize: false
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/clear
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/close
+  - action: wait
+    ms: 500
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: wsren-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "wsren-a"
+      withinMs: 12000
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "信任此主机|Trust this host|Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+  # 工作区改名
+  - action: click
+    target: id:nav/workspace
+  - action: wait
+    ms: 1000
+  - action: click
+    target: id:ws/rename/0
+  - action: wait
+    ms: 800
+  - action: type
+    target: id:tabrename/input
+    text: wsren-renamed
+  - action: click
+    target: id:tabrename/save
+  - action: wait
+    ms: 1000
+    expect:
+      kind: screenRegex
+      regex: "wsren-renamed"
+      withinMs: 10000
+asserts:
+  - kind: screenRegex
+    regex: "wsren-renamed"
+    withinMs: 8000
+  - kind: absent
+    value: "wsren-a"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：工作区行"重命名"打开对话框，保存后列表显示新名，旧名消失。
+    **不覆盖**：顶部标签栏同步显示（同一 tabs 数组，未单独断言）、重启后保持（标签是运行时状态）。
+deviations:
+  - 旧名断言使用 absent；若页面其它位置仍显示 host label 会误判，因此用例只在工作区页执行断言。
+notes: >-
+  重命名只改 TabInfo.label，不影响主机记录。
