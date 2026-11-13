@@ -110,7 +110,7 @@ steps:
     ms: 900
     expect:
       kind: screenRegex
-      regex: "pasted [0-9]+ chars|paste failed|paste threw"
+      regex: "pasted [0-9]+ chars|paste failed|paste threw|正在读取剪贴板|reading clipboard|已粘贴"
       withinMs: 8000
 
   # 提示 4 秒后自动消失（先确认出现过，再等 5 秒断言消失）

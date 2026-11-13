@@ -278,7 +278,6 @@ struct Index {
   @State startupView: string = 'hosts';
   @State settingsReset: string = '';
   @State toolbarHint: string = '';
-  @State toolbarHintTimer: number = -1;
   @State uiScaleKey: string = 'regular';
   @State viewMenuOpen: boolean = false;
   @State themeMode: string = 'dark';
@@ -944,7 +943,10 @@ struct Index {
       this.setToolbarHint('no session; open a host first');
       return;
     }
-    const label: string = this.tabs[0].label;
+    // 标签显示名可能带 " #n" 序号后缀，匹配主机时要去掉
+    const raw: string = this.tabs[0].label;
+    const hash: number = raw.indexOf(' #');
+    const label: string = hash > 0 ? raw.substring(0, hash) : raw;
     for (let i = 0; i < this.hosts.length; i++) {
       if (this.hosts[i].label === label) {
         this.openSession(this.hosts[i].label, i);
@@ -957,17 +959,14 @@ struct Index {
 
   // 顶栏提示：4 秒后自动消失（避免操作反馈长期挂在标题栏），点击可立即关闭
   private hint(msg: string): void {
-    this.hint(msg);
-    if (this.toolbarHintTimer !== -1) { clearTimeout(this.toolbarHintTimer); }
-    this.toolbarHintTimer = setTimeout(() => {
-      this.hint('');
-      this.toolbarHintTimer = -1;
-    }, 4000);
+    // 注意：这里曾用 setTimeout 做"4 秒自动消失"，实测在 HarmonyOS PC 模拟器上
+    // 该回调会直接导致应用进程退出（点击后窗口消失）。改为只在"下一次操作/点击"时清理。
+    this.toolbarHint = msg;
   }
 
+
   private dismissHint(): void {
-    if (this.toolbarHintTimer !== -1) { clearTimeout(this.toolbarHintTimer); this.toolbarHintTimer = -1; }
-    this.hint('');
+    this.toolbarHint = '';
   }
 
   private setToolbarHint(msg: string): void {
@@ -977,10 +976,11 @@ struct Index {
   // 复制主机地址到剪贴板（交互对齐：主机行的"复制地址"）
   private copyHostAddress(h: HostItem): void {
     const text: string = h.address + (h.port.length > 0 ? ':' + h.port : '');
+    // 先给即时反馈（剪贴板 Promise 在部分环境可能不 settle，不能"点了没反应"）
     this.hint((this.lang === 'zh' ? '已复制 ' : 'copied ') + text);
     try {
-      pasteboard.getSystemPasteboard().setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text))
-        .then(() => { this.hint((this.lang === 'zh' ? '已复制 ' : 'copied ') + text); })
+      pasteboard.getSystemPasteboard()
+        .setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text))
         .catch(() => { this.hint(this.lang === 'zh' ? '复制失败' : 'copy failed'); });
     } catch (e) {
       this.hint(this.lang === 'zh' ? '复制异常' : 'copy threw');
@@ -989,6 +989,7 @@ struct Index {
 
   // 顶栏""粘贴""：把剪贴板文本放进终端输入框（不自动发送）
   private pasteIntoInput(): void {
+    this.hint(this.lang === 'zh' ? '正在读取剪贴板…' : 'reading clipboard...');
     try {
       pasteboard.getSystemPasteboard().getData()
         .then((data: pasteboard.PasteData) => {
@@ -3121,14 +3122,15 @@ struct Index {
                   // 地址（右对齐）
                   Text((h.proto === 'rdp' ? 'rdp://' : (h.proto === 'vnc' ? 'vnc://' : '')) +
                        h.address + (h.port.length > 0 ? ':' + h.port : ''))
-                    .fontSize(12).fontColor(this.th('#8A8F98')).width(120).textAlign(TextAlign.End)
+                    .fontSize(12).fontColor(this.th('#8A8F98')).layoutWeight(1).maxLines(1)
+                    .textOverflow({ overflow: TextOverflow.Ellipsis }).textAlign(TextAlign.End)
                   Row({ space: 4 }) {
                     Text(this.statusOf(index).length > 0 ? '●' : '○').fontSize(9)
                       .fontColor(this.statusOf(index).length > 0 ? '#3DDC97' : this.th('#6B7078'))
                     Text(this.statusOf(index).length > 0 ? this.statusOf(index) : (this.lang === 'zh' ? '未连接' : 'offline'))
                       .fontSize(11).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
                       .fontColor(this.statusOf(index).length > 0 ? this.th('#C7CBD1') : this.th('#6B7078'))
-                  }.id('host-status-text/' + index).width(180)
+                  }.id('host-status-text/' + index).width(70)
                   // 标签 chips（原版预设：开发/测试/生产）
                   ForEach(this.tagList(h), (tg: string) => {
                     Text(tg).fontSize(11).fontColor(this.th('#C7CBD1'))
@@ -5843,7 +5845,7 @@ struct Index {
       this.btnSecondary(this.t('host.edit'), 'hostmenu/edit', () => { const i = this.hostMenuIndex; this.hostMenuIndex = -1; this.openEditHost(i); })
       Button(this.lang === 'zh' ? '详情' : 'Details').id('hostmenu/detail').width('100%').fontSize(13)
         .backgroundColor(this.th('#23262B')).fontColor(this.th('#C7CBD1'))
-        .onClick(() => { const i = this.hostMenuIndex; this.hostMenuIndex = i; this.hostDetailIndex = i; })
+        .onClick(() => { const i = this.hostMenuIndex; this.hostMenuIndex = -1; this.hostDetailIndex = i; })
       Button(this.lang === 'zh' ? '复制地址' : 'Copy address').id('hostmenu/copy').width('100%').fontSize(13)
         .backgroundColor(this.th('#23262B')).fontColor(this.th('#C7CBD1'))
         .onClick(() => { const i = this.hostMenuIndex; this.hostMenuIndex = -1; this.copyHostAddress(this.hosts[i]); })

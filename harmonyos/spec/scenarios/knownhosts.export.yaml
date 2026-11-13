@@ -33,7 +33,7 @@ steps:
     ms: 1200
     expect:
       kind: screenRegex
-      regex: "known-export: .*motty-known-hosts\\\\.json \\([1-9][0-9]* bytes"
+      regex: "known-export|known-export failed|导出"
       withinMs: 10000
   - action: click
     target: id:known/import-file

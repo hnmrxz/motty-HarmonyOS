@@ -713,3 +713,24 @@ python harmonyos\tools\run-all.py --only host
 
 > 说明：这 6 条失败是**本轮新发现**，其中 `host.detail` 属于此前 91/91 基线里的老用例——本轮把它的入口从 `host-info/0` 改到 `⋯` 菜单后失败，说明**改布局会打破老用例**，必须回归跑批确认。
 
+## 2026-11-13 第二轮：定位并修复 **应用被点击杀死**（根因：`hint()` 里的 setTimeout）
+
+现象：点 `top/order`（排序）、`⋯` 菜单的"复制地址/详情"后，**整个应用窗口消失**；多项用例 timeout。
+
+手工复现（hdc + uitest + snapshot）确认：
+- 点 `⋯` 打开菜单正常（菜单与各项 bounds 都正确）
+- 点菜单"关闭"应用存活；点"复制地址/详情"应用**进程消失**
+- 点 `top/order`（只调用 `hint()` + savePrefs）同样进程消失 ⇒ 定位到 `hint()`
+
+修复：`hint()` 去掉 `setTimeout`（HarmonyOS PC 模拟器上该回调直接导致进程退出），
+改为"下一次操作/点击时清理"。修复后点排序、复制、详情均正常。
+
+顺带修复：
+- `hostmenu/detail` 打开详情时同时关闭菜单（之前两个浮层叠加）
+- `openNewSessionFromToolbar()` 匹配主机时去掉标签的 ` #n` 序号后缀
+- `copyHostAddress()` 先给即时反馈再写剪贴板（剪贴板 Promise 在不 settle 时不至于"点了没反应"）
+
+### 转绿用例（本轮）
+`host.detail`、`host.menu`、`knownhosts.export` 已绿；`ui.toolbar` 仍在"顶栏新会话"一项失败
+（`openSession()` 对同主机去重，未产生第二个会话）；`workspace.rename` 仍失败（保存后标签名未变，待查）。
+

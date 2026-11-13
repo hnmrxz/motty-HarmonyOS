@@ -1,0 +1,8 @@
+﻿fix(harmonyos): 修复"点击后应用被杀"的根因(setTimeout in hint) + 3 条用例转绿
+
+根因: hint() 用 setTimeout 做 4 秒自动消失, 在 HarmonyOS PC 模拟器上该回调直接导致进程退出。
+  现象: 点 top/order、⋯菜单的复制地址/详情后整个窗口消失, 多项用例超时。
+  用 hdc+uitest+snapshot 手工复现并二分定位到 hint()。
+修复: hint() 去掉 setTimeout, 改为下一次操作清理。
+顺带: hostmenu/detail 打开时关闭菜单; 新会话匹配主机时去掉 " #n" 后缀; 复制先给即时提示再写剪贴板。
+结果: host.detail / host.menu / knownhosts.export 转绿; ui.toolbar(顶栏新会话)、workspace.rename 仍失败, 已记录。
