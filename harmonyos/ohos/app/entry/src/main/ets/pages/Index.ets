@@ -4236,7 +4236,7 @@ struct Index {
           .onClick(() => { this.pcNav = '主机'; this.showHosts = true; })
       }.width('100%').justifyContent(FlexAlign.Start)
     }
-    .width('100%').height('100%').padding({ left: 22, right: 22, top: 12 })
+    .width('100%').height('100%').padding({ left: 22, right: 22, top: 10 })
   }
 
 
@@ -4271,7 +4271,7 @@ struct Index {
           .onClick(() => { this.pcNav = '主机'; this.showHosts = true; })
       }.width('100%').justifyContent(FlexAlign.Start)
     }
-    .width('100%').height('100%').padding({ left: 22, right: 22, top: 12 })
+    .width('100%').height('100%').padding({ left: 22, right: 22, top: 10 })
   }
 
   @Builder
@@ -4530,7 +4530,7 @@ struct Index {
   snippetsPage() {
     Column({ space: 10 }) {
       Row({ space: 10 }) {
-        Text(this.t('snippet.title')).fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        this.pageTitle(this.t('snippet.title'), 'snippet/title')
         Text('(' + this.snippets.length + ' ' + this.t('snippet.count') + ')')
           .fontSize(12).fontColor('#6B7078')
         Blank()
@@ -4789,7 +4789,7 @@ struct Index {
   notesPage() {
     Column({ space: 10 }) {
       Row({ space: 10 }) {
-        Text(this.lang === 'zh' ? '笔记' : 'Notes').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        this.pageTitle(this.lang === 'zh' ? '笔记' : 'Notes', 'note/title')
         Text('(' + this.notes.length + ')').fontSize(12).fontColor('#6B7078')
         Blank()
         Button(this.lang === 'zh' ? '新建笔记' : 'New note').id('note/add').height(30).fontSize(12)

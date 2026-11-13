@@ -154,3 +154,11 @@ Output 2 / Share 2 / Shortcuts 1`
 | 本地终端页 | `localTerminalPage()`：如实说明 HarmonyOS 沙箱不能 fork/exec 本地 shell，给「打开调试页」「回到主机」两个入口（`localterm/explain`、`localterm/workaround`、`localterm/diag`、`localterm/back`） | `page.local-terminal` |
 | 页标题统一 | 新增 `pageTitle(text,id)`，统一 `fs(16)/Bold/#E8EAED`；已用于 会话日志/工作区/跳板路由/密钥链 | — |
 
+## Round 141 追加（E2）
+
+| 项 | 实现 |
+|---|---|
+| 死按钮审计 | 扫描全部 `@State *Open/Dialog`：无「只置位不渲染」的残留（`aiOpen` 已于 Round 140 补面板） |
+| 标题统一 | 快捷命令 `snippet/title`、笔记 `note/title` 接入 `pageTitle`；主机页标题 `hosts/title` 接入 `fs()` |
+| 页内边距统一 | 二级页面统一 `left/right 22, top 10, height 100%` |
+

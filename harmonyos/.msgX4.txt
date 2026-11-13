@@ -1,0 +1,6 @@
+﻿chore(harmonyos/ui): 死按钮审计 + 快捷命令/笔记标题统一 + 二级页内边距统一
+
+- 审计所有 @State *Open/Dialog: 无"只置位不渲染"残留(aiOpen 已于上轮补面板)
+- snippet/title, note/title 接入 pageTitle; hosts/title 接入 fs() 缩放
+- 二级页面统一 padding left/right 22, top 10, height 100%
+验证: check-all.ps1 全绿(110 场景)
