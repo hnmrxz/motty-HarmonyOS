@@ -50,7 +50,7 @@ steps:
     expect:
       kind: screenRegex
       # pty 下夹具跑真实 shell（固定 banner 只在 exec 路径），这里只要证明会话已建立
-      regex: "Send|Copy|Resize"
+      regex: "Send|Copy|Resize|发送|复制|改尺寸"
       withinMs: 15000
   # 连接后视图切到终端，回主机列表再做后续主机操作
   - action: click

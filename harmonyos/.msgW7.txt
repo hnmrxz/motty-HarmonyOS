@@ -1,0 +1,5 @@
+﻿fix(harmonyos/ui): 清理用户可见的硬编码英文标签(中英随语言), 同步 10 条用例的终端断言
+
+改动: 端口转发 Start/Edit/Del/Close、已知主机标题 Known hosts 与 Delete、终端 Send/Resize/Sel all/Copy
+  改为随语言显示; 同步把 10 条用例里 "Send|Copy|Resize" 断言扩成含中文, 避免切语言后误判
+验证: check-all.ps1 全绿(108 场景, dup 0, paging 0)

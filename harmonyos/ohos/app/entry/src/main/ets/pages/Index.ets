@@ -2439,7 +2439,7 @@ struct Index {
       Row() {
         Text(this.t('fwd.title')).fontSize(16).fontWeight(FontWeight.Bold)
         Blank()
-        Button('Close').id('fwd/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.lang === 'zh' ? '关闭' : 'Close').id('fwd/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.fwdOpen = false; })
       }.width('100%')
       Row({ space: 8 }) {
@@ -2498,7 +2498,7 @@ struct Index {
           Row({ space: 8 }) {
             Text(rule.substring(rule.indexOf('|') + 1)).fontSize(11).fontFamily('monospace')
               .layoutWeight(1)
-            Button('Start').id('fwd/rule/' + rule.substring(0, rule.indexOf('|')))
+            Button(this.lang === 'zh' ? '启动' : 'Start').id('fwd/rule/' + rule.substring(0, rule.indexOf('|')))
               .fontSize(11)
               .onClick(() => {
                 // 展示串格式: id|mode|listen->targetHost:targetPort
@@ -2511,14 +2511,14 @@ struct Index {
                 this.startSavedRule(parts[0], parts[1], listen, target.substring(0, colon),
                   target.substring(colon + 1));
               })
-            Button('Edit').id('fwd/rule-edit/' + ridx)
+            Button(this.lang === 'zh' ? '编辑' : 'Edit').id('fwd/rule-edit/' + ridx)
           .fontSize(11).backgroundColor('#37474F').fontColor(Color.White)
           .onClick(() => {
             const partsE = rule.split('|');
             const restE = partsE.length > 2 ? partsE[2] : '';
             this.editRule(partsE[0], partsE[1], restE);
           })
-        Button('Del').id('fwd/rule-del/' + rule.substring(0, rule.indexOf('|')))
+        Button(this.lang === 'zh' ? '删除' : 'Del').id('fwd/rule-del/' + rule.substring(0, rule.indexOf('|')))
               .backgroundColor('#C62828').fontColor(Color.White).fontSize(11)
               .onClick(() => { this.deleteRule(rule.substring(0, rule.indexOf('|'))); })
           }.width('100%')
@@ -2643,7 +2643,7 @@ struct Index {
   knownPanel() {
     Column({ space: 8 }) {
       Row() {
-        Text('Known hosts').fontSize(16).fontWeight(FontWeight.Bold)
+        Text(this.lang === 'zh' ? '已知主机' : 'Known hosts').fontSize(16).fontWeight(FontWeight.Bold)
         Blank()
         Button(this.t('common.close')).id('known/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.knownOpen = false; })
@@ -2670,7 +2670,7 @@ struct Index {
                 Text(key).fontSize(12).fontFamily('monospace').width('100%')
                 Text(this.knownFps[idx]).fontSize(10).fontFamily('monospace').fontColor('#888888').width('100%')
               }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-              Button('Delete').id('known/del/' + key).backgroundColor('#C62828').fontColor(Color.White)
+              Button(this.lang === 'zh' ? '删除' : 'Delete').id('known/del/' + key).backgroundColor('#C62828').fontColor(Color.White)
                 .fontSize(12)
                 .onClick(() => { this.knownDelKey = key; })
             }.width('100%').padding(6).backgroundColor('#FAFAFA').borderRadius(6)
@@ -2751,16 +2751,16 @@ struct Index {
       Row({ space: 8 }) {
         TextInput({ text: this.termInput, placeholder: 'type a line and press Send' })
           .id('terminal/input').layoutWeight(1).onChange((v: string) => { this.termInput = v; })
-        Button('Send').id('terminal/send').onClick(() => { this.sendTermInput(); })
-        Button('Resize').id('terminal/resize').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.lang === 'zh' ? '发送' : 'Send').id('terminal/send').onClick(() => { this.sendTermInput(); })
+        Button(this.lang === 'zh' ? '改尺寸' : 'Resize').id('terminal/resize').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.resizeSession(); })
         Button('\u25b2').id('terminal/scroll-up').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.scrollView(5); })
         Button('\u25bc').id('terminal/scroll-down').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.scrollView(-5); })
-        Button('Sel all').id('terminal/selall').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
+        Button(this.lang === 'zh' ? '全选' : 'Sel all').id('terminal/selall').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => { this.selectAllVisible(); })
-        Button('Copy').id('terminal/copy').backgroundColor('#1A6DD0').fontColor(Color.White)
+        Button(this.lang === 'zh' ? '复制' : 'Copy').id('terminal/copy').backgroundColor('#1A6DD0').fontColor(Color.White)
           .onClick(() => { this.copySelection().catch((e: BusinessError) => { this.ptyStatus = 'copy error'; }); })
         Button('AI').id('ai/ask').backgroundColor('#6A1B9A').fontColor(Color.White)
           .onClick(() => { this.askAI().catch((e: BusinessError) => { this.aiAnswer = 'ai: error'; }); })

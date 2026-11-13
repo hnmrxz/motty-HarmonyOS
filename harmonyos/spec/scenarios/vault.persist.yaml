@@ -52,7 +52,7 @@ steps:
     ms: 3000
 asserts:
   - kind: screenRegex
-    regex: "Send|Copy|Resize"   # pty 下夹具跑真实 shell，只断言终端已打开
+    regex: "Send|Copy|Resize|发送|复制|改尺寸"   # pty 下夹具跑真实 shell，只断言终端已打开
     withinMs: 15000
   - kind: absent
     value: "no credentials in memory"
