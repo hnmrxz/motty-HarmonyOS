@@ -311,3 +311,12 @@ SFTP 面板 / 会话相关的 `creds.get(fixtureKey)` 分支原本在**未连接
 - 右侧 pane 是**只读快照**（不能输入）；上游分屏两侧都可输入 —— 这是与上游的已知差异
 - 用例 `split.view` 只覆盖「单会话点分屏 → 提示」这一分支
 
+## Round 169 追加（E2）：分屏右侧改为**可输入**
+
+- 新增 `splitInput` 与 `sendSplitInput()`：把文本通过 `sendInput(splitShellId, …)` 发给右侧会话，发送后立即 `refreshSplit()`
+- 分屏 pane 底部新增输入行：`split/input` + `split/send`
+- 与上游差异已消除（此前右侧只读）；仍待设备确认实际输入效果
+
+> 过程记录：首次插入时把 Row 放到了 `Column` 之外（`.width('44%')` 落在块尾），ArkTS 报
+> `arkts-no-implicit-return-types` / `arkts-no-any-unknown`（Index.ets:5922）。已修正嵌套并用 `check-all` 复核通过。
+

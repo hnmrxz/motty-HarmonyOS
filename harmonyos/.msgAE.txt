@@ -1,0 +1,5 @@
+﻿feat(harmonyos/tabs): 分屏右侧可输入(split/input + split/send) 消除与上游差异
+
+- sendSplitInput(): 用 sendInput(splitShellId,...) 发给右侧会话, 发送后 refreshSplit()
+- 修复插入时 Row 落到 Column 外的结构错误(ArkTS 报 arkts-no-implicit-return-types/any-unknown at 5922)
+验证: check-all.ps1 七项全绿(117 场景)

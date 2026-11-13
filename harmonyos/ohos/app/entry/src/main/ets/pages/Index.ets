@@ -318,6 +318,7 @@ struct Index {
   @State splitOn: boolean = false;
   @State splitId: string = '';
   @State splitText: string = '';
+  @State splitInput: string = '';
   @State snipName: string = '';
   @State snipCmd: string = '';
   @State snipEditingId: string = '';
@@ -883,6 +884,23 @@ struct Index {
         return;
       }
     }
+  }
+
+
+  // 分屏右侧也可以输入（对齐上游：两侧均可交互）
+  private sendSplitInput(): void {
+    if (!this.splitOn) { return; }
+    const text = this.splitInput;
+    if (text.length === 0) { return; }
+    for (let i = 0; i < this.tabs.length; i++) {
+      if (this.tabs[i].id === this.splitId) {
+        mottynapi.sendInput(this.tabs[i].shellId, text);
+        this.splitInput = '';
+        this.refreshSplit();
+        return;
+      }
+    }
+    this.hint(this.lang === 'zh' ? '分屏会话已关闭' : 'split session is gone');
   }
 
   private splitTabLabel(): string {
@@ -5891,6 +5909,14 @@ struct Index {
           .fontFamily('monospace').fontColor('#D4D4D4').width('100%')
       }.layoutWeight(1).width('100%').backgroundColor('#1E1E1E')
       .border({ width: 1, color: '#333333' }).padding(8).align(Alignment.TopStart)
+      Row({ space: 6 }) {
+        TextInput({ placeholder: this.lang === 'zh' ? '发送到右侧会话' : 'send to right pane' })
+          .id('split/input').height(28).fontSize(11).layoutWeight(1)
+          .onChange((v: string) => { this.splitInput = v; })
+        Button(this.lang === 'zh' ? '发送' : 'Send').id('split/send').height(28).fontSize(11)
+          .backgroundColor('#2F6F4F').fontColor(Color.White)
+          .onClick(() => { this.sendSplitInput(); })
+      }.width('100%')
     }
     .width('44%').height('100%').padding(8).backgroundColor(this.th('#14161A'))
     .border({ width: { left: 1 }, color: this.th('#22252A') })
