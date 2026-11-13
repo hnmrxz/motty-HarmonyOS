@@ -89,3 +89,18 @@ Output 2 / Share 2 / Shortcuts 1`
 > 说明：本轮模拟器未就绪（冷启动），这两项只有 **E2（编译+lint）**；
 > 下一轮模拟器起来后按 `--only vault` / `--only settings.tab` 定向跑，拿到 E1 再更新本文档。
 
+## Round 113 追加（E2，构建通过）
+
+| 项 | 实现 | 用例 |
+|---|---|---|
+| 跳板路由页 | `jumpPage()`：说明 libssh2 无 transport、指向端口转发替代；`jump/fwd-open`、`jump/back` | `jump.page` |
+| 已知主机导出/导入 | `known/export-file`、`known/import-file`，JSON `motty-known-hosts`，结果行 `known/result` | `knownhosts.export` |
+
+> 仍为 **E2**：模拟器未连接。下轮设备就绪后按 `--only jump` / `--only knownhosts` 拿 E1。
+
+### 剩余设置缺口（按建议顺序）
+1. 关闭前确认、标签方向（顶部/侧栏）——真做，中成本
+2. 界面字号（小/标准/大）——需要尺寸缩放体系
+3. 外观浅色主题——成本最高，最后做；不做则在设置里显式标注
+4. 会话日志按主机/协议筛选——便宜
+

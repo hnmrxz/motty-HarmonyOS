@@ -1,0 +1,59 @@
+schema: 1
+id: knownhosts.export
+title: 已知主机导出/导入：写出 JSON 并可读回（空库下导出仍可用）
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:known/clear
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:known/export-file
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "known-export: .*motty-known-hosts\\\\.json \\([1-9][0-9]* bytes"
+      withinMs: 10000
+  - action: click
+    target: id:known/import-file
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "known-import: [0-9]+ hosts"
+      withinMs: 10000
+asserts:
+  - kind: screenRegex
+    regex: "known-import: [0-9]+ hosts"
+    withinMs: 8000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：空库导出（写出 JSON 但内容为空数组也可）与读回（0 hosts）。
+    **不覆盖**：带条目时的往返（需先建立信任，属 knownhosts.clear 的路径）、指纹格式校验。
+deviations:
+  - 用例在清空后执行，导入结果为 0 hosts —— 只验证"读写链路可用"，不验证数据往返。
+notes: >-
+  文件在 cacheDir/motty-known-hosts.json。

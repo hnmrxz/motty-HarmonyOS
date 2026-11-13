@@ -1,0 +1,10 @@
+﻿feat(harmonyos/ui): 跳板路由说明页 + 已知主机导入导出 (E2)
+
+1) 跳板路由不再是死链: jumpPage() 明确说明 ProxyJump 需要 libssh2 之上的可插拔 transport,
+   当前无法可靠实现, 因此不做"能存不能用"的配置; 给出替代方案(端口转发隧道)并可直接打开转发面板
+   ids: jump/explain, jump/workaround, jump/fwd-open, jump/back; 用例 jump.page
+2) 已知主机导出/导入: known/export-file, known/import-file, JSON 格式 motty-known-hosts,
+   结果行 known/result; 用例 knownhosts.export
+
+验证: build SUCCESSFUL + spec/lint 全绿; 本轮仍为 E2(模拟器未连接),
+  下轮设备就绪后 --only jump / --only knownhosts 拿 E1

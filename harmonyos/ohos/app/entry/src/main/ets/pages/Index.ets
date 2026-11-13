@@ -268,6 +268,7 @@ struct Index {
   @State vaultPw: string = '';
   @State vaultSeq: number = 0;
   @State vaultResult: string = '';
+  @State knownResult: string = '';
   @State tabNumbers: boolean = false;
   @State hoverRow: number = -1;
   @State selectAll: boolean = false;
@@ -1648,6 +1649,67 @@ struct Index {
     this.knownFps = fps;
   }
 
+
+  // 已知主机导出（JSON）：备份/迁移指纹
+  private exportKnownHosts(): void {
+    try {
+      const ctx = getContext(this) as common.UIAbilityContext;
+      const path: string = ctx.cacheDir + '/motty-known-hosts.json';
+      const rows: string[] = [];
+      for (let i = 0; i < this.knownKeys.length; i++) {
+        rows.push('{"host":"' + this.knownKeys[i].replace(/"/g, '\\"') +
+          '","fingerprint":"' + (this.knownFps[i] ?? '') + '"}');
+      }
+      const text: string = '{"format":"motty-known-hosts","version":1,"count":' + this.knownKeys.length +
+        ',"hosts":[' + rows.join(',') + ']}';
+      const f = fileIo.openSync(path, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
+      fileIo.writeSync(f.fd, text);
+      fileIo.closeSync(f);
+      const stat = fileIo.statSync(path);
+      this.knownResult = 'known-export: ' + path + ' (' + stat.size + ' bytes, ' + this.knownKeys.length + ' hosts)';
+    } catch (e) {
+      this.knownResult = 'known-export failed: ' + JSON.stringify(e);
+    }
+  }
+
+  // 已知主机导入（upsert）
+  private async importKnownHosts(): Promise<void> {
+    if (this.store === null) { return; }
+    const store = this.store;
+    try {
+      const ctx = getContext(this) as common.UIAbilityContext;
+      const path: string = ctx.cacheDir + '/motty-known-hosts.json';
+      const f = fileIo.openSync(path, fileIo.OpenMode.READ_ONLY);
+      const stat = fileIo.statSync(f.fd);
+      const buf = new ArrayBuffer(stat.size);
+      fileIo.readSync(f.fd, buf);
+      fileIo.closeSync(f);
+      const text: string = util.TextDecoder.create('utf-8').decodeToString(new Uint8Array(buf));
+      const doc: Record<string, Object> = JSON.parse(text) as Record<string, Object>;
+      if (String(doc['format'] ?? '') !== 'motty-known-hosts') {
+        this.knownResult = 'known-import: wrong format';
+        return;
+      }
+      const hosts = doc['hosts'] as Array<Object>;
+      let n: number = 0;
+      for (let i = 0; i < hosts.length; i++) {
+        const row: Record<string, Object> = hosts[i] as Record<string, Object>;
+        const k: string = String(row['host'] ?? '');
+        const fp: string = String(row['fingerprint'] ?? '');
+        if (k.length === 0) { continue; }
+        const pred = new relationalStore.RdbPredicates('known_hosts');
+        pred.equalTo('host', k);
+        await store.delete(pred);
+        await store.insert('known_hosts', { 'host': k, 'fingerprint': fp, 'updated_at': Date.now() } as relationalStore.ValuesBucket);
+        n = n + 1;
+      }
+      await this.refreshKnownHosts();
+      this.knownResult = 'known-import: ' + n + ' hosts';
+    } catch (e) {
+      this.knownResult = 'known-import failed: ' + JSON.stringify(e);
+    }
+  }
+
   private async deleteKnownHost(key: string): Promise<void> {
     if (this.store === null) {
       return;
@@ -2494,9 +2556,18 @@ struct Index {
       }.width('100%')
       Text('trusted entries: ' + this.knownKeys.length)
         .id('known/count').fontSize(11).fontColor('#0A6C00').width('100%')
-        Button(this.lang === 'zh' ? '清空已知主机' : 'Clear known hosts')
+        Button(this.lang === 'zh' ? '导出' : 'Export').id('known/export-file').height(28).fontSize(12)
+        .backgroundColor('#1E2127').fontColor('#C7CBD1')
+        .onClick(() => { this.exportKnownHosts(); })
+      Button(this.lang === 'zh' ? '导入' : 'Import').id('known/import-file').height(28).fontSize(12)
+        .backgroundColor('#1E2127').fontColor('#C7CBD1')
+        .onClick(() => { this.importKnownHosts(); })
+      Button(this.lang === 'zh' ? '清空已知主机' : 'Clear known hosts')
           .id('known/clear').height(28).fontSize(12).backgroundColor('#C62828').fontColor(Color.White)
           .onClick(() => { this.clearKnownHosts(); })
+      if (this.knownResult.length > 0) {
+        Text(this.knownResult).id('known/result').fontSize(11).fontFamily('monospace').fontColor('#0A6C00').width('100%')
+      }
       Scroll() {
         Column({ space: 4 }) {
           ForEach(this.knownKeys, (key: string, idx: number) => {
@@ -2917,7 +2988,7 @@ struct Index {
       this.pcNavItem('主机', 'nav/hosts', $r('app.media.ic_hosts'), true, () => { this.pcNav = '主机'; this.showHosts = true; })
       this.pcNavItem('工作区', 'nav/workspace', $r('app.media.ic_workspace'), true, () => { this.pcNav = '工作区'; })
       this.pcNavItem('密钥链', 'nav/keys', $r('app.media.ic_keys'), true, () => { this.pcNav = '密钥链'; })
-      this.pcNavItem('跳板路由', 'nav/jump', $r('app.media.ic_jump'), false, () => {})
+      this.pcNavItem('跳板路由', 'nav/jump', $r('app.media.ic_jump'), true, () => { this.pcNav = '跳板路由'; })
       this.pcNavItem('快捷命令', 'nav/snippets', $r('app.media.ic_snippets'), true, () => { this.pcNav = '快捷命令'; this.reloadSnippets(); })
       this.pcNavItem('端口转发', 'fwd/open', $r('app.media.ic_forward'), true, () => { this.fwdOpen = true; this.reloadRules(); })
       this.pcNavItem('已知主机', 'known/open', $r('app.media.ic_known'), true, () => { this.openKnownHosts(); })
@@ -3991,6 +4062,37 @@ struct Index {
   // ---------------- 会话日志页（NavSessionLogs 的最小实现） ----------------
 
   // ---------------- 工作区页（最小实现：会话标签概览 + 关闭） ----------------
+
+  // 跳板路由（ProxyJump）：当前明确说明未实现 + 给出可用替代（端口转发隧道）
+  @Builder
+  jumpPage() {
+    Column({ space: 10 }) {
+      Row({ space: 10 }) {
+        Text(this.lang === 'zh' ? '跳板路由' : 'Jump routes').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Blank()
+      }.width('100%')
+      Text(this.lang === 'zh'
+        ? '跳板（ProxyJump）需要"在一条 SSH 连接上再建立一条 SSH 连接"。底层库 libssh2 不提供可插拔 transport，'
+          + '当前版本无法可靠实现，因此这里不做"能存不能用"的配置。'
+        : 'ProxyJump needs one SSH connection tunnelling another. libssh2 has no pluggable transport, so this '
+          + 'version cannot do it reliably; we do not ship a config that stores but cannot connect.')
+        .id('jump/explain').fontSize(12).fontColor('#C7CBD1').width('100%')
+      Text(this.lang === 'zh'
+        ? '替代方案：用「端口转发」把目标端口经跳板机映射到本机，再用主机 127.0.0.1:<本地端口> 连接。'
+        : 'Workaround: use Port Forwarding to map the target through the jump host, then connect to 127.0.0.1:<local port>.')
+        .id('jump/workaround').fontSize(12).fontColor('#8A8F98').width('100%')
+      Row({ space: 10 }) {
+        Button(this.lang === 'zh' ? '打开端口转发' : 'Open port forwarding').id('jump/fwd-open')
+          .height(32).fontSize(12).backgroundColor('#1A6DD0').fontColor(Color.White)
+          .onClick(() => { this.fwdOpen = true; this.reloadRules(); })
+        Button(this.lang === 'zh' ? '回到主机' : 'Back to hosts').id('jump/back')
+          .height(32).fontSize(12).backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.pcNav = '主机'; this.showHosts = true; })
+      }.width('100%').justifyContent(FlexAlign.Start)
+    }
+    .width('100%').height('100%').padding({ left: 22, right: 22, top: 12 })
+  }
+
   @Builder
   workspacePage() {
     Column({ space: 10 }) {
@@ -5173,7 +5275,9 @@ struct Index {
           if (this.tabs.length > 0) {
             this.tabBar()
           }
-          if (this.pcNav === '工作区') {
+          if (this.pcNav === '跳板路由') {
+            this.jumpPage()
+          } else if (this.pcNav === '工作区') {
             this.workspacePage()
           } else if (this.pcNav === '笔记') {
             this.notesPage()
