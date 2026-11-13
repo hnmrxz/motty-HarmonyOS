@@ -288,6 +288,7 @@ struct Index {
   @State logs: LogItem[] = [];
   @State logsQuery: string = '';
   @State logsProto: string = '';
+  @State logsHost: string = '';
   @State logsExport: string = '';
   @State snippets: SnippetItem[] = [];
   @State notes: NoteItem[] = [];
@@ -4163,9 +4164,19 @@ struct Index {
 
 
   // 会话日志过滤：按 label / address / proto 子串（不区分大小写的简单版本）
+  private logsHosts(): string[] {
+    const out: string[] = [];
+    for (let i = 0; i < this.logs.length; i++) {
+      const lab: string = this.logs[i].label;
+      if (out.indexOf(lab) < 0) { out.push(lab); }
+    }
+    return out;
+  }
+
   private logsFiltered(): LogItem[] {
     const q: string = this.logsQuery.trim().toLowerCase();
     return this.logs.filter((it: LogItem) => {
+      if (this.logsHost.length > 0 && it.label !== this.logsHost) { return false; }
       if (this.logsProto.length > 0 && it.proto !== this.logsProto) { return false; }
       if (q.length === 0) { return true; }
       return it.label.toLowerCase().indexOf(q) >= 0 ||
@@ -4332,6 +4343,19 @@ struct Index {
           .onClick(() => { this.logsProto = 'vnc'; })
         Text(this.logsFiltered().length + ' / ' + this.logs.length)
           .id('logs/proto-count').fontSize(11).fontColor('#6B7078')
+      }.width('100%')
+      Row({ space: 8 }) {
+        Button(this.lang === 'zh' ? '全部主机' : 'All hosts').id('logs/host-all')
+          .height(26).fontSize(11)
+          .backgroundColor(this.logsHost.length === 0 ? '#2F6F4F' : '#23262B')
+          .fontColor(this.logsHost.length === 0 ? Color.White : '#C7CBD1')
+          .onClick(() => { this.logsHost = ''; })
+        ForEach(this.logsHosts(), (lab: string, hi: number) => {
+          Button(lab).id('logs/host/' + hi).height(26).fontSize(11)
+            .backgroundColor(this.logsHost === lab ? '#2F6F4F' : '#23262B')
+            .fontColor(this.logsHost === lab ? Color.White : '#C7CBD1')
+            .onClick(() => { this.logsHost = lab; })
+        }, (lab: string) => 'loghost-' + lab)
       }.width('100%')
       if (this.logsExport.length > 0) {
         Text(this.logsExport).id('logs/export-result').fontSize(11).fontFamily('monospace')

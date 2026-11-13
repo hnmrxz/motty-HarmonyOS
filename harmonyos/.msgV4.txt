@@ -1,0 +1,4 @@
+﻿feat(harmonyos/logs): 日志按主机筛选(ALL + 主机 chips, AND 组合) + 用例(E2)
+
+实现: logsHosts() 按 label 去重; logsHost 与 logsProto/关键词 AND; chips logs/host-all, logs/host/<i>
+验证: build SUCCESSFUL + spec/lint + check-ids 全绿; 模拟器仍不可用 -> E2

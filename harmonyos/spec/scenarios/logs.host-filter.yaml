@@ -1,0 +1,108 @@
+schema: 1
+id: logs.host-filter
+title: 会话日志按主机筛选：出现主机 chip，点击后计数同步
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+fixture:
+  vncAuth: false
+  vncResize: false
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/clear
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/close
+  - action: wait
+    ms: 500
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: loghost-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "loghost-a"
+      withinMs: 12000
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "信任此主机|Trust this host|Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2500
+  - action: click
+    target: id:nav/logs
+  - action: wait
+    ms: 1200
+  # 出现主机 chip（label 同名按钮）
+  - action: click
+    target: id:logs/host/0
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "loghost-a"
+      withinMs: 8000
+asserts:
+  - kind: screenRegex
+    regex: "1 / 1"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "全部主机|All hosts"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：日志页出现主机筛选 chip（第 0 个为该主机），点击后计数显示 1 / 1。
+    **不覆盖**：多主机时筛掉其它主机（本例只有一台）、与协议筛选/关键词的组合。
+deviations:
+  - 只有一条日志，因此"筛掉其它"无法断言；只验证 chip 存在与计数。
+notes: >-
+  logsHosts() 按 label 去重；logsHost 与 logsProto/关键词为 AND 关系。
