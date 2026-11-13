@@ -304,6 +304,7 @@ struct Index {
   @State paletteIndex: number = 0;
   @State paletteHover: number = -1;
   @State hostDetailIndex: number = -1;
+  @State hostMenuIndex: number = -1;
   @State snipName: string = '';
   @State snipCmd: string = '';
   @State snipEditingId: string = '';
@@ -2863,6 +2864,8 @@ struct Index {
                       .onClick(() => { this.hostDetailIndex = index; })
                     Text('⎘').id('host-copy/' + index).fontSize(11).fontColor('#6B7078')
                       .onClick(() => { this.copyHostAddress(h); })
+                    Text('⋯').id('host-more/' + index).fontSize(11).fontColor('#6B7078')
+                      .onClick(() => { this.hostMenuIndex = index; })
                     Text(h.user.length > 0 ? h.user : '-').fontSize(12).fontColor('#8A8F98')
                   }
                   .id('host-name/' + index)
@@ -5436,6 +5439,34 @@ struct Index {
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 
+
+  // 主机行"更多"菜单（自绘，保证可被用例点击；对齐上游右键/⋯ 菜单）
+  @Builder
+  hostMoreMenu() {
+    Column({ space: 2 }) {
+      Button(this.t('host.open')).id('hostmenu/open').width('100%').fontSize(13)
+        .backgroundColor('#23262B').fontColor('#C7CBD1')
+        .onClick(() => { const i = this.hostMenuIndex; this.hostMenuIndex = -1; this.openSession(this.hosts[i].label, i); })
+      Button(this.t('host.edit')).id('hostmenu/edit').width('100%').fontSize(13)
+        .backgroundColor('#23262B').fontColor('#C7CBD1')
+        .onClick(() => { const i = this.hostMenuIndex; this.hostMenuIndex = -1; this.openEditHost(i); })
+      Button(this.lang === 'zh' ? '详情' : 'Details').id('hostmenu/detail').width('100%').fontSize(13)
+        .backgroundColor('#23262B').fontColor('#C7CBD1')
+        .onClick(() => { const i = this.hostMenuIndex; this.hostMenuIndex = i; this.hostDetailIndex = i; })
+      Button(this.lang === 'zh' ? '复制地址' : 'Copy address').id('hostmenu/copy').width('100%').fontSize(13)
+        .backgroundColor('#23262B').fontColor('#C7CBD1')
+        .onClick(() => { const i = this.hostMenuIndex; this.hostMenuIndex = -1; this.copyHostAddress(this.hosts[i]); })
+      Button(this.t('host.del')).id('hostmenu/delete').width('100%').fontSize(13)
+        .backgroundColor('#3A2226').fontColor('#E08A8A')
+        .onClick(() => { const i = this.hostMenuIndex; this.hostMenuIndex = -1; this.askDeleteHost(i); })
+      Button(this.t('common.close')).id('hostmenu/close').width('100%').fontSize(12)
+        .backgroundColor('#1E2127').fontColor('#8A8F98')
+        .onClick(() => { this.hostMenuIndex = -1; })
+    }
+    .id('hostmenu/panel').width(200).padding(10).backgroundColor('#1C1F24').borderRadius(10)
+    .shadow({ radius: 20, color: '#66000000', offsetY: 6 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -5550,6 +5581,10 @@ struct Index {
       if (this.rdpSessionOpen) {
         Column().width('100%').height('100%').backgroundColor('#CC000000').onClick(() => {})
         this.rdpSessionView()
+      }
+      if (this.hostMenuIndex >= 0) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => { this.hostMenuIndex = -1; })
+        this.hostMoreMenu()
       }
       if (this.tabRenameOpen) {
         Column().width('100%').height('100%').backgroundColor('#CC000000').onClick(() => {})

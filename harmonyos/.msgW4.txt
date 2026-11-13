@@ -1,0 +1,6 @@
+﻿feat(harmonyos/host): 主机行"⋯"菜单(打开/编辑/详情/复制/删除) + 用例
+
+实现: 名称列纵向加 host-more/<i>; 自绘 hostmenu/panel, 项 id hostmenu/open|edit|detail|copy|delete|close
+  (bindMenu 不在 uitest dump, 自绘才能被用例点击)
+用例 host.menu: 打开菜单 -> 复制地址提示 copied 10.30.30.30 -> 再开菜单点详情 -> 详情面板出现
+验证: check-all.ps1 全绿(defined 384/dup 0/paging 0); 设备仍未连到
