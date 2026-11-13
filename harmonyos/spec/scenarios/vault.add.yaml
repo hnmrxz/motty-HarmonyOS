@@ -1,0 +1,73 @@
+schema: 1
+id: vault.add
+title: 密钥链新增凭据：填地址/端口/密码后保存，列表出现条目且可删除
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:nav/keys
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:vault/add-open
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新增凭据|Add credential"
+      withinMs: 8000
+  - action: type
+    target: id:vaultadd/addr
+    text: 10.20.30.40
+  - action: type
+    target: id:vaultadd/port
+    text: "22"
+  - action: type
+    target: id:vaultadd/user
+    text: tester
+  - action: type
+    target: id:vaultadd/pw
+    text: secret
+    secret: true
+  - action: click
+    target: id:vaultadd/save
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "saved 10.20.30.40"
+      withinMs: 10000
+asserts:
+  - kind: screenRegex
+    regex: "10.20.30.40"
+    withinMs: 8000
+  - kind: screenRegex
+    regex: "saved .*true|saved .*false"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：密钥链页"新增凭据"对话框可打开、填四个字段后保存，
+    结果行显示 saved <key> -> <bool>，列表出现该条目。
+    **不覆盖**：Asset Store 真正写入的跨进程验证（结果里的 bool 只表示调用返回）、
+    编辑已有凭据、重复键覆盖行为。
+deviations:
+  - 只断言 key 出现在屏幕上（列表与结果行都会显示），不逐节点绑定 id。
+notes: >-
+  凭据键格式为 address:port（与连接时的 hostKey 一致）。

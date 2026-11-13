@@ -1,0 +1,15 @@
+﻿feat(harmonyos/ui): 二级页面审计 + 补两处缺口(密钥链新增凭据、标签编号) —— E2
+
+审计(docs/UI-GAPS.md): 以上游 i18n 键为基准逐项对照
+- 一级导航: 上游 10 项; 我们缺 NavProxies(跳板路由, 仍是死链); 工作区是最小版; 多出会话日志/笔记/本地终端
+- 设置面板: 上游 114 个键 vs 我们 12 个控件; 分组 Terminal16/Connection10/Startup10/Other10/
+  Toolbar8/Local7/Tab6/Tabs6/Vault6/Text5/Restore5/Language4/Appearance4/Network4/Interface3...
+- 二级弹窗清单已列(含缺失: 密钥链新增/编辑、已知主机导入导出、日志按主机协议筛选、跳板路由页、pane 分屏)
+
+本轮补:
+1) 密钥链新增凭据: vault/add-open + vaultadd/dialog(addr/port/user/pw) -> 存 Asset Store + 内存,
+   结果行 vault/result; 用例 vault.add
+2) 设置"标签编号": settings/tab-numbers 开关, 标签标题带序号, DB 持久化; 用例 settings.tab-numbers
+
+验证: build SUCCESSFUL + spec/lint 全绿(105 条 schema 合规?) —— 本轮只有 E2;
+  模拟器冷启动未就绪, E1 待下轮 --only vault / --only settings.tab

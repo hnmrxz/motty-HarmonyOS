@@ -261,6 +261,14 @@ struct Index {
   @State groupDelName: string = '';
   @State knownDelKey: string = '';
   @State vaultDelKey: string = '';
+  @State vaultAddOpen: boolean = false;
+  @State vaultAddr: string = '';
+  @State vaultPort: string = '';
+  @State vaultUser: string = '';
+  @State vaultPw: string = '';
+  @State vaultSeq: number = 0;
+  @State vaultResult: string = '';
+  @State tabNumbers: boolean = false;
   @State hoverRow: number = -1;
   @State selectAll: boolean = false;
   @State selectedIds: string[] = [];
@@ -3846,7 +3854,12 @@ struct Index {
             .backgroundColor(this.hostView === 'list' ? '#2F6F4F' : '#23262B')
             .fontColor(this.hostView === 'list' ? Color.White : '#C7CBD1')
             .onClick(() => { this.hostView = 'list'; this.savePrefs(); })
-          Button(this.lang === 'zh' ? '网格' : 'Grid').id('settings/view-grid').height(30).fontSize(12)
+          Button(this.lang === 'zh' ? '标签编号' : 'Tab numbers')
+          .id('settings/tab-numbers').height(30).fontSize(12)
+          .backgroundColor(this.tabNumbers ? '#2F6F4F' : '#23262B')
+          .fontColor(this.tabNumbers ? Color.White : '#C7CBD1')
+          .onClick(() => { this.tabNumbers = !this.tabNumbers; this.savePrefs(); })
+        Button(this.lang === 'zh' ? '网格' : 'Grid').id('settings/view-grid').height(30).fontSize(12)
             .backgroundColor(this.hostView === 'grid' ? '#2F6F4F' : '#23262B')
             .fontColor(this.hostView === 'grid' ? Color.White : '#C7CBD1')
             .onClick(() => { this.hostView = 'grid'; this.savePrefs(); })
@@ -3944,6 +3957,30 @@ struct Index {
     await this.reloadLogs();
   }
 
+
+  // 密钥链：新增一条凭据（存 Asset Store + 内存）
+  private async saveVaultEntry(): Promise<void> {
+    const addr: string = this.vaultAddr.trim();
+    const portS: string = this.vaultPort.trim();
+    if (addr.length === 0 || portS.length === 0 || this.vaultPw.length === 0) {
+      this.vaultResult = 'address/port/password are required';
+      return;
+    }
+    const port: number = Number.parseInt(portS, 10);
+    if (Number.isNaN(port)) {
+      this.vaultResult = 'port must be a number';
+      return;
+    }
+    const key: string = this.hostKey(addr, String(port));
+    const ok: boolean = await Vault.save(key, this.vaultPw);
+    this.creds.set(key, { address: addr, port: port, user: this.vaultUser.trim(), password: this.vaultPw });
+    this.vaultResult = 'saved ' + key + ' -> ' + String(ok);
+    this.vaultAddOpen = false;
+    this.vaultAddr = ''; this.vaultPort = ''; this.vaultUser = ''; this.vaultPw = '';
+    this.vaultSeq = this.vaultSeq + 1;
+    await this.savePrefs();
+  }
+
   private credKeys(): string[] {
     const out: string[] = [];
     this.creds.forEach((_v: Cred, k: string) => { out.push(k); });
@@ -3974,7 +4011,7 @@ struct Index {
           ListItem() {
             Row({ space: 12 }) {
               Text((idx + 1).toString()).fontSize(12).fontColor('#6B7078').width(24)
-              Text(t.label).id('ws/tab/' + idx).fontSize(14).fontColor('#E8EAED').layoutWeight(1)
+              Text((this.tabNumbers ? (this.tabs.indexOf(t) + 1).toString() + ' ' : '') + t.label).id('ws/tab/' + idx).fontSize(14).fontColor('#E8EAED').layoutWeight(1)
                 .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
               Button(this.lang === 'zh' ? '切换' : 'Switch').id('ws/switch/' + idx)
                 .height(26).fontSize(11).backgroundColor('#2F6F4F').fontColor(Color.White)
@@ -4050,9 +4087,15 @@ struct Index {
     Column({ space: 10 }) {
       Row({ space: 10 }) {
         Text(this.lang === 'zh' ? '密钥链' : 'Keychain').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
-        Text('(' + this.credKeys().length + ')').fontSize(12).fontColor('#6B7078')
+        Text('(' + this.credKeys().length + ')' + (this.vaultSeq >= 0 ? '' : '')).fontSize(12).fontColor('#6B7078')
         Blank()
+        Button(this.lang === 'zh' ? '新增凭据' : 'Add credential').id('vault/add-open')
+          .height(30).fontSize(12).backgroundColor('#2F6F4F').fontColor(Color.White)
+          .onClick(() => { this.vaultAddOpen = true; })
       }.width('100%')
+      if (this.vaultResult.length > 0) {
+        Text(this.vaultResult).id('vault/result').fontSize(11).fontFamily('monospace').fontColor('#0A6C00').width('100%')
+      }
       Text(this.lang === 'zh'
         ? '口令存放在系统 Asset Store，这里只显示已保存凭据的条目（不显示明文）。'
         : 'Passwords live in the system Asset Store; only entry keys are listed here.')
@@ -5087,6 +5130,37 @@ struct Index {
     }.width('100%')
   }
 
+
+  // 密钥链：新增凭据对话框（输入框非受控，避免 IME 回填）
+  @Builder
+  vaultAddDialog() {
+    Column({ space: 10 }) {
+      Text(this.lang === 'zh' ? '新增凭据' : 'Add credential')
+        .id('vaultadd/title').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED').width('100%')
+      TextInput({ placeholder: this.lang === 'zh' ? '地址（如 127.0.0.1）' : 'address' })
+        .id('vaultadd/addr').width('100%').height(36)
+        .onChange((v: string) => { this.vaultAddr = v; })
+      TextInput({ placeholder: this.lang === 'zh' ? '端口（如 22）' : 'port' })
+        .id('vaultadd/port').width('100%').height(36)
+        .onChange((v: string) => { this.vaultPort = v; })
+      TextInput({ placeholder: this.lang === 'zh' ? '用户名（可选）' : 'user (optional)' })
+        .id('vaultadd/user').width('100%').height(36)
+        .onChange((v: string) => { this.vaultUser = v; })
+      TextInput({ placeholder: this.lang === 'zh' ? '密码' : 'password' })
+        .id('vaultadd/pw').width('100%').height(36).type(InputType.Password)
+        .onChange((v: string) => { this.vaultPw = v; })
+      Row({ space: 12 }) {
+        Button(this.t('hostkey.cancel')).id('vaultadd/cancel').backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.vaultAddOpen = false; })
+        Button(this.lang === 'zh' ? '保存' : 'Save').id('vaultadd/save')
+          .backgroundColor('#2F6F4F').fontColor(Color.White)
+          .onClick(() => { this.saveVaultEntry(); })
+      }.width('100%').justifyContent(FlexAlign.End)
+    }
+    .id('vaultadd/dialog').width(420).padding(18).backgroundColor('#1C1F24').borderRadius(12)
+    .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -5196,6 +5270,10 @@ struct Index {
       if (this.rdpSessionOpen) {
         Column().width('100%').height('100%').backgroundColor('#CC000000').onClick(() => {})
         this.rdpSessionView()
+      }
+      if (this.vaultAddOpen) {
+        Column().width('100%').height('100%').backgroundColor('#CC000000').onClick(() => {})
+        this.vaultAddDialog()
       }
       if (this.hostDetailIndex >= 0) {
         Column().width('100%').height('100%').backgroundColor('#CC000000').onClick(() => { this.hostDetailIndex = -1; })
