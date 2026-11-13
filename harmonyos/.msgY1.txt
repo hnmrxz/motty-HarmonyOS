@@ -1,0 +1,6 @@
+﻿refactor(harmonyos/ui): 菜单项统一 builder(menuItem/menuItemDanger) 并替换组菜单与视图菜单 8 处
+
+- 新增 menuItem/menuItemDanger(宽 100%, 高 30, 字号 13)
+- groupmenu(up/down/pin/rename/delete) 与 viewmenu(list/grid/sort) 共 8 项改为 builder, id/文案不变
+- check-ids 同步识别 menuItem/menuItemDanger 参数 id
+验证: check-all.ps1 五项全绿(111 场景)

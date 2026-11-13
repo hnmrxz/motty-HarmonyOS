@@ -3979,6 +3979,20 @@ struct Index {
   }
 
   @Builder
+  menuItem(label: string, idName: string, onTap: () => void) {
+    Button(label).id(idName).width('100%').height(30).fontSize(13)
+      .backgroundColor('#23262B').fontColor('#C7CBD1')
+      .onClick(() => { onTap(); })
+  }
+
+  @Builder
+  menuItemDanger(label: string, idName: string, onTap: () => void) {
+    Button(label).id(idName).width('100%').height(30).fontSize(13)
+      .backgroundColor('#3A2226').fontColor('#E08A8A')
+      .onClick(() => { onTap(); })
+  }
+
+  @Builder
   btnDanger(label: string, idName: string, onTap: () => void) {
     Button(label).id(idName).height(30).fontSize(12)
       .backgroundColor('#3A2226').fontColor('#E08A8A')
@@ -5306,26 +5320,11 @@ struct Index {
   @Builder
   groupMenuPopup() {
     Column({ space: 2 }) {
-      Button(this.lang === 'zh' ? '上移分组' : 'Move group up')
-        .id('groupmenu/up').width('100%').fontSize(13)
-        .backgroundColor('#23262B').fontColor('#C7CBD1')
-        .onClick(() => { this.moveGroupFromMenu(-1); })
-      Button(this.lang === 'zh' ? '下移分组' : 'Move group down')
-        .id('groupmenu/down').width('100%').fontSize(13)
-        .backgroundColor('#23262B').fontColor('#C7CBD1')
-        .onClick(() => { this.moveGroupFromMenu(1); })
-      Button(this.lang === 'zh' ? '固定/取消固定' : 'Pin/Unpin')
-        .id('groupmenu/pin').width('100%').fontSize(13)
-        .backgroundColor('#23262B').fontColor('#C7CBD1')
-        .onClick(() => { this.togglePin(this.groupMenuTarget); this.groupMenu = ''; })
-      Button(this.lang === 'zh' ? '重命名分组' : 'Rename group')
-        .id('groupmenu/rename').width('100%').fontSize(13)
-        .backgroundColor('#23262B').fontColor('#C7CBD1')
-        .onClick(() => { const g = this.groupMenuTarget; this.groupMenu = ''; this.openRenameGroup(g); })
-      Button(this.lang === 'zh' ? '删除分组' : 'Delete group')
-        .id('groupmenu/delete').width('100%').fontSize(13)
-        .backgroundColor('#3A2226').fontColor('#E08A8A')
-        .onClick(() => { const g = this.groupMenuTarget; this.groupMenu = ''; this.askDeleteGroup(g); })
+      this.menuItem(this.lang === 'zh' ? '上移分组' : 'Move group up', 'groupmenu/up', () => { this.moveGroupFromMenu(-1); })
+      this.menuItem(this.lang === 'zh' ? '下移分组' : 'Move group down', 'groupmenu/down', () => { this.moveGroupFromMenu(1); })
+      this.menuItem(this.lang === 'zh' ? '固定/取消固定' : 'Pin/Unpin', 'groupmenu/pin', () => { this.togglePin(this.groupMenuTarget); this.groupMenu = ''; })
+      this.menuItem(this.lang === 'zh' ? '重命名分组' : 'Rename group', 'groupmenu/rename', () => { const g = this.groupMenuTarget; this.groupMenu = ''; this.openRenameGroup(g); })
+      this.menuItemDanger(this.lang === 'zh' ? '删除分组' : 'Delete group', 'groupmenu/delete', () => { const g = this.groupMenuTarget; this.groupMenu = ''; this.askDeleteGroup(g); })
       Button(this.t('hostkey.cancel')).id('groupmenu/close').width('100%').fontSize(12)
         .backgroundColor('#1E2127').fontColor('#8A8F98')
         .onClick(() => { this.groupMenu = ''; })
@@ -5556,15 +5555,9 @@ struct Index {
   @Builder
   viewOptionsMenu() {
     Column({ space: 2 }) {
-      Button(this.lang === 'zh' ? '列表视图' : 'List view').id('viewmenu/list').width('100%').fontSize(13)
-        .backgroundColor('#23262B').fontColor('#C7CBD1')
-        .onClick(() => { this.hostView = 'list'; this.savePrefs(); this.viewMenuOpen = false; })
-      Button(this.lang === 'zh' ? '网格视图' : 'Grid view').id('viewmenu/grid').width('100%').fontSize(13)
-        .backgroundColor('#23262B').fontColor('#C7CBD1')
-        .onClick(() => { this.hostView = 'grid'; this.savePrefs(); this.viewMenuOpen = false; })
-      Button(this.lang === 'zh' ? '切换排序' : 'Cycle sort').id('viewmenu/sort').width('100%').fontSize(13)
-        .backgroundColor('#23262B').fontColor('#C7CBD1')
-        .onClick(() => {
+      this.menuItem(this.lang === 'zh' ? '列表视图' : 'List view', 'viewmenu/list', () => { this.hostView = 'list'; this.savePrefs(); this.viewMenuOpen = false; })
+      this.menuItem(this.lang === 'zh' ? '网格视图' : 'Grid view', 'viewmenu/grid', () => { this.hostView = 'grid'; this.savePrefs(); this.viewMenuOpen = false; })
+      this.menuItem(this.lang === 'zh' ? '切换排序' : 'Cycle sort', 'viewmenu/sort', () => {
           this.hostSort = this.hostSort === 'manual' ? 'name' : (this.hostSort === 'name' ? 'ip' : 'manual');
           this.savePrefs(); this.viewMenuOpen = false;
         })
