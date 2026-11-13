@@ -276,6 +276,7 @@ struct Index {
   @State showTabCount: boolean = true;
   @State startupView: string = 'hosts';
   @State settingsReset: string = '';
+  @State toolbarHint: string = '';
   @State tabRenameOpen: boolean = false;
   @State tabRenameId: string = '';
   @State tabRenameText: string = '';
@@ -817,6 +818,39 @@ struct Index {
     this.termText = mottynapi.vtScreen(vtId);
     this.vtStatus = mottynapi.vtStatus(vtId);
     this.vtHistory = mottynapi.vtScrollBack(vtId, this.termScrollback);
+  }
+
+
+  // 工具栏"新会话"：用当前会话对应的主机再开一个（无凭据则提示）
+  private openNewSessionFromToolbar(): void {
+    if (this.tabs.length === 0) {
+      this.setToolbarHint('no session; open a host first');
+      return;
+    }
+    const label: string = this.tabs[0].label;
+    for (let i = 0; i < this.hosts.length; i++) {
+      if (this.hosts[i].label === label) {
+        this.openSession(this.hosts[i].label, i);
+        return;
+      }
+    }
+    this.setToolbarHint('session ' + label + ' has no saved host');
+  }
+
+  private setToolbarHint(msg: string): void {
+    this.toolbarHint = msg;
+  }
+
+  // 复制主机地址到剪贴板（交互对齐：主机行的"复制地址"）
+  private copyHostAddress(h: HostItem): void {
+    const text: string = h.address + (h.port.length > 0 ? ':' + h.port : '');
+    try {
+      pasteboard.getSystemPasteboard().setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text))
+        .then(() => { this.toolbarHint = 'copied ' + text; })
+        .catch(() => { this.toolbarHint = 'copy failed'; });
+    } catch (e) {
+      this.toolbarHint = 'copy threw';
+    }
   }
 
   private startSession(cred: Cred, fp: string, label: string): void {
@@ -2811,6 +2845,8 @@ struct Index {
                       .fontColor('#6B7078').maxLines(1)
                     Text('ⓘ').id('host-info/' + index).fontSize(11).fontColor('#6B7078')
                       .onClick(() => { this.hostDetailIndex = index; })
+                    Text('⎘').id('host-copy/' + index).fontSize(11).fontColor('#6B7078')
+                      .onClick(() => { this.copyHostAddress(h); })
                     Text(h.user.length > 0 ? h.user : '-').fontSize(12).fontColor('#8A8F98')
                   }
                   .id('host-name/' + index)
@@ -2916,6 +2952,13 @@ struct Index {
       Image($r('app.media.ic_sparkles')).id('top/ai').width(16).height(16)
       Image($r('app.media.ic_bell')).id('top/notice').width(16).height(16)
       Image($r('app.media.ic_settings')).id('top/settings').width(16).height(16)
+      Image($r('app.media.ic_play')).id('top/new-session').width(16).height(16)
+        .onClick(() => { this.openNewSessionFromToolbar(); })
+      Image($r('app.media.ic_sort')).id('top/refresh').width(16).height(16)
+        .onClick(() => { this.reload(); })
+      if (this.toolbarHint.length > 0) {
+        Text(this.toolbarHint).id('top/hint').fontSize(10).fontColor('#8A8F98')
+      }
     }
     .width('100%').height(38).padding({ left: 14, right: 14 })
     .backgroundColor('#0C0D10')

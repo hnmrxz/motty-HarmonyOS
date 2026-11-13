@@ -1,0 +1,107 @@
+schema: 1
+id: ui.toolbar
+title: 顶栏交互：复制主机地址提示、顶栏"新会话"再开一个会话
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+fixture:
+  vncAuth: false
+  vncResize: false
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/clear
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/close
+  - action: wait
+    ms: 500
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: toolbar-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "toolbar-a"
+      withinMs: 12000
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 600
+  # 复制地址 -> 顶栏提示
+  - action: click
+    target: id:host-copy/0
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "copied 127.0.0.1:2222"
+      withinMs: 8000
+  # 连接后再用顶栏"新会话"
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "信任此主机|Trust this host|Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+  - action: click
+    target: id:top/new-session
+  - action: wait
+    ms: 3000
+asserts:
+  - kind: screenRegex
+    regex: "2 sessions"
+    withinMs: 12000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：主机行"复制地址"写剪贴板并在顶栏提示 copied <addr:port>；
+    顶栏"新会话"用已有主机再开一个会话（出现 2 sessions）。
+    **不覆盖**：剪贴板内容的外部读取校验、顶栏"刷新"按钮（与 reload 同路径）、无凭据时的提示分支。
+deviations:
+  - 复制只断言提示文本，不读取系统剪贴板（避免依赖剪贴板权限与实现细节）。
+notes: >-
+  top/new-session 取第一个标签的 label 找主机再 openSession。

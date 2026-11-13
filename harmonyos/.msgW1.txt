@@ -1,0 +1,8 @@
+﻿feat(harmonyos/ui): 顶栏补"新会话/刷新"、主机行补"复制地址" + 用例
+
+交互对齐:
+- 顶栏 top/new-session(用第一个标签的主机再开会话) / top/refresh(reload 主机) / top/hint(提示行)
+- 主机行 host-copy/<i> 复制 address:port 到剪贴板, 顶栏提示 copied <addr:port>
+- 用例 ui.toolbar: 复制后出现 copied 提示; 连接后点顶栏新会话出现 2 sessions
+
+验证: build SUCCESSFUL + lint + check-ids + check-paging 全绿; 设备仍未连到(需从 DevEco GUI 启动 motty_pc)
