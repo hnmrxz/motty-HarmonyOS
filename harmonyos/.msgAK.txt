@@ -1,0 +1,7 @@
+﻿feat(harmonyos/monitor): 补齐缺失的"监控"二级页面 + 用例(E1 通过)
+
+- 侧栏 nav/monitor; monitorPage: 简洁/详细切换、立即采集、搜索、采集间隔(5s/15s/30s)、保留时长(1h/6h/24h)
+- 列表 monitor/host|meta; 未连接显示"未连接"; 采集对已信任主机执行 loadavg/free/df 并截断展示
+- 用例 page.monitor: E1 实测通过(17.7s)
+- check-ids 增强: 任意 'nav/...' 字面量计为已定义(修 pcNavItem 带三元表达式的误报)
+验证: check-all 七项全绿(117 场景)

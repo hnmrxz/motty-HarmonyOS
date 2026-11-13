@@ -281,6 +281,11 @@ struct Index {
   @State uiScaleKey: string = 'regular';
   @State viewMenuOpen: boolean = false;
   @State themeMode: string = 'dark';
+  @State monitorRows: string[] = [];
+  @State monitorDetail: boolean = true;
+  @State monitorEvery: string = '5s';
+  @State monitorKeep: string = '1h';
+  @State monitorQuery: string = '';
   @State aiOpen: boolean = false;
   @State tabRenameOpen: boolean = false;
   @State tabRenameId: string = '';
@@ -3262,6 +3267,7 @@ struct Index {
 
       this.pcNavItem('主机', 'nav/hosts', $r('app.media.ic_hosts'), true, () => { this.pcNav = '主机'; this.showHosts = true; })
       this.pcNavItem('工作区', 'nav/workspace', $r('app.media.ic_workspace'), true, () => { this.pcNav = '工作区'; })
+      this.pcNavItem(this.lang === 'zh' ? '监控' : 'Monitor', 'nav/monitor', $r('app.media.ic_monitor'), true, () => { this.pcNav = '监控'; this.reloadMonitor(); })
       this.pcNavItem('密钥链', 'nav/keys', $r('app.media.ic_keys'), true, () => { this.pcNav = '密钥链'; })
       this.pcNavItem('跳板路由', 'nav/jump', $r('app.media.ic_jump'), true, () => { this.pcNav = '跳板路由'; })
       this.pcNavItem('快捷命令', 'nav/snippets', $r('app.media.ic_snippets'), true, () => { this.pcNav = '快捷命令'; this.reloadSnippets(); })
@@ -5956,6 +5962,101 @@ struct Index {
     .border({ width: { left: 1 }, color: this.th('#22252A') })
   }
 
+  private reloadMonitor(): void {
+    const out: string[] = [];
+    for (let i = 0; i < this.hosts.length; i++) {
+      const h = this.hosts[i];
+      const st = this.statusOf(i);
+      out.push(h.label + '|' + h.address + (h.port.length > 0 ? ':' + h.port : '') + '|' +
+        (st.length > 0 ? st : (this.lang === 'zh' ? '未连接' : 'offline')));
+    }
+    this.monitorRows = out;
+  }
+
+  private monitorFiltered(): string[] {
+    const q: string = this.monitorQuery.trim().toLowerCase();
+    if (q.length === 0) { return this.monitorRows; }
+    return this.monitorRows.filter((r: string) => r.toLowerCase().indexOf(q) >= 0);
+  }
+
+  private sampleMonitor(): void {
+    this.hint(this.lang === 'zh' ? '正在采集…（需已连接且已信任的主机）' : 'sampling...');
+    const out: string[] = [];
+    for (let i = 0; i < this.hosts.length; i++) {
+      const h = this.hosts[i];
+      const key: string = this.hostKey(h.address, h.port);
+      const cred = this.creds.get(key);
+      if (cred === undefined) {
+        out.push(h.label + '|' + h.address + '|' + (this.lang === 'zh' ? '未连接' : 'offline'));
+        continue;
+      }
+      this.lookupFp(key).then((fp: string) => {
+        mottynapi.exec(cred.address, cred.port, cred.user, cred.password,
+          'cat /proc/loadavg; free -m | sed -n 2p; df -h / | tail -1', fp,
+          (chunk: string) => {
+            out.push(h.label + '|' + h.address + '|' + chunk.replace(/\n/g, ' ').substring(0, 150));
+          },
+          (status: string) => { this.monitorRows = out.slice(); });
+      });
+    }
+    this.monitorRows = out.slice();
+  }
+
+  @Builder
+  monitorPage() {
+    Column({ space: 10 }) {
+      Row({ space: 10 }) {
+        this.pageTitle(this.lang === 'zh' ? '监控' : 'Monitor', 'monitor/title')
+        Blank()
+        Button(this.monitorDetail ? (this.lang === 'zh' ? '详细' : 'Detailed') : (this.lang === 'zh' ? '简洁' : 'Compact'))
+          .id('monitor/toggle-detail').height(30).fontSize(12)
+          .backgroundColor(this.th('#23262B')).fontColor(this.th('#C7CBD1'))
+          .onClick(() => { this.monitorDetail = !this.monitorDetail; })
+        Button(this.lang === 'zh' ? '立即采集' : 'Sample now').id('monitor/sample')
+          .height(30).fontSize(12).backgroundColor('#2F6F4F').fontColor(Color.White)
+          .onClick(() => { this.sampleMonitor(); })
+      }.width('100%')
+      Row({ space: 10 }) {
+        TextInput({ placeholder: this.lang === 'zh' ? '搜索主机、地址或标签' : 'search host, address or tag' })
+          .id('monitor/search').height(32).fontSize(12).layoutWeight(1)
+          .onChange((v: string) => { this.monitorQuery = v; })
+        Button('每 5 秒').id('monitor/every')
+          .height(30).fontSize(11).backgroundColor(this.th('#23262B')).fontColor(this.th('#C7CBD1'))
+          .onClick(() => { this.monitorEvery = this.monitorEvery === '5s' ? '15s' : (this.monitorEvery === '15s' ? '30s' : '5s'); })
+        Text(this.monitorEvery).id('monitor/every-value').fontSize(11).fontColor(this.th('#6B7078'))
+        Button('保留 1 小时').id('monitor/keep')
+          .height(30).fontSize(11).backgroundColor(this.th('#23262B')).fontColor(this.th('#C7CBD1'))
+          .onClick(() => { this.monitorKeep = this.monitorKeep === '1h' ? '6h' : (this.monitorKeep === '6h' ? '24h' : '1h'); })
+        Text(this.monitorKeep).id('monitor/keep-value').fontSize(11).fontColor(this.th('#6B7078'))
+      }.width('100%')
+      if (this.monitorFiltered().length === 0) {
+        Text(this.lang === 'zh' ? '还没有主机，或没有匹配的主机' : 'no hosts / no match').id('monitor/empty')
+          .fontSize(13).fontColor(this.th('#6B7078')).width('100%').padding({ top: 40 })
+      }
+      List({ space: 6 }) {
+        ForEach(this.monitorFiltered(), (row: string, i: number) => {
+          ListItem() {
+            Row({ space: 12 }) {
+              Text(row.split('|')[0]).id('monitor/host/' + i).fontSize(14)
+                .fontColor(this.th('#E8EAED')).width(180).maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+              Text(row.split('|')[1]).fontSize(11).fontColor(this.th('#8A8F98')).width(200).maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+              Text(row.split('|')[2]).id('monitor/meta/' + i).fontSize(11)
+                .fontColor(this.monitorDetail ? this.th('#C7CBD1') : this.th('#6B7078'))
+                .layoutWeight(1).maxLines(this.monitorDetail ? 2 : 1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+            .width('100%').height(this.monitorDetail ? 54 : 44)
+            .padding({ left: 12, right: 12 })
+            .borderRadius(8).backgroundColor(this.th('#1C1F24'))
+          }
+        }, (row: string) => row)
+      }.id('monitor/list').layoutWeight(1).width('100%')
+    }
+    .width('100%').height('100%').padding({ left: 22, right: 22, top: 10 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -5971,7 +6072,9 @@ struct Index {
           if (this.tabs.length > 0 && !this.tabSide) {
             this.tabBar()
           }
-          if (this.pcNav === '本地终端') {
+          if (this.pcNav === '监控') {
+            this.monitorPage()
+          } else if (this.pcNav === '本地终端') {
             this.localTerminalPage()
           } else if (this.pcNav === '跳板路由') {
             this.jumpPage()

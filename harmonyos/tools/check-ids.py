@@ -16,6 +16,9 @@ for m in re.finditer(r"\.id\('([^']*)'(?:\s*\+\s*[^)]*)?\)", text):
     defined.add(m.group(1))
 for m in re.finditer(r"pcNavItem\('[^']*',\s*'([^']+)'", text):
     defined.add(m.group(1))
+# 导航项：出现过的 'nav/...' 字面量都算已定义
+for m in re.finditer(r"'(nav/[A-Za-z0-9_\-]+)'", text):
+    defined.add(m.group(1))
 # 通过 @Builder 参数传入的 id（如 settingsOpt(label, 'id', ...)）
 for m in re.finditer(r"\b(?:btnPrimary|btnSecondary|btnDanger|menuItem|menuItemDanger|settingsOpt)\([^,]+,\s*'([^']+)'", text):
     defined.add(m.group(1))
