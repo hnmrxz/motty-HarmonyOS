@@ -672,3 +672,19 @@ SUMMARY passed=91/91   failed=0
 ### 基线（更新）
 - 用例数：**91**；全量：**91/91**
 
+---
+
+## 提速：`run-all.py` 新增 `--quick` / `--only`
+
+```powershell
+# 冒烟子集（12 条，约 12 分钟）：最容易被改坏的路径
+python harmonyos\tools\run-all.py --quick
+
+# 定向回归（按 spec 名前缀，如 host / rdp / vnc / forward）
+python harmonyos\tools\run-all.py --only host
+```
+- `--quick` 覆盖：主机管理/图标/最近连接/详情/排序、SSH 连接、终端 VT、SFTP 浏览、
+  转发输入、日志搜索、VNC 主机会话、RDP 会话视图；
+- 每轮改动后用 `--only` 定向验证；全量只作为里程碑（每 5~10 轮）跑一次；
+- 详细规则见 [FAST-TRACK.md](FAST-TRACK.md)。
+

@@ -50,7 +50,19 @@ py = r"C:\Python315\python.exe"
 serial = "127.0.0.1:10100"
 
 resume = "--resume" in sys.argv
+# --quick：冒烟子集（12 条，覆盖最容易被改坏的路径，约 12 分钟）
+QUICK = ["host.manage", "host.icon", "host.lastused", "host.detail", "host.group-order",
+         "ssh.connect-from-list", "terminal.vt", "sftp.browse",
+         "forward.typed", "logs.search", "vnc.host-session", "rdp.session-view"]
+only = ""
+for i, a in enumerate(sys.argv):
+    if a == "--only" and i + 1 < len(sys.argv):
+        only = sys.argv[i + 1]
 specs = sorted((root / "spec" / "scenarios").glob("*.yaml"))
+if "--quick" in sys.argv:
+    specs = [sp for sp in specs if sp.stem in QUICK]
+if only:
+    specs = [sp for sp in specs if sp.stem.startswith(only)]
 results = []
 for i, sp in enumerate(specs):
     restart_fixture(sp)

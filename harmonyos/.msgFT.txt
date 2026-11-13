@@ -1,0 +1,15 @@
+﻿docs(harmonyos): 快速收尾方案 FAST-TRACK + run-all 新增 --quick/--only
+
+背景: 电脑重启后模拟器启动拖慢整机, 每轮跑 80 分钟全量不可持续; 目标改为"加快移植并节约 token"
+
+变更:
+1) tools/run-all.py 新增:
+   --quick  冒烟子集 12 条(约 12 分钟): 主机管理/图标/最近连接/详情/排序、SSH 连接、
+            终端 VT、SFTP 浏览、转发输入、日志搜索、VNC 主机会话、RDP 会话视图
+   --only X 按 spec 名前缀定向回归(如 host / rdp / vnc / forward)
+2) docs/FAST-TRACK.md: 现状快照(92 用例, 最近全量 91/91)、剩余缺口分级 P0-P3、
+   提速规则(模拟器常驻/定向回归/里程碑全量/静态优先/不做假功能/文档一次写清)、
+   每轮标准动作、收尾顺序、明确不再做的事
+
+验证: spec/lint.py 全绿; --only host.detail 自检 1/1 PASS(run-all 的 --only 生效)
+说明: 上轮被中断的 full109 是半成品证据, 已删除以免污染
