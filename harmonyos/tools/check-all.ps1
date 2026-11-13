@@ -18,4 +18,7 @@ if ($LASTEXITCODE -ne 0) { exit 1 }
 Write-Host "== check-paging ==" -ForegroundColor Cyan
 & C:\Python315\python.exe harmonyos\tools\check-paging.py | Select-Object -Last 1
 if ($LASTEXITCODE -ne 0) { exit 1 }
+Write-Host "== check-actions ==" -ForegroundColor Cyan
+& C:\Python315\python.exe harmonyos\tools\check-actions.py | Select-Object -Last 2
+if ($LASTEXITCODE -ne 0) { exit 1 }
 Write-Host "ALL STATIC GATES PASSED" -ForegroundColor Green
