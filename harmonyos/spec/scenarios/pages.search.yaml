@@ -1,0 +1,63 @@
+schema: 1
+id: pages.search
+title: 快捷命令与已知主机支持搜索：无匹配时给出明确空态
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  # 快捷命令：搜索框存在，搜不匹配 -> 空态
+  - action: click
+    target: id:nav/snippets
+  - action: wait
+    ms: 900
+  - action: type
+    target: id:snippet/search
+    text: zzznomatch
+  - action: wait
+    ms: 700
+    expect:
+      kind: screenRegex
+      regex: "没有匹配|No matching|还没有快捷命令|还没有"
+      withinMs: 8000
+  # 已知主机：搜索框存在
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 800
+  - action: type
+    target: id:known/search
+    text: zzznomatch
+  - action: wait
+    ms: 700
+    expect:
+      kind: screenRegex
+      regex: "no trusted hosts|还没有已信任的主机"
+      withinMs: 8000
+asserts:
+  - kind: screenRegex
+    regex: "no trusted hosts|还没有已信任的主机"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：快捷命令页与已知主机面板都有搜索框，输入不匹配关键词后出现空态。
+    **不覆盖**：命中展示（同一过滤路径）、清空恢复。
+deviations:
+  - 快捷命令空态文案来自 strings（snippet.empty），因此断言用宽松正则。
+notes: >-
+  snippetsQuery / knownQuery 均为本地过滤，不落库。

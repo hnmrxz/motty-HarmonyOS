@@ -1,0 +1,6 @@
+﻿feat(harmonyos/ui): 快捷命令与已知主机支持搜索 + 用例(E2)
+
+- snippetsQuery/snippetsFiltered: 按名称/命令过滤; snippet/search + snippet/count
+- knownQuery/knownFilteredKeys: 按主机或指纹过滤; known/search + known/search-count(避免与既有 known/count 重名)
+- 用例 pages.search: 两页都输入不匹配关键词 -> 空态
+验证: check-all.ps1 七项全绿(114 场景)

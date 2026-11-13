@@ -295,6 +295,8 @@ struct Index {
   @State logsProto: string = '';
   @State logsHost: string = '';
   @State notesQuery: string = '';
+  @State snippetsQuery: string = '';
+  @State knownQuery: string = '';
   @State logsExport: string = '';
   @State snippets: SnippetItem[] = [];
   @State notes: NoteItem[] = [];
@@ -2667,9 +2669,16 @@ struct Index {
       if (this.knownResult.length > 0) {
         Text(this.knownResult).id('known/result').fontSize(11).fontFamily('monospace').fontColor('#0A6C00').width('100%')
       }
+      Row({ space: 10 }) {
+        TextInput({ placeholder: this.lang === 'zh' ? '搜索主机或指纹' : 'search host or fingerprint' })
+          .id('known/search').height(32).fontSize(12).layoutWeight(1)
+          .onChange((v: string) => { this.knownQuery = v; })
+        Text(this.knownFilteredKeys().length + ' / ' + this.knownKeys.length)
+          .id('known/search-count').fontSize(11).fontColor('#999999')
+      }.width('100%')
       Scroll() {
         Column({ space: 4 }) {
-          ForEach(this.knownKeys, (key: string, idx: number) => {
+          ForEach(this.knownFilteredKeys(), (key: string, idx: number) => {
             Row({ space: 8 }) {
               Column({ space: 2 }) {
                 Text(key).fontSize(12).fontFamily('monospace').width('100%')
@@ -2680,7 +2689,7 @@ struct Index {
                 .onClick(() => { this.knownDelKey = key; })
             }.width('100%').padding(6).backgroundColor('#FAFAFA').borderRadius(6)
           }, (key: string) => key)
-          if (this.knownKeys.length === 0) {
+          if (this.knownFilteredKeys().length === 0) {
             Text(this.lang === 'zh' ? '还没有已信任的主机' : '(no trusted hosts)').id('known/empty').fontSize(12).fontColor('#999999').width('100%')
           }
         }.width('100%').alignItems(HorizontalAlign.Start)
@@ -4566,6 +4575,24 @@ struct Index {
 
 
   // ---------------- 快捷命令页（NavSnippets） ----------------
+
+  private snippetsFiltered(): SnippetItem[] {
+    const q: string = this.snippetsQuery.trim().toLowerCase();
+    if (q.length === 0) { return this.snippets; }
+    return this.snippets.filter((it: SnippetItem) =>
+      it.name.toLowerCase().indexOf(q) >= 0 || it.cmd.toLowerCase().indexOf(q) >= 0);
+  }
+
+  private knownFilteredKeys(): string[] {
+    const q: string = this.knownQuery.trim().toLowerCase();
+    const out: string[] = [];
+    for (let i = 0; i < this.knownKeys.length; i++) {
+      const k: string = this.knownKeys[i];
+      if (q.length === 0 || k.toLowerCase().indexOf(q) >= 0) { out.push(k); }
+    }
+    return out;
+  }
+
   @Builder
   snippetsPage() {
     Column({ space: 10 }) {
@@ -4578,14 +4605,21 @@ struct Index {
           .backgroundColor(this.th('#E8EAED')).fontColor('#12141A')
           .onClick(() => { this.openSnippetNew(); })
       }.width('100%')
-      if (this.snippets.length === 0) {
+      Row({ space: 10 }) {
+        TextInput({ placeholder: this.lang === 'zh' ? '搜索名称或命令' : 'search name or command' })
+          .id('snippet/search').height(34).fontSize(12).layoutWeight(1)
+          .onChange((v: string) => { this.snippetsQuery = v; })
+        Text(this.snippetsFiltered().length + ' / ' + this.snippets.length)
+          .id('snippet/count').fontSize(11).fontColor(this.th('#6B7078'))
+      }.width('100%')
+      if (this.snippetsFiltered().length === 0) {
         Column({ space: 6 }) {
           Text(this.t('snippet.empty')).id('snippet/empty').fontSize(14).fontColor(this.th('#C7CBD1'))
           Text(this.t('snippet.emptySub')).id('snippet/empty-sub').fontSize(12).fontColor(this.th('#6B7078'))
         }.width('100%').padding({ top: 50 })
       }
       List({ space: 6 }) {
-        ForEach(this.snippets, (it: SnippetItem, idx: number) => {
+        ForEach(this.snippetsFiltered(), (it: SnippetItem, idx: number) => {
           ListItem() {
             Row({ space: 12 }) {
               Column({ space: 3 }) {
