@@ -275,6 +275,7 @@ struct Index {
   @State showLastUsed: boolean = true;
   @State showTabCount: boolean = true;
   @State startupView: string = 'hosts';
+  @State settingsReset: string = '';
   @State tabRenameOpen: boolean = false;
   @State tabRenameId: string = '';
   @State tabRenameText: string = '';
@@ -3942,6 +3943,22 @@ struct Index {
     }
   }
 
+
+  // 设置重置为默认（不动语言，避免用户突然看不懂界面）
+  private resetSettings(): void {
+    this.hostView = 'list';
+    this.hostSort = 'manual';
+    this.termFontSize = 13;
+    this.termScrollback = 3;
+    this.tabNumbers = false;
+    this.tabSide = false;
+    this.showLastUsed = true;
+    this.showTabCount = true;
+    this.startupView = 'hosts';
+    this.settingsReset = 'settings reset to defaults';
+    this.savePrefs();
+  }
+
   private async savePrefs(): Promise<void> {
     // 同时写 DB 与 preferences：DB 是可靠来源，preferences 保留给旧数据/其它会话
     await this.setUiState('lang', this.lang);
@@ -3978,6 +3995,9 @@ struct Index {
       Row() {
         Text(this.lang === 'zh' ? '设置' : 'Settings').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
         Blank()
+        Button(this.lang === 'zh' ? '恢复默认' : 'Reset to defaults').id('settings/reset')
+          .height(30).fontSize(12).backgroundColor('#3A2226').fontColor('#E08A8A')
+          .onClick(() => { this.resetSettings(); })
         Button(this.t('common.close')).id('settings/close').height(30).fontSize(12)
           .backgroundColor('#23262B').fontColor('#C7CBD1')
           .onClick(() => { this.settingsOpen = false; })

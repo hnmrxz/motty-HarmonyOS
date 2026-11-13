@@ -1,0 +1,63 @@
+schema: 1
+id: settings.reset
+title: 设置「恢复默认」：字号/回滚等复位，结果行提示
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:nav/settings
+  - action: wait
+    ms: 800
+  # 先把字号改大，再恢复默认
+  - action: click
+    target: id:settings/font-inc
+  - action: wait
+    ms: 400
+  - action: click
+    target: id:settings/font-inc
+  - action: wait
+    ms: 600
+    expect:
+      kind: screenRegex
+      regex: "字号 15"
+      withinMs: 6000
+  - action: click
+    target: id:settings/reset
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "字号 13"
+      withinMs: 6000
+asserts:
+  - kind: screenRegex
+    regex: "settings reset to defaults"
+    withinMs: 6000
+  - kind: screenRegex
+    regex: "字号 13"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：设置里连续加字号到 15，点「恢复默认」后回到 13 并出现结果提示。
+    **不覆盖**：语言是否保持（设计上刻意不重置语言）、其它开关逐个复位（同一方法内赋值）。
+deviations:
+  - 只断言字号复位与结果行；不改语言是有意设计。
+notes: >-
+  resetSettings 复位 view/sort/字号/回滚/标签相关开关/启动视图，并 savePrefs。
