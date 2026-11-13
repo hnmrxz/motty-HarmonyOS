@@ -1,0 +1,7 @@
+﻿chore(harmonyos): 新增 check-contrast.py(主题文字对比度) -> 静态门禁六项
+
+- 对深/浅两套调色板的"文字 x 表面"组合算 WCAG 对比度, <3.0 失败
+- 当前: 深色最差 3.05(text4 vs btn), 浅色最差 3.42, 全部 OK
+- check-all.ps1 六道门禁: build -> lint -> check-ids -> check-paging -> check-contrast -> check-actions
+- README/UI-GAPS 补用法与结论
+验证: 六项全绿(112 场景)

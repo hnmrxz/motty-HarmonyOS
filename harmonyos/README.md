@@ -76,6 +76,7 @@ python harmonyos\spec\lint.py
 python harmonyos\tools\check-ids.py     # spec 的 target id 是否都存在 + 静态 id 不重复（无需设备）
 python harmonyos\tools\check-paging.py   # 诊断面板分页：先切页再点（无需设备）
 python harmonyos\tools\check-actions.py  # 带 id 的按钮/图标是否都接了行为（无需设备）
+python harmonyos\tools\check-contrast.py # 深/浅主题的文字对比度（无需设备）
 python harmonyos\tools\gen-sbom.py --check
 ```
 
