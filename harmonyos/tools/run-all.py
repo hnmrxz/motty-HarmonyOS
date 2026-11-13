@@ -62,7 +62,8 @@ specs = sorted((root / "spec" / "scenarios").glob("*.yaml"))
 if "--quick" in sys.argv:
     specs = [sp for sp in specs if sp.stem in QUICK]
 if only:
-    specs = [sp for sp in specs if sp.stem.startswith(only)]
+    prefixes = [x.strip() for x in only.split(",") if x.strip()]
+    specs = [sp for sp in specs if any(sp.stem.startswith(pf) for pf in prefixes)]
 results = []
 for i, sp in enumerate(specs):
     restart_fixture(sp)

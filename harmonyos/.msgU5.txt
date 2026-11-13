@@ -1,0 +1,12 @@
+﻿feat(harmonyos/settings): 回滚行数设置 + run-all --only 支持多前缀(E2)
+
+实现:
+1) 设置「回滚行数」: settings/scrollback 按钮(+10, 0~100 循环) + settings/scrollback-value 显示;
+   termScrollback 传给 vtScrollBack; DB 持久化; 用例 settings.scrollback
+2) tools/run-all.py: --only 支持逗号分隔多前缀(如 --only vault,settings.tab,logs), 一次跑多条定向回归
+
+阻塞(重要): 电脑重启后模拟器无法启动 —— Emulator.exe 有进程但 hdc list targets 一直为空,
+  -wipe-data 重试也无效, tconn 失败。需要从 DevEco Studio GUI 重新启动模拟器或重建镜像。
+  在此之前所有新增只有 E2。
+
+验证: build SUCCESSFUL + spec/lint 全绿(99 条用例)

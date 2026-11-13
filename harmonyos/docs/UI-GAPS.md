@@ -116,3 +116,15 @@ Output 2 / Share 2 / Shortcuts 1`
 |---|---|---|
 | 设置「侧栏标签」 | `settings/tab-side` 开关；开启后顶部 `tabBar` 隐藏，左侧渲染 `session/tabstrip`（`session-tabv/<id>`、`session-closev/<id>`）；DB 持久化 `tabSide` | `settings.tab-side` |
 
+## Round 116 追加（E2）
+
+| 项 | 实现 | 用例 |
+|---|---|---|
+| 设置「回滚行数」 | `settings/scrollback` 按钮（+10，0~100 循环）+ `settings/scrollback-value` 显示；`termScrollback` 传给 `vtScrollBack`；DB 持久化 | `settings.scrollback` |
+| 工具 | `run-all.py --only` 支持**逗号分隔多前缀**（如 `--only vault,settings.tab,logs`），一次跑多条定向回归 | — |
+
+### 阻塞（重要）
+电脑重启后模拟器**无法启动**：`Emulator.exe` 有进程但 `hdc list targets` 一直为空，
+`-wipe-data` 重试也无效。已确认不是 hdc 端口问题（`tconn` 失败）。
+⇒ 需要从 DevEco Studio GUI 里重新启动模拟器（或重建镜像）；在此之前所有新增只有 E2。
+

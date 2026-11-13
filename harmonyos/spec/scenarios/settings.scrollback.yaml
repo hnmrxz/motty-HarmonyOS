@@ -1,0 +1,62 @@
+schema: 1
+id: settings.scrollback
+title: 设置「回滚行数」：按 10 递增循环 0-100，显示当前值并重启保持
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:nav/settings
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "回滚 [0-9]+|scrollback [0-9]+"
+      withinMs: 8000
+  - action: click
+    target: id:settings/scrollback
+  - action: wait
+    ms: 500
+  - action: click
+    target: id:settings/scrollback
+  - action: wait
+    ms: 500
+  - action: click
+    target: id:settings/close
+  - action: wait
+    ms: 500
+  - action: restart
+  - action: wait
+    ms: 6000
+  - action: click
+    target: id:nav/settings
+  - action: wait
+    ms: 800
+asserts:
+  - kind: screenRegex
+    regex: "回滚 [0-9]+|scrollback [0-9]+"
+    withinMs: 8000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：设置里有回滚行数按钮与当前值显示；点两次后重启，值仍在（DB 持久化）。
+    **不覆盖**：终端实际回滚行数随设置变化（需长输出会话，未断言）、循环到 100 归零。
+deviations:
+  - 只断言"值显示存在且重启后仍在"，不绑定具体数字（初始值取决于设备 DB）。
+notes: >-
+  termScrollback 传给 vtScrollBack，范围 0~100，+10 递增。

@@ -271,6 +271,7 @@ struct Index {
   @State knownResult: string = '';
   @State tabNumbers: boolean = false;
   @State tabSide: boolean = false;
+  @State termScrollback: number = 3;
   @State hoverRow: number = -1;
   @State selectAll: boolean = false;
   @State selectedIds: string[] = [];
@@ -806,7 +807,7 @@ struct Index {
   private refreshTab(vtId: number): void {
     this.termText = mottynapi.vtScreen(vtId);
     this.vtStatus = mottynapi.vtStatus(vtId);
-    this.vtHistory = mottynapi.vtScrollBack(vtId, 3);
+    this.vtHistory = mottynapi.vtScrollBack(vtId, this.termScrollback);
   }
 
   private startSession(cred: Cred, fp: string, label: string): void {
@@ -3849,6 +3850,7 @@ struct Index {
     const dbOrder: string = await this.getUiState('groupOrder');
     const dbFont: string = await this.getUiState('termFontSize');
     const dbTabSide: string = await this.getUiState('tabSide');
+    const dbSb: string = await this.getUiState('termScrollback');
     let lang: string = dbLang;
     let view: string = dbView;
     let sort: string = dbSort;
@@ -3874,6 +3876,8 @@ struct Index {
     const fontN: number = Number.parseInt(dbFont, 10);
     if (fontN >= 10 && fontN <= 24) { this.termFontSize = fontN; }
     this.tabSide = dbTabSide === '1';
+    const sbN: number = Number.parseInt(dbSb, 10);
+    if (sbN >= 0 && sbN <= 100) { this.termScrollback = sbN; }
     hilog.info(DOMAIN, TAG, 'settings loaded lang=%{public}s order=%{public}s',
       this.lang, this.groupOrder.join(','));
   }
@@ -3888,6 +3892,7 @@ struct Index {
     await this.setUiState('groupOrder', this.groupOrder.join('\u0001'));
     await this.setUiState('termFontSize', String(this.termFontSize));
     await this.setUiState('tabSide', this.tabSide ? '1' : '0');
+    await this.setUiState('termScrollback', String(this.termScrollback));
     if (this.prefs === null) { return; }
     try {
       this.prefs.putSync('lang', this.lang);
@@ -3953,7 +3958,12 @@ struct Index {
             .backgroundColor(this.hostView === 'list' ? '#2F6F4F' : '#23262B')
             .fontColor(this.hostView === 'list' ? Color.White : '#C7CBD1')
             .onClick(() => { this.hostView = 'list'; this.savePrefs(); })
-          Button(this.lang === 'zh' ? '侧栏标签' : 'Side tabs')
+          Button(this.lang === 'zh' ? '回滚行数' : 'Scrollback').id('settings/scrollback').height(30).fontSize(12)
+          .backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.termScrollback = this.termScrollback >= 100 ? 0 : this.termScrollback + 10; this.savePrefs(); })
+        Text(this.lang === 'zh' ? '回滚 ' + this.termScrollback : 'scrollback ' + this.termScrollback)
+          .id('settings/scrollback-value').fontSize(11).fontColor('#8A8F98')
+        Button(this.lang === 'zh' ? '侧栏标签' : 'Side tabs')
           .id('settings/tab-side').height(30).fontSize(12)
           .backgroundColor(this.tabSide ? '#2F6F4F' : '#23262B')
           .fontColor(this.tabSide ? Color.White : '#C7CBD1')
