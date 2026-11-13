@@ -1,0 +1,5 @@
+﻿refactor(harmonyos/ui): 终端工具条 11 个按钮统一 height30/fontSize11
+
+之前 terminal/send|resize|scroll-up|scroll-down|selall|copy|ctrl-c|up|down|left|right 无显式高度, 随默认样式漂移
+现在统一, 与面板按钮档一致; UI-GAPS 补"按钮高度档"规范
+验证: check-all.ps1 五项全绿(111 场景)
