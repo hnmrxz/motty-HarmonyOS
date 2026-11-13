@@ -122,6 +122,7 @@ python harmonyos\tools\gen-sbom.py --check
 |---|---|
 | [docs/RUNBOOK.md](docs/RUNBOOK.md) | 构建/测试/夹具/踩坑大全（接手先读） |
 | [docs/REGRESSION.md](docs/REGRESSION.md) | 用例约定、分页规则、全量历史与基线 |
+| [docs/THEME.md](docs/THEME.md) | 深/浅主题：调色板映射与自动化对比度/主题检查 |
 | [docs/UI-PARITY.md](docs/UI-PARITY.md) | 逐轮 UI 对齐记录与字段对照（含每轮教训） |
 | [docs/RDP.md](docs/RDP.md) | RDP 全过程：崩溃根因、自解码、预览、输入 |
 | [docs/RELEASE.md](docs/RELEASE.md) | 上架材料与 arm64 验证指引 |

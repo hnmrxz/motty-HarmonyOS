@@ -5,7 +5,7 @@
 | 项 | 数值 |
 |---|---|
 | 仓库 | `E:\motty-HarmonyOS`（fork，全部新增在 `harmonyos/`） |
-| 用例总数 | **108**（`spec/scenarios/*.yaml`） |
+| 用例总数 | **112**（`spec/scenarios/*.yaml`） |
 | 最近一次完整全量 | **91/91 全绿**（full107，此前连续 15 次全绿） |
 | 当前构建 | `BUILD SUCCESSFUL` |
 | 静态校验 | `lint.py` / `check-ids.py` / `check-paging.py` 全绿 |
@@ -68,4 +68,13 @@
 | 138 | 空态统一：`known/empty` 双语，其余 7 处确认已双语 |
 
 **门禁**：`build SUCCESSFUL`，`lint 全部通过`，`check-ids: dup 0 / 缺失 0`，`check-paging: 0 违规`。
+
+## 附：Round 139~155 的 UI 一致性与主题
+
+- 本地终端说明页、`pageTitle` 统一、6 处死按钮/死图标修复（`view/order`、`aiOpen` 无面板等）
+- 设置面板分区重构（语言/外观/主机列表/终端/启动/关于），表单分区与 placeholder 双语化
+- 按钮/菜单/弹层尺寸收敛（btnPrimary/btnSecondary/btnDanger/menuItem；宽度 420/520/620/680）
+- i18n 清理：英文硬编码标签、中文残留、状态提示、空态
+- **深/浅主题**：`th()` 映射 13+ 组表面与文字色，终端保持深色；见 [THEME.md](THEME.md)
+- 静态门禁扩展到 **7 项**：build / lint / check-ids / check-paging / check-theme / check-contrast / check-actions
 

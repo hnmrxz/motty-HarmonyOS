@@ -1,0 +1,6 @@
+﻿docs(harmonyos): 新增 THEME.md(深/浅调色板映射与自动化保障) + 阶段报告更新到 112 用例
+
+- THEME.md: th() 工作原理、13+ 组调色板映射表、终端保持深色说明、两项自动化(检查主题/对比度)与已知边界
+- README 文档地图增加 THEME.md
+- FINAL-REPORT: 用例数 108->112, 增补 Round139~155 UI 一致性与主题小节(含七项门禁)
+验证: check-all.ps1 七项全绿
