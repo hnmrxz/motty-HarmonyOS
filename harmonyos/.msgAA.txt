@@ -1,0 +1,6 @@
+﻿feat(harmonyos/tabs): 会话标签"未读"圆点(非活动标签收到输出时提示)
+
+- TabInfo 增可选 unread; markUnread(tabId)/clearUnread() 
+- 标签栏未读且非活动时显示琥珀圆点 session-unread/<id>, 放在按钮之前避免坐标抖动
+- 覆盖范围仅演示 vt 输出回调; 真实 SSH shell 流式输出尚未接(已在 UI-GAPS 注明)
+验证: check-all.ps1 七项全绿(115 场景)

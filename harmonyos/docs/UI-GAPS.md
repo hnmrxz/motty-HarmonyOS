@@ -286,3 +286,9 @@ SFTP 面板 / 会话相关的 `creds.get(fixtureKey)` 分支原本在**未连接
 | 日志上限提示 | `reloadLogs()` 最多取 200 条，并置 `logsCapped`；计数处追加「（仅最近 200 条）/ (latest 200 only)」 |
 | SFTP 路径校验 | `requireSftpPath()`：路径为空时把提示写进 `sftp/status`（「请先填写远端路径」），已接入 `refreshListing()` 与 `goUp()` |
 
+## Round 165 追加（E2）：会话标签「未读」指示
+
+- `TabInfo` 增加可选 `unread`；`markUnread(tabId)` 在**非活动标签**收到输出时置位，`clearUnread()` 在切换标签时清除
+- 标签栏在未读且非活动时显示琥珀色圆点 `session-unread/<id>`（放在标签按钮**前面**，避免按钮坐标抖动 —— 这是本工程踩过的坑）
+- 覆盖范围：目前只挂在演示 vt 输出回调（`kind=vt/vt2/demo`）上；真实 SSH shell 的流式输出走另一条路径，尚未接
+

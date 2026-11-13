@@ -141,6 +141,7 @@ interface TabInfo {
   label: string;
   shellId: number;
   vtId: number;
+  unread?: boolean;
 }
 
 interface HostRow {
@@ -825,6 +826,28 @@ struct Index {
     });
   }
 
+
+  // 标记某标签"有新输出"（仅当它不是当前活动标签时）
+  private markUnread(tabId: string): void {
+    if (this.activeId === tabId) { return; }
+    const next: TabInfo[] = [];
+    for (let i = 0; i < this.tabs.length; i++) {
+      const t = this.tabs[i];
+      next.push(t.id === tabId ? { id: t.id, label: t.label, shellId: t.shellId, vtId: t.vtId, unread: true } : t);
+    }
+    this.tabs = next;
+  }
+
+  // 切到某标签时清掉未读点
+  private clearUnread(tabId: string): void {
+    const next: TabInfo[] = [];
+    for (let i = 0; i < this.tabs.length; i++) {
+      const t = this.tabs[i];
+      next.push(t.unread ? { id: t.id, label: t.label, shellId: t.shellId, vtId: t.vtId, unread: false } : t);
+    }
+    this.tabs = next;
+  }
+
   private refreshTab(vtId: number): void {
     this.termText = mottynapi.vtScreen(vtId);
     this.vtStatus = mottynapi.vtStatus(vtId);
@@ -911,6 +934,8 @@ struct Index {
           } else {
             this.refreshTab(vtId);
           }
+        } else {
+          this.markUnread(tabId);
         }
       },
       (status: string) => {
@@ -942,6 +967,7 @@ struct Index {
         this.activeId = tabId;
         this.shellId = this.tabs[i].shellId;
         this.showHosts = false;
+        this.clearUnread(tabId);
         this.refreshTab(this.tabs[i].vtId);
         return;
       }
@@ -2816,6 +2842,10 @@ struct Index {
         Row({ space: 6 }) {
           ForEach(this.tabs, (t: TabInfo) => {
             Row({ space: 4 }) {
+              if (t.unread === true && this.activeId !== t.id) {
+                Text('\u2022').id('session-unread/' + t.id).fontSize(14)
+                  .fontColor('#E0A458').width(8)
+              }
               Button(t.label)
                 .id('session-tab/' + t.id)
                 .backgroundColor(this.activeId === t.id ? '#1A6DD0' : '#E6E6E6')
