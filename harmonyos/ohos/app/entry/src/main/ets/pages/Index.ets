@@ -294,6 +294,7 @@ struct Index {
   @State logsQuery: string = '';
   @State logsProto: string = '';
   @State logsHost: string = '';
+  @State notesQuery: string = '';
   @State logsExport: string = '';
   @State snippets: SnippetItem[] = [];
   @State notes: NoteItem[] = [];
@@ -4824,6 +4825,14 @@ struct Index {
 
 
   // ---------------- 笔记页（自研扩展，上游导航无此项） ----------------
+
+  private notesFiltered(): NoteItem[] {
+    const q: string = this.notesQuery.trim().toLowerCase();
+    if (q.length === 0) { return this.notes; }
+    return this.notes.filter((it: NoteItem) =>
+      it.title.toLowerCase().indexOf(q) >= 0 || it.body.toLowerCase().indexOf(q) >= 0);
+  }
+
   @Builder
   notesPage() {
     Column({ space: 10 }) {
@@ -4835,12 +4844,21 @@ struct Index {
           .backgroundColor(this.th('#E8EAED')).fontColor('#12141A')
           .onClick(() => { this.openNoteNew(); })
       }.width('100%')
-      if (this.notes.length === 0) {
-        Text(this.lang === 'zh' ? '还没有笔记' : 'No notes yet').id('note/empty')
+      Row({ space: 10 }) {
+        TextInput({ placeholder: this.lang === 'zh' ? '搜索标题或内容' : 'search title or body' })
+          .id('note/search').height(34).fontSize(12).layoutWeight(1)
+          .onChange((v: string) => { this.notesQuery = v; })
+        Text(this.notesFiltered().length + ' / ' + this.notes.length)
+          .id('note/count').fontSize(11).fontColor(this.th('#6B7078'))
+      }.width('100%')
+      if (this.notesFiltered().length === 0) {
+        Text(this.notesQuery.trim().length > 0
+          ? (this.lang === 'zh' ? '没有匹配的笔记' : 'No matching notes')
+          : (this.lang === 'zh' ? '还没有笔记' : 'No notes yet')).id('note/empty')
           .fontSize(13).fontColor(this.th('#6B7078')).width('100%').padding({ top: 50 })
       }
       List({ space: 6 }) {
-        ForEach(this.notes, (it: NoteItem, idx: number) => {
+        ForEach(this.notesFiltered(), (it: NoteItem, idx: number) => {
           ListItem() {
             Row({ space: 12 }) {
               Column({ space: 3 }) {

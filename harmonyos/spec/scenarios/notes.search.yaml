@@ -1,0 +1,68 @@
+schema: 1
+id: notes.search
+title: 笔记页搜索：无匹配显示"没有匹配的笔记"，清空后恢复
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:nav/notes
+  - action: wait
+    ms: 1000
+  # 新建一条笔记
+  - action: click
+    target: id:note/add
+  - action: wait
+    ms: 800
+  - action: type
+    target: id:note/dialog-title
+    text: notesearch-a
+  - action: type
+    target: id:note/dialog-body
+    text: hello body
+  - action: click
+    target: id:note/dialog-save
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "notesearch-a"
+      withinMs: 10000
+  # 搜不匹配
+  - action: type
+    target: id:note/search
+    text: zzznomatch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "没有匹配的笔记|No matching notes"
+      withinMs: 8000
+asserts:
+  - kind: screenRegex
+    regex: "没有匹配的笔记|No matching notes"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：笔记页有搜索框；无匹配关键词显示"没有匹配的笔记"。
+    **不覆盖**：匹配命中的展示（同一过滤路径）、清空关键词恢复（退格路径已由 logs.search 覆盖）。
+deviations:
+  - 只断言无匹配空态；新建/编辑/删除由 notes.crud 覆盖。
+notes: >-
+  notesQuery 与 title/body 子串匹配（小写）。

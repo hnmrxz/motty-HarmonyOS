@@ -1,0 +1,6 @@
+﻿feat(harmonyos/notes): 笔记页搜索过滤 + 用例(E2)
+
+- 新增 notesQuery 与 notesFiltered(): 按标题/正文子串(小写)过滤
+- UI: note/search 搜索框 + note/count "匹配/总数"; 空态区分"没有匹配的笔记"与"还没有笔记"
+- 用例 notes.search: 新建笔记 -> 搜不匹配 -> 断言"没有匹配的笔记"
+验证: check-all.ps1 七项全绿(113 场景)
