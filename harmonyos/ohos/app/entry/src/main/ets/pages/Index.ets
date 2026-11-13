@@ -2152,29 +2152,29 @@ struct Index {
     Column({ space: 10 }) {
       Text(this.editingId.length > 0 ? '编辑主机' : '新建主机')
         .id('hostform/title').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#E8EAED').width('100%')
-      Text('名称').fontSize(12).fontColor('#8A8F98').width('100%')
+      Text(this.lang === 'zh' ? '名称' : 'Name').fontSize(12).fontColor('#8A8F98').width('100%')
       TextInput({ placeholder: '显示在主机列表中', text: this.formLabel }).id('shell/dialog-label').width('100%')
         .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
         .onChange((v: string) => { this.formLabel = v; })
-      Text('地址').fontSize(12).fontColor('#8A8F98').width('100%')
+      Text(this.lang === 'zh' ? '地址' : 'Address').fontSize(12).fontColor('#8A8F98').width('100%')
       TextInput({ placeholder: '主机名或 IP', text: this.formAddress }).id('shell/dialog-address').width('100%')
         .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
         .onChange((v: string) => { this.formAddress = v; })
       Row({ space: 10 }) {
         Column({ space: 4 }) {
-          Text('用户').fontSize(12).fontColor('#8A8F98').width('100%')
+          Text(this.lang === 'zh' ? '用户' : 'User').fontSize(12).fontColor('#8A8F98').width('100%')
           TextInput({ placeholder: '登录账户', text: this.formUser }).id('shell/dialog-user').width('100%')
             .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
             .onChange((v: string) => { this.formUser = v; })
         }.layoutWeight(2)
         Column({ space: 4 }) {
-          Text('端口').fontSize(12).fontColor('#8A8F98').width('100%')
+          Text(this.lang === 'zh' ? '端口' : 'Port').fontSize(12).fontColor('#8A8F98').width('100%')
           TextInput({ placeholder: '22', text: this.formPort }).id('shell/dialog-port').width('100%').type(InputType.Number)
             .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
             .onChange((v: string) => { this.formPort = v; })
         }.layoutWeight(1)
       }.width('100%')
-      Text('密码').fontSize(12).fontColor('#8A8F98').width('100%')
+      Text(this.lang === 'zh' ? '密码' : 'Password').fontSize(12).fontColor('#8A8F98').width('100%')
       TextInput({ placeholder: this.editingId.length > 0 ? '留空则保留' : '可选 · 加密保存', text: this.formPassword })
         .id('shell/dialog-password').width('100%').type(InputType.Password)
         .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
@@ -2196,10 +2196,10 @@ struct Index {
       }.width('100%')
       Row({ space: 10 }) {
         Column({ space: 4 }) {
-          Text('分组').fontSize(12).fontColor('#8A8F98').width('100%')
+          Text(this.lang === 'zh' ? '分组' : 'Group').fontSize(12).fontColor('#8A8F98').width('100%')
           Row({ space: 8 }) {
-          Text('图标').fontSize(12).fontColor('#8A8F98')
-          Text('无').id('hostform/icon-none').fontSize(12)
+          Text(this.lang === 'zh' ? '图标' : 'Icon').fontSize(12).fontColor('#8A8F98')
+          Text(this.lang === 'zh' ? '无' : 'None').id('hostform/icon-none').fontSize(12)
             .fontColor(this.formIcon.length === 0 ? '#12141A' : '#C7CBD1')
             .backgroundColor(this.formIcon.length === 0 ? '#E8EAED' : '#1E2127')
             .padding({ left: 8, right: 8, top: 4, bottom: 4 }).borderRadius(12)
@@ -2231,7 +2231,7 @@ struct Index {
             .onClick(() => { this.formIcon = 'bolt'; })
         }.width('100%').justifyContent(FlexAlign.Start)
         Row({ space: 8 }) {
-          Text('协议').fontSize(12).fontColor('#8A8F98')
+          Text(this.lang === 'zh' ? '协议' : 'Protocol').fontSize(12).fontColor('#8A8F98')
           Text('SSH').id('hostform/proto-ssh').fontSize(12)
             .fontColor(this.formProto === 'ssh' ? '#12141A' : '#C7CBD1')
             .backgroundColor(this.formProto === 'ssh' ? '#E8EAED' : '#1E2127')
@@ -2253,13 +2253,13 @@ struct Index {
             .onChange((v: string) => { this.formGroup = v; })
         }.layoutWeight(1)
         Column({ space: 4 }) {
-          Text('标签').fontSize(12).fontColor('#8A8F98').width('100%')
+          Text(this.lang === 'zh' ? '标签' : 'Tags').fontSize(12).fontColor('#8A8F98').width('100%')
           TextInput({ placeholder: '开发,测试,生产', text: this.formTags }).id('shell/dialog-tags').width('100%')
             .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
             .onChange((v: string) => { this.formTags = v; })
         }.layoutWeight(1)
       }.width('100%')
-      Text('颜色').fontSize(12).fontColor('#8A8F98').width('100%')
+      Text(this.lang === 'zh' ? '颜色' : 'Color').fontSize(12).fontColor('#8A8F98').width('100%')
       Row({ space: 8 }) {
         ForEach(this.colorChoices(), (c: string) => {
           Row()
@@ -3031,7 +3031,7 @@ struct Index {
           .backgroundColor('#1E2127').fontColor('#9AA0A6')
           .onClick(() => { this.toggleLang(); })
         Blank()
-        Text('RDP: 实验').id('rdp/experimental-badge').fontSize(10).fontColor('#E0A458')
+        Text(this.lang === 'zh' ? 'RDP: 实验' : 'RDP: exp').id('rdp/experimental-badge').fontSize(10).fontColor('#E0A458')
       }.width('100%').padding({ left: 12, right: 12, top: 6, bottom: 12 })
     }
     .width(210).height('100%').backgroundColor('#101114')
@@ -4627,7 +4627,7 @@ struct Index {
   commandPalette() {
     Column({ space: 8 }) {
       Row() {
-        Text('命令面板').id('palette/title').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Text(this.lang === 'zh' ? '命令面板' : 'Command palette').id('palette/title').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
         Blank()
         Button('✕').id('palette/close').height(26).width(30).fontSize(12)
           .backgroundColor('#23262B').fontColor('#C7CBD1')
@@ -4641,7 +4641,7 @@ struct Index {
         .backgroundColor('#23262B').fontColor('#E8EAED').placeholderColor('#6B7078')
         .onChange((v: string) => { this.paletteQuery = v; })
       if (this.paletteLabels().length === 0) {
-        Text('没有匹配的命令').id('palette/empty').fontSize(12).fontColor('#6B7078')
+        Text(this.lang === 'zh' ? '没有匹配的命令' : 'No matching commands').id('palette/empty').fontSize(12).fontColor('#6B7078')
           .width('100%').padding({ top: 12 })
       }
       List({ space: 2 }) {
