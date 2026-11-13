@@ -190,3 +190,21 @@ Output 2 / Share 2 / Shortcuts 1`
 - 已把 `hostMoreMenu`（打开/编辑/删除）、`tabRenameDialog`、`vaultAddDialog` 的 7 个按钮改为使用它们（id/文案不变）
 - `check-ids` 增强：识别通过 `btnPrimary/btnSecondary/btnDanger/settingsOpt` 参数传入的 id
 
+## 样式约定（后续开发照此执行）
+
+| 类别 | 约定 |
+|---|---|
+| 页标题 | `this.pageTitle(text, id)`：`fs(16) / Bold / #E8EAED` |
+| 分区标题 | `fs(11~12) / #8A8F98`（设置用 `settingsSection`，表单用 11 号 `#6B7078`） |
+| 主操作按钮 | `btnPrimary(label, id, onTap)`：`#2F6F4F` / 白字 / h30 / fs12 |
+| 次操作按钮 | `btnSecondary(...)`：`#23262B` / `#C7CBD1` |
+| 危险操作 | `btnDanger(...)`：`#3A2226` / `#E08A8A` |
+| 菜单项 | `menuItem(...)` / `menuItemDanger(...)`：宽 100% / h30 / fs13 |
+| 选项按钮（设置） | `settingsOpt(label, id, active, onTap)`：激活 `#2F6F4F`，否则 `#23262B` |
+| 页面容器 | 二级页面统一 `padding(left 22, right 22, top 10)`、`width/height 100%` |
+| 文案 | 一律 `lang === 'zh' ? … : …` 或 `t('key')`；**不允许**只写中文或只写英文 |
+| 弹层关闭 | 统一 `this.t('common.close')`；保存统一 `this.t('common.save')` |
+| 图标按钮 | 只用于"工具栏/行内快捷"，必须 `id` + `onClick`（`check-actions.py` 会拦） |
+
+> 自动化门禁：`check-all.ps1` = build + lint + check-ids + check-paging + check-actions。
+

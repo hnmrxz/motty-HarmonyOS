@@ -5469,7 +5469,7 @@ struct Index {
         .onChange((v: string) => { this.vaultPw = v; })
       Row({ space: 12 }) {
         this.btnSecondary(this.t('hostkey.cancel'), 'vaultadd/cancel', () => { this.vaultAddOpen = false; })
-        this.btnPrimary(this.lang === 'zh' ? '保存' : 'Save', 'vaultadd/save', () => { this.saveVaultEntry(); })
+        this.btnPrimary(this.t('common.save'), 'vaultadd/save', () => { this.saveVaultEntry(); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
     .id('vaultadd/dialog').width(420).padding(18).backgroundColor('#1C1F24').borderRadius(12)
@@ -5487,7 +5487,7 @@ struct Index {
         .onChange((v: string) => { this.tabRenameText = v; })
       Row({ space: 12 }) {
         this.btnSecondary(this.t('hostkey.cancel'), 'tabrename/cancel', () => { this.tabRenameOpen = false; })
-        this.btnPrimary(this.lang === 'zh' ? '保存' : 'Save', 'tabrename/save', () => { this.submitTabRename(); })
+        this.btnPrimary(this.t('common.save'), 'tabrename/save', () => { this.submitTabRename(); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
     .id('tabrename/dialog').width(400).padding(18).backgroundColor('#1C1F24').borderRadius(12)

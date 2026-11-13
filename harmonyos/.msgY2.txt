@@ -1,0 +1,6 @@
+﻿docs+refactor(harmonyos/ui): 保存按钮统一 t(common.save); UI-GAPS 增加"样式约定"小节
+
+- vaultadd/save 与 tabrename/save 由 lang 三元改为 t('common.save'), 全库统一
+- UI-GAPS 新增样式约定表: 页标题/分区标题/主次危险按钮/菜单项/选项按钮/页面容器/文案/弹层关闭/图标按钮
+  并注明自动化门禁 check-all.ps1 五项
+验证: check-all.ps1 全绿(111 场景)
