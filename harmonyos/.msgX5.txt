@@ -1,0 +1,7 @@
+﻿feat(harmonyos/ui): 主机页"视图选项"菜单(修复 view/order 死图标) + 用例
+
+- view/order 之前无 onClick(死图标); 现打开自绘 viewmenu/panel:
+  列表视图/网格视图/切换排序/显示最近连接(带勾)/显示会话计数(带勾)/关闭
+- 用例 ui.view-options: 打开菜单 -> 点网格视图 -> 菜单关闭
+验证: check-all.ps1 全绿(111 场景)
+另: 脚本审计 13 处"疑似无行为交互"中, hosts/import-export 用 bindMenu(正常), 其余为检测窗口过短误报

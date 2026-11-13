@@ -278,6 +278,7 @@ struct Index {
   @State settingsReset: string = '';
   @State toolbarHint: string = '';
   @State uiScaleKey: string = 'regular';
+  @State viewMenuOpen: boolean = false;
   @State aiOpen: boolean = false;
   @State tabRenameOpen: boolean = false;
   @State tabRenameId: string = '';
@@ -3139,6 +3140,7 @@ struct Index {
       Image($r('app.media.ic_sort')).id('view/sort').width(16).height(16)
         .onClick(() => { this.hostSort = this.hostSort === 'manual' ? 'name' : (this.hostSort === 'name' ? 'ip' : 'manual'); this.savePrefs(); })
       Image($r('app.media.ic_sliders')).id('view/order').width(16).height(16)
+        .onClick(() => { this.viewMenuOpen = true; })
     }.width('100%').padding({ left: 22, right: 22, bottom: 8 })
   }
 
@@ -5566,6 +5568,39 @@ struct Index {
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 
+
+  // 主机页"视图选项"菜单（自绘，可被用例点击）
+  @Builder
+  viewOptionsMenu() {
+    Column({ space: 2 }) {
+      Button(this.lang === 'zh' ? '列表视图' : 'List view').id('viewmenu/list').width('100%').fontSize(13)
+        .backgroundColor('#23262B').fontColor('#C7CBD1')
+        .onClick(() => { this.hostView = 'list'; this.savePrefs(); this.viewMenuOpen = false; })
+      Button(this.lang === 'zh' ? '网格视图' : 'Grid view').id('viewmenu/grid').width('100%').fontSize(13)
+        .backgroundColor('#23262B').fontColor('#C7CBD1')
+        .onClick(() => { this.hostView = 'grid'; this.savePrefs(); this.viewMenuOpen = false; })
+      Button(this.lang === 'zh' ? '切换排序' : 'Cycle sort').id('viewmenu/sort').width('100%').fontSize(13)
+        .backgroundColor('#23262B').fontColor('#C7CBD1')
+        .onClick(() => {
+          this.hostSort = this.hostSort === 'manual' ? 'name' : (this.hostSort === 'name' ? 'ip' : 'manual');
+          this.savePrefs(); this.viewMenuOpen = false;
+        })
+      Button((this.showLastUsed ? '✓ ' : '') + (this.lang === 'zh' ? '显示最近连接' : 'Show last used'))
+        .id('viewmenu/lastused').width('100%').fontSize(13)
+        .backgroundColor('#23262B').fontColor('#C7CBD1')
+        .onClick(() => { this.showLastUsed = !this.showLastUsed; this.savePrefs(); })
+      Button((this.showTabCount ? '✓ ' : '') + (this.lang === 'zh' ? '显示会话计数' : 'Show tab count'))
+        .id('viewmenu/tabcount').width('100%').fontSize(13)
+        .backgroundColor('#23262B').fontColor('#C7CBD1')
+        .onClick(() => { this.showTabCount = !this.showTabCount; this.savePrefs(); })
+      Button(this.t('common.close')).id('viewmenu/close').width('100%').fontSize(12)
+        .backgroundColor('#1E2127').fontColor('#8A8F98')
+        .onClick(() => { this.viewMenuOpen = false; })
+    }
+    .id('viewmenu/panel').width(200).padding(10).backgroundColor('#1C1F24').borderRadius(10)
+    .shadow({ radius: 20, color: '#66000000', offsetY: 6 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -5682,6 +5717,10 @@ struct Index {
       if (this.rdpSessionOpen) {
         Column().width('100%').height('100%').backgroundColor('#CC000000').onClick(() => {})
         this.rdpSessionView()
+      }
+      if (this.viewMenuOpen) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => { this.viewMenuOpen = false; })
+        this.viewOptionsMenu()
       }
       if (this.aiOpen) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => { this.aiOpen = false; })
