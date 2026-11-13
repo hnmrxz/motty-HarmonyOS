@@ -1,0 +1,5 @@
+﻿docs+fix(harmonyos): known/empty 双语 + 同步用例 + FINAL-REPORT 更新(108 用例与 129~138 UI 收尾清单)
+
+- known/empty 改双语; knownhosts.clear 断言扩成含"还没有已信任的主机"
+- FINAL-REPORT: 用例数 105->108, 补 Round129~138 UI 一致性收尾表(顶栏/菜单/hover/check-all/字号/i18n/空态)
+验证: check-all.ps1 全绿

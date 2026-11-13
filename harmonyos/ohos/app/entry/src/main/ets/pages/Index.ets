@@ -2676,7 +2676,7 @@ struct Index {
             }.width('100%').padding(6).backgroundColor('#FAFAFA').borderRadius(6)
           }, (key: string) => key)
           if (this.knownKeys.length === 0) {
-            Text('(no trusted hosts)').id('known/empty').fontSize(12).fontColor('#999999').width('100%')
+            Text(this.lang === 'zh' ? '还没有已信任的主机' : '(no trusted hosts)').id('known/empty').fontSize(12).fontColor('#999999').width('100%')
           }
         }.width('100%').alignItems(HorizontalAlign.Start)
       }.height(200).width('100%').border({ width: 1, color: '#DDDDDD' }).padding(8)

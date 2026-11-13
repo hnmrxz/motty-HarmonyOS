@@ -32,7 +32,7 @@ steps:
     ms: 800
     expect:
       kind: screenRegex
-      regex: "no trusted hosts|没有已知主机|无已知主机"
+      regex: "no trusted hosts|没有已知主机|无已知主机|还没有已信任的主机"
       withinMs: 8000
   - action: click
     target: id:known/close
@@ -100,11 +100,11 @@ steps:
     ms: 900
     expect:
       kind: screenRegex
-      regex: "no trusted hosts|没有已知主机|无已知主机"
+      regex: "no trusted hosts|没有已知主机|无已知主机|还没有已信任的主机"
       withinMs: 10000
 asserts:
   - kind: screenRegex
-    regex: "no trusted hosts|没有已知主机|无已知主机"
+    regex: "no trusted hosts|没有已知主机|无已知主机|还没有已信任的主机"
     withinMs: 8000
 evidence:
   png: true
