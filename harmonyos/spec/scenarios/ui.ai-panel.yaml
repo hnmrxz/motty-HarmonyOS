@@ -1,0 +1,46 @@
+schema: 1
+id: ui.ai-panel
+title: 顶栏 AI 面板：打开显示端点与空态，可关闭
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:top/ai
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "AI"
+      withinMs: 8000
+asserts:
+  - kind: screenRegex
+    regex: "还没有回答|no answer yet"
+    withinMs: 6000
+  - kind: screenRegex
+    regex: "提问|Ask"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：顶栏 AI 图标打开面板，显示端点、提问按钮与空态回答区。
+    **不覆盖**：真实提问往返（需要可用 AI 端点，本地默认端点通常不通）与回答渲染。
+deviations:
+  - 只断言面板结构与空态，不发真实 AI 请求（避免依赖外部端点可用性）。
+notes: >-
+  aiOpen 之前只被置位没有面板，本轮补上 ai/panel。

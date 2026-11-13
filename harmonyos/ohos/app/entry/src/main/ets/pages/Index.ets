@@ -5532,6 +5532,40 @@ struct Index {
     .shadow({ radius: 20, color: '#66000000', offsetY: 6 })
   }
 
+
+  // AI 面板（顶栏 top/ai 的落地）：用当前终端尾部内容作为上下文提问
+  @Builder
+  aiPanel() {
+    Column({ space: 10 }) {
+      Row({ space: 10 }) {
+        this.pageTitle('AI', 'ai/title')
+        Blank()
+        Button(this.t('common.close')).id('ai/close').height(28).fontSize(12)
+          .backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.aiOpen = false; })
+      }.width('100%')
+      Text(this.lang === 'zh'
+        ? '把当前终端最近 200 个字符作为上下文，POST 到设置里的 AI 端点。'
+        : 'Sends the last 200 characters of the terminal to the configured AI endpoint.')
+        .id('ai/hint').fontSize(this.fs(12)).fontColor('#8A8F98').width('100%')
+      Row({ space: 10 }) {
+        Button(this.lang === 'zh' ? '提问' : 'Ask').id('ai/send').height(32).fontSize(12)
+          .backgroundColor('#6A1B9A').fontColor(Color.White)
+          .onClick(() => { this.askAI().catch((e: BusinessError) => { this.aiAnswer = 'ai: error'; }); })
+        Text(this.aiEndpoint).id('ai/endpoint').fontSize(10).fontFamily('monospace')
+          .fontColor('#6B7078').layoutWeight(1).maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+      }.width('100%')
+      Scroll() {
+        Text(this.aiAnswer.length > 0 ? this.aiAnswer : (this.lang === 'zh' ? '(还没有回答)' : '(no answer yet)'))
+          .id('ai/panel-answer').fontSize(12).fontFamily('monospace').fontColor('#C7CBD1').width('100%')
+      }.height(160).width('100%').border({ width: 1, color: '#22252A' }).padding(8)
+      .align(Alignment.TopStart).id('ai/answer-box')
+    }
+    .id('ai/panel').width(560).padding(18).backgroundColor('#1C1F24').borderRadius(12)
+    .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -5648,6 +5682,10 @@ struct Index {
       if (this.rdpSessionOpen) {
         Column().width('100%').height('100%').backgroundColor('#CC000000').onClick(() => {})
         this.rdpSessionView()
+      }
+      if (this.aiOpen) {
+        Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => { this.aiOpen = false; })
+        this.aiPanel()
       }
       if (this.hostMenuIndex >= 0) {
         Column().width('100%').height('100%').backgroundColor('#66000000').onClick(() => { this.hostMenuIndex = -1; })

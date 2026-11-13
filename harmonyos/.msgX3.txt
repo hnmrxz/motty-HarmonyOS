@@ -1,0 +1,6 @@
+﻿feat(harmonyos/ui): 顶栏 AI 面板落地(之前 aiOpen 只置位无面板) + 用例
+
+- aiPanel: ai/title|hint|endpoint|send|answer-box|panel-answer|close; 用终端尾部 200 字符为上下文调 askAI()
+- 与终端里的 ai/answer 区分: 面板内为 ai/panel-answer (避免重复 id)
+用例 ui.ai-panel: 顶栏 AI 图标打开面板 -> 断言空态与提问按钮
+验证: check-all.ps1 全绿(110 场景, dup 0)
