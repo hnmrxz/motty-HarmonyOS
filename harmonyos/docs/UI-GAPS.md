@@ -208,3 +208,15 @@ Output 2 / Share 2 / Shortcuts 1`
 
 > 自动化门禁：`check-all.ps1` = build + lint + check-ids + check-paging + check-actions。
 
+## Round 149 追加（E2）：弹层宽度收敛成 4 档
+
+| 档位 | 宽度 | 用于 |
+|---|---|---|
+| 菜单 | 200 / 220 | `hostmenu`、`viewmenu`、`groupmenu` |
+| 小 | 420 | 重命名/删除确认、`hostdetail`、`tabrename`、`vaultadd` |
+| 中 | 520 | `settings`、`palette`、`note`、`ai`、`hostkey`、`snippet`、`knowndel`、`vaultdel` |
+| 大 | 620 | `host-form`、`known` |
+| 超大 | 680 | `sftp`、`fwd`、`diag`、`vnc` |
+
+本轮调整 10 处（460→420、400→420、480→420、560→520、700→680），使同一类弹层宽度一致。
+

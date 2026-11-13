@@ -1,0 +1,4 @@
+﻿refactor(harmonyos/ui): 弹层宽度收敛为 4 档(菜单200/220, 小420, 中520, 大620, 超大680)
+
+调整 10 处: grouprename/groupdel/hostdetail/tabrename/hostdel -> 420; settings/palette/note/ai -> 520; vnc -> 680
+验证: check-all.ps1 五项全绿(111 场景)

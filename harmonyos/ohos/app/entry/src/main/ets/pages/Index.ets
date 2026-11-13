@@ -2591,7 +2591,7 @@ struct Index {
       Text(this.vncFrameInfo.length > 0 ? this.vncFrameInfo : 'frame: (none)')
         .id('vnc/frame').fontSize(11).fontFamily('monospace').width('100%')
     }
-    .id('vnc/panel').width(700).padding(16).backgroundColor(Color.White).borderRadius(12)
+    .id('vnc/panel').width(680).padding(16).backgroundColor(Color.White).borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
 
@@ -2609,7 +2609,7 @@ struct Index {
           .onClick(() => { this.confirmDeleteHost(); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
-    .id('hostdel/dialog').width(480).padding(20).backgroundColor('#1C1F24').borderRadius(12)
+    .id('hostdel/dialog').width(420).padding(20).backgroundColor('#1C1F24').borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
 
@@ -4118,7 +4118,7 @@ struct Index {
       }.alignItems(HorizontalAlign.Start).width('100%')
     }
     .id('settings/panel')
-    .width(560).padding(20).backgroundColor('#1C1F24').borderRadius(14)
+    .width(520).padding(20).backgroundColor('#1C1F24').borderRadius(14)
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 
@@ -4714,7 +4714,7 @@ struct Index {
     .id('palette/panel')
     .focusable(true)
     .onKeyEvent((e: KeyEvent) => { this.paletteKey(e); })
-    .width(560).height(420).padding(16).backgroundColor('#1C1F24').borderRadius(12)
+    .width(520).height(420).padding(16).backgroundColor('#1C1F24').borderRadius(12)
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 
@@ -4857,7 +4857,7 @@ struct Index {
           .onClick(() => { this.submitNote(); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
-    .id('note/dialog').width(560).padding(20).backgroundColor('#1C1F24').borderRadius(14)
+    .id('note/dialog').width(520).padding(20).backgroundColor('#1C1F24').borderRadius(14)
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 
@@ -5288,7 +5288,7 @@ struct Index {
           .onClick(() => { this.submitRenameGroup(); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
-    .id('grouprename/dialog').width(460).padding(20).backgroundColor('#1C1F24').borderRadius(12)
+    .id('grouprename/dialog').width(420).padding(20).backgroundColor('#1C1F24').borderRadius(12)
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 
@@ -5311,7 +5311,7 @@ struct Index {
           .onClick(() => { this.confirmDeleteGroup(); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
-    .id('groupdel/dialog').width(460).padding(20).backgroundColor('#1C1F24').borderRadius(12)
+    .id('groupdel/dialog').width(420).padding(20).backgroundColor('#1C1F24').borderRadius(12)
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 
@@ -5435,7 +5435,7 @@ struct Index {
         }.width('100%').justifyContent(FlexAlign.End).margin({ top: 6 })
       }
     }
-    .id('hostdetail/panel').width(460).padding(18).backgroundColor('#1C1F24').borderRadius(12)
+    .id('hostdetail/panel').width(420).padding(18).backgroundColor('#1C1F24').borderRadius(12)
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 
@@ -5490,7 +5490,7 @@ struct Index {
         this.btnPrimary(this.t('common.save'), 'tabrename/save', () => { this.submitTabRename(); })
       }.width('100%').justifyContent(FlexAlign.End)
     }
-    .id('tabrename/dialog').width(400).padding(18).backgroundColor('#1C1F24').borderRadius(12)
+    .id('tabrename/dialog').width(420).padding(18).backgroundColor('#1C1F24').borderRadius(12)
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 
@@ -5546,7 +5546,7 @@ struct Index {
       }.height(160).width('100%').border({ width: 1, color: '#22252A' }).padding(8)
       .align(Alignment.TopStart).id('ai/answer-box')
     }
-    .id('ai/panel').width(560).padding(18).backgroundColor('#1C1F24').borderRadius(12)
+    .id('ai/panel').width(520).padding(18).backgroundColor('#1C1F24').borderRadius(12)
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 
