@@ -179,3 +179,8 @@ Output 2 / Share 2 / Shortcuts 1`
 
 `check-ids` 同步增强：识别通过 `@Builder` 参数传入的 id（如 `settingsOpt(label, 'settings/x', ...)`）。
 
+## Round 145 追加（E2）：主机表单 i18n + 分区
+
+- 表单 6 个中文 placeholder 全部双语化（显示名/主机名或 IP/登录账户/密码提示/标签示例/分组提示）
+- 表单加入两个分区标题：**基础**（名称/地址/凭据）、**外观与归类**（分组/图标/协议/标签/颜色）
+
