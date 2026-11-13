@@ -278,6 +278,7 @@ struct Index {
   @State termFontSize: number = 13;
   @State logs: LogItem[] = [];
   @State logsQuery: string = '';
+  @State logsProto: string = '';
   @State logsExport: string = '';
   @State snippets: SnippetItem[] = [];
   @State notes: NoteItem[] = [];
@@ -4014,11 +4015,13 @@ struct Index {
   // 会话日志过滤：按 label / address / proto 子串（不区分大小写的简单版本）
   private logsFiltered(): LogItem[] {
     const q: string = this.logsQuery.trim().toLowerCase();
-    if (q.length === 0) { return this.logs; }
-    return this.logs.filter((it: LogItem) =>
-      it.label.toLowerCase().indexOf(q) >= 0 ||
-      it.address.toLowerCase().indexOf(q) >= 0 ||
-      it.proto.toLowerCase().indexOf(q) >= 0);
+    return this.logs.filter((it: LogItem) => {
+      if (this.logsProto.length > 0 && it.proto !== this.logsProto) { return false; }
+      if (q.length === 0) { return true; }
+      return it.label.toLowerCase().indexOf(q) >= 0 ||
+        it.address.toLowerCase().indexOf(q) >= 0 ||
+        it.proto.toLowerCase().indexOf(q) >= 0;
+    });
   }
 
   private async clearLogs(): Promise<void> {
@@ -4154,6 +4157,26 @@ struct Index {
           Text(this.logsFiltered().length + ' / ' + this.logs.length)
             .id('logs/count').fontSize(11).fontColor('#6B7078')
         }.width('100%')
+      Row({ space: 8 }) {
+        Button('ALL').id('logs/proto-all').height(26).fontSize(11)
+          .backgroundColor(this.logsProto.length === 0 ? '#2F6F4F' : '#23262B')
+          .fontColor(this.logsProto.length === 0 ? Color.White : '#C7CBD1')
+          .onClick(() => { this.logsProto = ''; })
+        Button('SSH').id('logs/proto-ssh').height(26).fontSize(11)
+          .backgroundColor(this.logsProto === 'ssh' ? '#2F6F4F' : '#23262B')
+          .fontColor(this.logsProto === 'ssh' ? Color.White : '#C7CBD1')
+          .onClick(() => { this.logsProto = 'ssh'; })
+        Button('RDP').id('logs/proto-rdp').height(26).fontSize(11)
+          .backgroundColor(this.logsProto === 'rdp' ? '#2F6F4F' : '#23262B')
+          .fontColor(this.logsProto === 'rdp' ? Color.White : '#C7CBD1')
+          .onClick(() => { this.logsProto = 'rdp'; })
+        Button('VNC').id('logs/proto-vnc').height(26).fontSize(11)
+          .backgroundColor(this.logsProto === 'vnc' ? '#2F6F4F' : '#23262B')
+          .fontColor(this.logsProto === 'vnc' ? Color.White : '#C7CBD1')
+          .onClick(() => { this.logsProto = 'vnc'; })
+        Text(this.logsFiltered().length + ' / ' + this.logs.length)
+          .id('logs/proto-count').fontSize(11).fontColor('#6B7078')
+      }.width('100%')
       if (this.logsExport.length > 0) {
         Text(this.logsExport).id('logs/export-result').fontSize(11).fontFamily('monospace')
           .fontColor('#0A6C00').width('100%')

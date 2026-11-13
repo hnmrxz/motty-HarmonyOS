@@ -1,0 +1,4 @@
+﻿feat(harmonyos/logs): 会话日志按协议筛选(ALL/SSH/RDP/VNC) + 用例(E2)
+
+实现: logs/proto-all|ssh|rdp|vnc chips + logs/proto-count; logsFiltered() 同时按协议与关键词过滤(AND)
+验证: build SUCCESSFUL + spec/lint 全绿; 模拟器未连接 -> E2, 下轮 --only logs 拿 E1

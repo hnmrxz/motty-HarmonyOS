@@ -1,0 +1,118 @@
+schema: 1
+id: logs.proto-filter
+title: 会话日志按协议筛选：SSH/VNC 切换后列表与计数同步
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+fixture:
+  vncAuth: false
+  vncResize: false
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/clear
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/close
+  - action: wait
+    ms: 500
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: logproto-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "logproto-a"
+      withinMs: 12000
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "信任此主机|Trust this host|Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 2500
+  - action: click
+    target: id:nav/logs
+  - action: wait
+    ms: 1200
+    expect:
+      kind: screenRegex
+      regex: "logproto-a"
+      withinMs: 10000
+  # SSH 筛选：仍有记录
+  - action: click
+    target: id:logs/proto-ssh
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "logproto-a"
+      withinMs: 8000
+  # VNC 筛选：无匹配
+  - action: click
+    target: id:logs/proto-vnc
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "没有匹配的会话记录|No matching sessions"
+      withinMs: 8000
+asserts:
+  - kind: screenRegex
+    regex: "没有匹配的会话记录|No matching sessions"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：日志页协议筛选 chips（ALL/SSH/RDP/VNC）；选 SSH 仍显示记录，选 VNC 显示无匹配。
+    **不覆盖**：RDP/VNC 记录实际存在时的筛选（本例只有 SSH 记录）、筛选与搜索关键词的组合。
+deviations:
+  - 记录类型由"连接一次 SSH"产生；VNC 分支只验证"无匹配"。
+notes: >-
+  筛选与搜索关键词同时生效（AND）。

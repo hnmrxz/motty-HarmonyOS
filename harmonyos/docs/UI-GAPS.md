@@ -104,3 +104,9 @@ Output 2 / Share 2 / Shortcuts 1`
 3. 外观浅色主题——成本最高，最后做；不做则在设置里显式标注
 4. 会话日志按主机/协议筛选——便宜
 
+## Round 114 追加（E2）
+
+| 项 | 实现 | 用例 |
+|---|---|---|
+| 会话日志按协议筛选 | `logs/proto-all|ssh|rdp|vnc` chips + `logs/proto-count`；`logsFiltered()` 同时按协议与关键词过滤（AND） | `logs.proto-filter` |
+
