@@ -3343,7 +3343,14 @@ struct Index {
     const idx: number = shown.indexOf(g);
     if (idx < 0) { return; }
     const to: number = idx + dir;
-    if (to < 0 || to >= shown.length) { return; }
+    if (to < 0) {
+      this.hint(this.lang === 'zh' ? '已经是第一个分组' : 'already the first group');
+      return;
+    }
+    if (to >= shown.length) {
+      this.hint(this.lang === 'zh' ? '已经是最后一个分组' : 'already the last group');
+      return;
+    }
     const next: string[] = shown.slice();
     const tmp: string = next[idx];
     next[idx] = next[to];
