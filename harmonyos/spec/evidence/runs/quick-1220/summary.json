@@ -1,0 +1,80 @@
+{
+  "total": 12,
+  "passed": 12,
+  "failed": 0,
+  "results": [
+    {
+      "spec": "forward.typed",
+      "passed": true,
+      "seconds": 36.6,
+      "error": ""
+    },
+    {
+      "spec": "host.detail",
+      "passed": true,
+      "seconds": 86.9,
+      "error": ""
+    },
+    {
+      "spec": "host.group-order",
+      "passed": true,
+      "seconds": 90.1,
+      "error": ""
+    },
+    {
+      "spec": "host.icon",
+      "passed": true,
+      "seconds": 61.5,
+      "error": ""
+    },
+    {
+      "spec": "host.lastused",
+      "passed": true,
+      "seconds": 59.1,
+      "error": ""
+    },
+    {
+      "spec": "host.manage",
+      "passed": true,
+      "seconds": 81.9,
+      "error": ""
+    },
+    {
+      "spec": "logs.search",
+      "passed": true,
+      "seconds": 91.7,
+      "error": ""
+    },
+    {
+      "spec": "rdp.session-view",
+      "passed": true,
+      "seconds": 120.2,
+      "error": ""
+    },
+    {
+      "spec": "sftp.browse",
+      "passed": true,
+      "seconds": 63.4,
+      "error": ""
+    },
+    {
+      "spec": "ssh.connect-from-list",
+      "passed": true,
+      "seconds": 61.8,
+      "error": ""
+    },
+    {
+      "spec": "terminal.vt",
+      "passed": true,
+      "seconds": 67.3,
+      "error": ""
+    },
+    {
+      "spec": "vnc.host-session",
+      "passed": true,
+      "seconds": 54.7,
+      "error": ""
+    }
+  ],
+  "at": "2026-11-13T12:35:34"
+}

@@ -3217,26 +3217,26 @@ struct Index {
       Image($r('app.media.ic_plus')).width(16).height(16)
       Blank()
       // 右：一排工具图标（占位按钮，id 便于后续接功能）
-      Image($r('app.media.ic_sort')).id('top/order').width(16).height(16)
+      Image($r('app.media.ic_sort')).id('top/order').width(28).height(28)
         .onClick(() => {
           this.hostSort = this.hostSort === 'manual' ? 'name' : (this.hostSort === 'name' ? 'ip' : 'manual');
           this.hint('sort: ' + this.hostSort);
           this.savePrefs();
         })
-      Image($r('app.media.ic_columns')).id('top/paste').width(16).height(16)
+      Image($r('app.media.ic_columns')).id('top/paste').width(28).height(28)
         .onClick(() => { this.pasteIntoInput(); })
-      Image($r('app.media.ic_terminal')).id('top/terminal').width(16).height(16)
+      Image($r('app.media.ic_terminal')).id('top/terminal').width(28).height(28)
         .onClick(() => { this.pcNav = '本地终端'; })
-      Image($r('app.media.ic_search')).id('top/search').width(16).height(16)
+      Image($r('app.media.ic_search')).id('top/search').width(28).height(28)
         .onClick(() => { this.openPalette(); })
-      Image($r('app.media.ic_sparkles')).id('top/ai').width(16).height(16)
+      Image($r('app.media.ic_sparkles')).id('top/ai').width(28).height(28)
         .onClick(() => { this.aiOpen = true; })
-      Image($r('app.media.ic_bell')).id('top/notice').width(16).height(16)
+      Image($r('app.media.ic_bell')).id('top/notice').width(28).height(28)
         .onClick(() => { this.pcNav = '会话日志'; this.reloadLogs(); })
-      Image($r('app.media.ic_settings')).id('top/settings').width(16).height(16)
-      Image($r('app.media.ic_play')).id('top/new-session').width(16).height(16)
+      Image($r('app.media.ic_settings')).id('top/settings').width(28).height(28)
+      Image($r('app.media.ic_play')).id('top/new-session').width(28).height(28)
         .onClick(() => { this.openNewSessionFromToolbar(); })
-      Image($r('app.media.ic_sort')).id('top/refresh').width(16).height(16)
+      Image($r('app.media.ic_sort')).id('top/refresh').width(28).height(28)
         .onClick(() => { this.reload(); })
       if (this.toolbarHint.length > 0) {
         Text(this.toolbarHint).id('top/hint').fontSize(10).fontColor(this.th('#8A8F98'))
@@ -5830,6 +5830,7 @@ struct Index {
       Row({ space: 12 }) {
         this.btnSecondary(this.t('hostkey.cancel'), 'tabrename/cancel', () => { this.tabRenameOpen = false; })
         this.btnPrimary(this.t('common.save'), 'tabrename/save', () => { this.submitTabRename(); })
+
       }.width('100%').justifyContent(FlexAlign.End)
     }
     .id('tabrename/dialog').width(420).padding(18).backgroundColor(this.th('#1C1F24')).borderRadius(12)

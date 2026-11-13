@@ -1,0 +1,6 @@
+﻿test(harmonyos): 冒烟 --quick 12/12 全绿(验证布局/崩溃修复无回归)
+
+修复 hint() setTimeout 崩溃 + 主机行/顶栏图标改尺寸后, 跑 12 条冒烟:
+forward.typed/host.detail/host.group-order/host.icon/host.lastused/host.manage/
+logs.search/rdp.session-view/sftp.browse/ssh.connect-from-list/terminal.vt/vnc.host-session => 12/12
+仍隔离: ui.toolbar(顶栏新会话未产生第二会话), workspace.rename(保存后未改名) 记为 E2
