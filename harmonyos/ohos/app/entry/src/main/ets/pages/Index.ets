@@ -277,6 +277,7 @@ struct Index {
   @State startupView: string = 'hosts';
   @State settingsReset: string = '';
   @State toolbarHint: string = '';
+  @State uiScaleKey: string = 'regular';
   @State aiOpen: boolean = false;
   @State tabRenameOpen: boolean = false;
   @State tabRenameId: string = '';
@@ -2857,7 +2858,7 @@ struct Index {
                   // 名称 + 用户
                   Column({ space: 4 }) {
                     Text(this.iconGlyph(h.icon)).id('host-icon/' + h.id).fontSize(13).fontColor('#E0A458')
-                    Text(h.label).fontSize(15).fontColor('#E8EAED').fontWeight(FontWeight.Medium)
+                    Text(h.label).fontSize(this.fs(15)).fontColor('#E8EAED').fontWeight(FontWeight.Medium)
                       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).width('100%')
                     Text(this.showLastUsed ? this.lastUsedText(h) : '').id('host-lastused/' + h.id).fontSize(10)
                       .fontColor('#6B7078').maxLines(1)
@@ -3851,6 +3852,7 @@ struct Index {
     const dbLU: string = await this.getUiState('showLastUsed');
     const dbTC: string = await this.getUiState('showTabCount');
     const dbStart: string = await this.getUiState('startupView');
+    const dbScale: string = await this.getUiState('uiScaleKey');
     let lang: string = dbLang;
     let view: string = dbView;
     let sort: string = dbSort;
@@ -3881,6 +3883,7 @@ struct Index {
     this.showLastUsed = dbLU !== '0';
     this.showTabCount = dbTC !== '0';
     if (dbStart === 'logs' || dbStart === 'workspace' || dbStart === 'hosts') { this.startupView = dbStart; }
+    if (dbScale === 'small' || dbScale === 'regular' || dbScale === 'large') { this.uiScaleKey = dbScale; }
     hilog.info(DOMAIN, TAG, 'settings loaded lang=%{public}s order=%{public}s',
       this.lang, this.groupOrder.join(','));
   }
@@ -3901,6 +3904,14 @@ struct Index {
 
 
   // 设置重置为默认（不动语言，避免用户突然看不懂界面）
+
+  // 界面字号（小/标准/大）：只缩放"文字尺寸"，不动布局常量，避免整体塌陷
+  private fs(base: number): number {
+    if (this.uiScaleKey === 'small') { return Math.round(base * 0.9); }
+    if (this.uiScaleKey === 'large') { return Math.round(base * 1.15); }
+    return base;
+  }
+
   private resetSettings(): void {
     this.hostView = 'list';
     this.hostSort = 'manual';
@@ -3929,6 +3940,7 @@ struct Index {
     await this.setUiState('showLastUsed', this.showLastUsed ? '1' : '0');
     await this.setUiState('showTabCount', this.showTabCount ? '1' : '0');
     await this.setUiState('startupView', this.startupView);
+    await this.setUiState('uiScaleKey', this.uiScaleKey);
     if (this.prefs === null) { return; }
     try {
       this.prefs.putSync('lang', this.lang);
@@ -3949,7 +3961,7 @@ struct Index {
   settingsPanel() {
     Column({ space: 14 }) {
       Row() {
-        Text(this.lang === 'zh' ? '设置' : 'Settings').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Text(this.lang === 'zh' ? '设置' : 'Settings').fontSize(this.fs(18)).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
         Blank()
         Button(this.lang === 'zh' ? '恢复默认' : 'Reset to defaults').id('settings/reset')
           .height(30).fontSize(12).backgroundColor('#3A2226').fontColor('#E08A8A')
@@ -3997,7 +4009,22 @@ struct Index {
             .backgroundColor(this.hostView === 'list' ? '#2F6F4F' : '#23262B')
             .fontColor(this.hostView === 'list' ? Color.White : '#C7CBD1')
             .onClick(() => { this.hostView = 'list'; this.savePrefs(); })
-          Button(this.lang === 'zh' ? '启动: 主机' : 'Start: hosts').id('settings/start-hosts')
+          Button(this.lang === 'zh' ? '字号: 小' : 'Text: small').id('settings/scale-small')
+          .height(30).fontSize(12)
+          .backgroundColor(this.uiScaleKey === 'small' ? '#2F6F4F' : '#23262B')
+          .fontColor(this.uiScaleKey === 'small' ? Color.White : '#C7CBD1')
+          .onClick(() => { this.uiScaleKey = 'small'; this.savePrefs(); })
+        Button(this.lang === 'zh' ? '字号: 标准' : 'Text: regular').id('settings/scale-regular')
+          .height(30).fontSize(12)
+          .backgroundColor(this.uiScaleKey === 'regular' ? '#2F6F4F' : '#23262B')
+          .fontColor(this.uiScaleKey === 'regular' ? Color.White : '#C7CBD1')
+          .onClick(() => { this.uiScaleKey = 'regular'; this.savePrefs(); })
+        Button(this.lang === 'zh' ? '字号: 大' : 'Text: large').id('settings/scale-large')
+          .height(30).fontSize(12)
+          .backgroundColor(this.uiScaleKey === 'large' ? '#2F6F4F' : '#23262B')
+          .fontColor(this.uiScaleKey === 'large' ? Color.White : '#C7CBD1')
+          .onClick(() => { this.uiScaleKey = 'large'; this.savePrefs(); })
+        Button(this.lang === 'zh' ? '启动: 主机' : 'Start: hosts').id('settings/start-hosts')
           .height(30).fontSize(12)
           .backgroundColor(this.startupView === 'hosts' ? '#2F6F4F' : '#23262B')
           .fontColor(this.startupView === 'hosts' ? Color.White : '#C7CBD1')
@@ -4187,7 +4214,7 @@ struct Index {
   jumpPage() {
     Column({ space: 10 }) {
       Row({ space: 10 }) {
-        Text(this.lang === 'zh' ? '跳板路由' : 'Jump routes').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Text(this.lang === 'zh' ? '跳板路由' : 'Jump routes').fontSize(this.fs(16)).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
         Blank()
       }.width('100%')
       Text(this.lang === 'zh'
@@ -4216,7 +4243,7 @@ struct Index {
   workspacePage() {
     Column({ space: 10 }) {
       Row({ space: 10 }) {
-        Text(this.lang === 'zh' ? '工作区' : 'Workspace').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Text(this.lang === 'zh' ? '工作区' : 'Workspace').fontSize(this.fs(16)).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
         Text('(' + this.tabs.length + ')').id('ws/count').fontSize(12).fontColor('#6B7078')
         Blank()
         Button(this.lang === 'zh' ? '全部关闭' : 'Close all').id('ws/close-all')
@@ -4259,7 +4286,7 @@ struct Index {
   logsPage() {
     Column({ space: 10 }) {
       Row({ space: 10 }) {
-        Text(this.lang === 'zh' ? '会话日志' : 'Session logs').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Text(this.lang === 'zh' ? '会话日志' : 'Session logs').fontSize(this.fs(16)).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
         Text('(' + this.logs.length + ')').fontSize(12).fontColor('#6B7078')
         Blank()
         Button(this.lang === 'zh' ? '刷新' : 'Refresh').id('logs/refresh').height(30).fontSize(12)

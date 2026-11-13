@@ -1,0 +1,6 @@
+﻿feat(harmonyos/settings): 界面字号三档(小/标准/大) + 用例(E2)
+
+实现: settings/scale-small|regular|large; uiScaleKey 存 DB; fs(n) 只缩放文字尺寸(0.9/1.0/1.15),
+  先作用于侧栏导航/主机名/各页标题/设置标题, 不动布局常量
+用例 settings.ui-scale: 选"大" -> 重启 -> 仍显示 字号: 大
+验证: check-all.ps1 全绿; 设备仍未连到

@@ -141,3 +141,9 @@ Output 2 / Share 2 / Shortcuts 1`
 |---|---|---|
 | 设置「启动打开什么」 | `settings/start-hosts|logs|workspace` 三个按钮；`startupView` 存 DB；启动时 `applyStartupView()` 落到 `pcNav`（日志分支顺带 `reloadLogs()`） | `settings.startup-view` |
 
+## Round 134 追加（E2）
+
+| 项 | 实现 | 用例 |
+|---|---|---|
+| 设置「界面字号」三档 | `settings/scale-small|regular|large`；`uiScaleKey` 存 DB；`fs(n)` 只缩放文字尺寸（0.9/1.0/1.15），先用于侧栏导航、主机名、各页标题、设置标题 | `settings.ui-scale` |
+
