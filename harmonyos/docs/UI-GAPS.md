@@ -147,3 +147,10 @@ Output 2 / Share 2 / Shortcuts 1`
 |---|---|---|
 | 设置「界面字号」三档 | `settings/scale-small|regular|large`；`uiScaleKey` 存 DB；`fs(n)` 只缩放文字尺寸（0.9/1.0/1.15），先用于侧栏导航、主机名、各页标题、设置标题 | `settings.ui-scale` |
 
+## Round 139 追加（E2，无需设备）
+
+| 项 | 实现 | 用例 |
+|---|---|---|
+| 本地终端页 | `localTerminalPage()`：如实说明 HarmonyOS 沙箱不能 fork/exec 本地 shell，给「打开调试页」「回到主机」两个入口（`localterm/explain`、`localterm/workaround`、`localterm/diag`、`localterm/back`） | `page.local-terminal` |
+| 页标题统一 | 新增 `pageTitle(text,id)`，统一 `fs(16)/Bold/#E8EAED`；已用于 会话日志/工作区/跳板路由/密钥链 | — |
+

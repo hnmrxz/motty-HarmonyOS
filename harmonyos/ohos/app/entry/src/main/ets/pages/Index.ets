@@ -4214,7 +4214,7 @@ struct Index {
   jumpPage() {
     Column({ space: 10 }) {
       Row({ space: 10 }) {
-        Text(this.lang === 'zh' ? '跳板路由' : 'Jump routes').fontSize(this.fs(16)).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        this.pageTitle(this.lang === 'zh' ? '跳板路由' : 'Jump routes', 'jump/title')
         Blank()
       }.width('100%')
       Text(this.lang === 'zh'
@@ -4239,11 +4239,46 @@ struct Index {
     .width('100%').height('100%').padding({ left: 22, right: 22, top: 12 })
   }
 
+
+  // 统一页标题样式（二级页面一致性）
+  @Builder
+  pageTitle(text: string, idName: string) {
+    Text(text).id(idName).fontSize(this.fs(16)).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+  }
+
+  // 本地终端页：HarmonyOS 应用沙箱不允许 fork/exec 本地 shell，这里如实说明并给替代
+  @Builder
+  localTerminalPage() {
+    Column({ space: 10 }) {
+      Row({ space: 10 }) {
+        this.pageTitle(this.lang === 'zh' ? '本地终端' : 'Local terminal', 'localterm/title')
+        Blank()
+      }.width('100%')
+      Text(this.lang === 'zh'
+        ? 'HarmonyOS 应用运行在受限沙箱里，不能 fork/exec 本地 shell，因此本版本没有"本地终端"。'
+        : 'HarmonyOS apps run in a restricted sandbox and cannot fork/exec a local shell, so this build has no local terminal.')
+        .id('localterm/explain').fontSize(this.fs(12)).fontColor('#C7CBD1').width('100%')
+      Text(this.lang === 'zh'
+        ? '替代：连一台本机 SSH 主机（例如 127.0.0.1:2222 的测试夹具），或到调试页用 pty shell 演示。'
+        : 'Workaround: connect an SSH host on this machine (e.g. the 127.0.0.1:2222 fixture), or use pty shell on the debug page.')
+        .id('localterm/workaround').fontSize(this.fs(12)).fontColor('#8A8F98').width('100%')
+      Row({ space: 10 }) {
+        Button(this.lang === 'zh' ? '打开调试页' : 'Open debug').id('localterm/diag')
+          .height(32).fontSize(12).backgroundColor('#1A6DD0').fontColor(Color.White)
+          .onClick(() => { this.diagOpen = true; })
+        Button(this.lang === 'zh' ? '回到主机' : 'Back to hosts').id('localterm/back')
+          .height(32).fontSize(12).backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.pcNav = '主机'; this.showHosts = true; })
+      }.width('100%').justifyContent(FlexAlign.Start)
+    }
+    .width('100%').height('100%').padding({ left: 22, right: 22, top: 12 })
+  }
+
   @Builder
   workspacePage() {
     Column({ space: 10 }) {
       Row({ space: 10 }) {
-        Text(this.lang === 'zh' ? '工作区' : 'Workspace').fontSize(this.fs(16)).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        this.pageTitle(this.lang === 'zh' ? '工作区' : 'Workspace', 'ws/title')
         Text('(' + this.tabs.length + ')').id('ws/count').fontSize(12).fontColor('#6B7078')
         Blank()
         Button(this.lang === 'zh' ? '全部关闭' : 'Close all').id('ws/close-all')
@@ -4286,7 +4321,7 @@ struct Index {
   logsPage() {
     Column({ space: 10 }) {
       Row({ space: 10 }) {
-        Text(this.lang === 'zh' ? '会话日志' : 'Session logs').fontSize(this.fs(16)).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        this.pageTitle(this.lang === 'zh' ? '会话日志' : 'Session logs', 'logs/title')
         Text('(' + this.logs.length + ')').fontSize(12).fontColor('#6B7078')
         Blank()
         Button(this.lang === 'zh' ? '刷新' : 'Refresh').id('logs/refresh').height(30).fontSize(12)
@@ -4373,7 +4408,7 @@ struct Index {
   vaultPage() {
     Column({ space: 10 }) {
       Row({ space: 10 }) {
-        Text(this.lang === 'zh' ? '密钥链' : 'Keychain').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        this.pageTitle(this.lang === 'zh' ? '密钥链' : 'Keychain', 'vault/title')
         Text('(' + this.credKeys().length + ')' + (this.vaultSeq >= 0 ? '' : '')).fontSize(12).fontColor('#6B7078')
         Blank()
         Button(this.lang === 'zh' ? '新增凭据' : 'Add credential').id('vault/add-open')
@@ -5512,7 +5547,9 @@ struct Index {
           if (this.tabs.length > 0 && !this.tabSide) {
             this.tabBar()
           }
-          if (this.pcNav === '跳板路由') {
+          if (this.pcNav === '本地终端') {
+            this.localTerminalPage()
+          } else if (this.pcNav === '跳板路由') {
             this.jumpPage()
           } else if (this.pcNav === '工作区') {
             this.workspacePage()

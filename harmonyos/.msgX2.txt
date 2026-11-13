@@ -1,0 +1,6 @@
+﻿feat(harmonyos/ui): 本地终端页(如实说明+替代入口) + 二级页面标题统一 pageTitle
+
+- 新增 localTerminalPage(): HarmonyOS 沙箱不能 fork/exec 本地 shell, 页面说明并提供"打开调试页/回到主机"
+  入口; 用例 page.local-terminal; 侧栏"本地终端"不再是死链
+- 新增 pageTitle(text,id) 统一标题样式 fs(16)/Bold/#E8EAED, 已用于 会话日志/工作区/跳板路由/密钥链
+验证: check-all.ps1 全绿(109 场景)
