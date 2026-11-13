@@ -1,0 +1,74 @@
+{
+  "total": 11,
+  "passed": 9,
+  "failed": 2,
+  "results": [
+    {
+      "spec": "settings.categories",
+      "passed": true,
+      "seconds": 20.7,
+      "error": ""
+    },
+    {
+      "spec": "settings.display-toggles",
+      "passed": true,
+      "seconds": 76.5,
+      "error": ""
+    },
+    {
+      "spec": "settings.font-size",
+      "passed": true,
+      "seconds": 47.4,
+      "error": ""
+    },
+    {
+      "spec": "settings.persist",
+      "passed": false,
+      "seconds": 46.8,
+      "error": "step 11 (click) 失败: 选择器未命中: id:settings/view-grid"
+    },
+    {
+      "spec": "settings.reset",
+      "passed": false,
+      "seconds": 11.7,
+      "error": "step 4 (click) 失败: 选择器未命中: id:settings/font-inc"
+    },
+    {
+      "spec": "settings.scrollback",
+      "passed": true,
+      "seconds": 42.8,
+      "error": ""
+    },
+    {
+      "spec": "settings.startup-view",
+      "passed": true,
+      "seconds": 32.4,
+      "error": ""
+    },
+    {
+      "spec": "settings.tab-numbers",
+      "passed": true,
+      "seconds": 75.4,
+      "error": ""
+    },
+    {
+      "spec": "settings.tab-side",
+      "passed": true,
+      "seconds": 74.4,
+      "error": ""
+    },
+    {
+      "spec": "settings.theme",
+      "passed": true,
+      "seconds": 14.9,
+      "error": ""
+    },
+    {
+      "spec": "settings.ui-scale",
+      "passed": true,
+      "seconds": 30.5,
+      "error": ""
+    }
+  ],
+  "at": "2026-11-13T13:03:26"
+}

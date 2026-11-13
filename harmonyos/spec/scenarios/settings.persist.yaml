@@ -43,6 +43,10 @@ steps:
     target: id:nav/settings
   - action: wait
     ms: 1000
+  - action: click
+    target: id:settings/cat-hosts
+  - action: wait
+    ms: 800
     expect:
       kind: screenRegex
       regex: "设置|Settings"

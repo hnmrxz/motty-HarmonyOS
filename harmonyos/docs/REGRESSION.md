@@ -734,3 +734,20 @@ python harmonyos\tools\run-all.py --only host
 `host.detail`、`host.menu`、`knownhosts.export` 已绿；`ui.toolbar` 仍在"顶栏新会话"一项失败
 （`openSession()` 对同主机去重，未产生第二个会话）；`workspace.rename` 仍失败（保存后标签名未变，待查）。
 
+## 2026-11-13 设置分组重构后：settings 全量 11/11 绿
+
+改为两栏分类（通用/主机列表/终端/启动/关于）后，逐个修用例：
+
+| 问题 | 修法 |
+|---|---|
+| 旧用例点不到分类下的控件 | 在 `nav/settings` 后插入对应 `settings/cat-*` 点击（hosts/terminal/startup） |
+| 打开设置后立刻点分类会命中"通用" | 打开设置等待延长到 1600ms |
+| `settings.font-size` YAML 里重复 `expect:` 键 | 删除重复键；重启后补"再切到终端分类"再断言 |
+| 重启后断言失效 | 重启等待 10s 并先 expect 主界面（`新建主机`） |
+
+结果：
+```
+PASS categories / display-toggles / font-size / scrollback / startup-view /
+     tab-numbers / tab-side / theme / ui-scale / persist / reset  => 11/11
+```
+

@@ -1,0 +1,110 @@
+{
+  "spec": "settings.reset",
+  "profile": "2in1",
+  "serial": "127.0.0.1:5555",
+  "steps": [
+    {
+      "i": 0,
+      "action": "launch",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 2,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 3,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 4,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 5,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 6,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 7,
+      "action": "wait",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 8,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 9,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    },
+    {
+      "i": 10,
+      "action": "click",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 11,
+      "action": "wait",
+      "ok": true,
+      "detail": null,
+      "expect": {
+        "ok": true,
+        "detail": null
+      }
+    }
+  ],
+  "asserts": [
+    {
+      "i": 0,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "i": 1,
+      "kind": "screenRegex",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "evidence": {
+    "png": "final.png",
+    "limits": "PC（2in1）实测。覆盖：设置里连续加字号到 15，点「恢复默认」后回到 13 并出现结果提示。 **不覆盖**：语言是否保持（设计上刻意不重置语言）、其它开关逐个复位（同一方法内赋值）。"
+  },
+  "passed": true
+}

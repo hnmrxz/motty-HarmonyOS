@@ -1,0 +1,5 @@
+﻿test(harmonyos/settings): 设置两栏分类后 settings 用例全部转绿(11/11)
+
+逐个修: 旧用例补 settings/cat-* 点击; 打开设置等待 1600ms; font-size YAML 去掉重复 expect 键;
+重启等待 10s 并先 expect 主界面; 重启后再切分类再断言.
+结果: categories/display-toggles/font-size/scrollback/startup-view/tab-numbers/tab-side/theme/ui-scale/persist/reset => 11/11

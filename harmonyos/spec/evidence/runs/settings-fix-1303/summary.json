@@ -1,0 +1,20 @@
+{
+  "total": 2,
+  "passed": 2,
+  "failed": 0,
+  "results": [
+    {
+      "spec": "settings.persist",
+      "passed": true,
+      "seconds": 69.5,
+      "error": ""
+    },
+    {
+      "spec": "settings.reset",
+      "passed": true,
+      "seconds": 23.3,
+      "error": ""
+    }
+  ],
+  "at": "2026-11-13T13:05:08"
+}

@@ -23,6 +23,10 @@ steps:
     target: id:nav/settings
   - action: wait
     ms: 800
+  - action: click
+    target: id:settings/cat-terminal
+  - action: wait
+    ms: 800
   # 先把字号改大，再恢复默认
   - action: click
     target: id:settings/font-inc

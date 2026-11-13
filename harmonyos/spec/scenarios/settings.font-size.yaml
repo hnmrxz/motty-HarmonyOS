@@ -22,14 +22,14 @@ steps:
   - action: click
     target: id:nav/settings
   - action: wait
-    ms: 800
+    ms: 1600
   - action: click
     target: id:settings/cat-terminal
   - action: wait
-    ms: 600
+    ms: 1200
     expect:
       kind: screenRegex
-      regex: "字号 13 (10–24)|字号 13 \\(10–24\\)|字号 13"
+      regex: "字号 13"
       withinMs: 8000
   - action: click
     target: id:settings/font-inc
@@ -56,11 +56,19 @@ steps:
   # 重启后保持 14
   - action: restart
   - action: wait
-    ms: 6000
+    ms: 10000
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
   - action: click
     target: id:nav/settings
   - action: wait
-    ms: 800
+    ms: 900
+  - action: click
+    target: id:settings/cat-terminal
+  - action: wait
+    ms: 900
     expect:
       kind: screenRegex
       regex: "字号 14"
