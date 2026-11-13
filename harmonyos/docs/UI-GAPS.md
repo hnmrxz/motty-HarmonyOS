@@ -320,3 +320,10 @@ SFTP 面板 / 会话相关的 `creds.get(fixtureKey)` 分支原本在**未连接
 > 过程记录：首次插入时把 Row 放到了 `Column` 之外（`.width('44%')` 落在块尾），ArkTS 报
 > `arkts-no-implicit-return-types` / `arkts-no-any-unknown`（Index.ets:5922）。已修正嵌套并用 `check-all` 复核通过。
 
+## Round 170 追加（E2）：分屏体验补全
+
+| 项 | 实现 |
+|---|---|
+| 右侧切换会话 | `split/prev`（‹）/`split/next`（›）→ `cycleSplit(±1)`，环绕并跳过当前活动标签 |
+| 关闭保护 | `closeTab()` 关闭的正是分屏会话时，自动退出分屏并提示「分屏已关闭（会话被关闭）」 |
+

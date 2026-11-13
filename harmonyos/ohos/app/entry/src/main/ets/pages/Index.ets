@@ -903,6 +903,26 @@ struct Index {
     this.hint(this.lang === 'zh' ? '分屏会话已关闭' : 'split session is gone');
   }
 
+
+  // 分屏右侧在下标方向切换会话（±1 环绕）
+  private cycleSplit(dir: number): void {
+    if (!this.splitOn || this.tabs.length < 2) { return; }
+    let idx: number = 0;
+    for (let i = 0; i < this.tabs.length; i++) {
+      if (this.tabs[i].id === this.splitId) { idx = i; }
+    }
+    const n: number = this.tabs.length;
+    const cand = this.tabs[((idx + dir) % n + n) % n];
+    if (cand.id === this.activeId) {
+      const cand2 = this.tabs[(((idx + dir) % n + n) % n + dir) % n];
+      this.splitId = cand2.id;
+      this.splitText = mottynapi.vtView(cand2.vtId, 0);
+    } else {
+      this.splitId = cand.id;
+      this.splitText = mottynapi.vtView(cand.vtId, 0);
+    }
+  }
+
   private splitTabLabel(): string {
     for (let i = 0; i < this.tabs.length; i++) {
       if (this.tabs[i].id === this.splitId) { return this.tabs[i].label; }
@@ -1049,6 +1069,12 @@ struct Index {
       }
     }
     this.tabs = remain;
+    if (this.splitId === tabId) {
+      this.splitOn = false;
+      this.splitId = '';
+      this.splitText = '';
+      this.hint(this.lang === 'zh' ? '分屏已关闭（会话被关闭）' : 'split closed (session closed)');
+    }
     if (this.activeId === tabId) {
       if (remain.length > 0) {
         this.selectTab(remain[remain.length - 1].id);
@@ -5899,6 +5925,12 @@ struct Index {
       Row({ space: 8 }) {
         Text(this.splitTabLabel()).id('split/title').fontSize(this.fs(12))
           .fontColor(this.th('#C7CBD1')).fontWeight(FontWeight.Medium)
+        Button('‹').id('split/prev').height(22).width(26).fontSize(12)
+          .backgroundColor(this.th('#23262B')).fontColor(this.th('#C7CBD1'))
+          .onClick(() => { this.cycleSplit(-1); })
+        Button('›').id('split/next').height(22).width(26).fontSize(12)
+          .backgroundColor(this.th('#23262B')).fontColor(this.th('#C7CBD1'))
+          .onClick(() => { this.cycleSplit(1); })
         Blank()
         Button(this.lang === 'zh' ? '关闭分屏' : 'Close split').id('split/close')
           .height(24).fontSize(11).backgroundColor(this.th('#23262B')).fontColor(this.th('#C7CBD1'))

@@ -1,0 +1,5 @@
+﻿feat(harmonyos/tabs): 分屏右侧可切换会话(‹›) + 关闭分屏会话时自动退出
+
+- cycleSplit(±1): 环绕切换右侧会话, 跳过当前活动标签; split/prev, split/next
+- closeTab(): 若关闭的是分屏会话, 自动 splitOn=false 并提示"分屏已关闭（会话被关闭）"
+验证: check-all.ps1 七项全绿(117 场景)
