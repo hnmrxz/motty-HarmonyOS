@@ -305,6 +305,7 @@ struct Index {
   @State paletteHover: number = -1;
   @State hostDetailIndex: number = -1;
   @State hostMenuIndex: number = -1;
+  @State hoverHost: number = -1;
   @State snipName: string = '';
   @State snipCmd: string = '';
   @State snipEditingId: string = '';
@@ -2904,7 +2905,9 @@ struct Index {
                   Button(this.t('host.del')).id('host-del/' + index).fontSize(10).height(26)
                     .backgroundColor('#3A2226').fontColor('#E08A8A')
                     .onClick(() => { this.askDeleteHost(index); })
-                  }.width(250).justifyContent(FlexAlign.End)
+                  }
+                .width(250).justifyContent(FlexAlign.End)
+                .opacity(this.hoverRow === index ? 1 : 0.3)
                 }
                 .width('100%').height(60).padding({ left: 10, right: 10 })
                 .borderRadius(10)

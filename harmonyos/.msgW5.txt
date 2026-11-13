@@ -1,0 +1,5 @@
+﻿feat(harmonyos/ui): 主机行操作区 hover 显隐(对齐上游交互) + E1 清单更新
+
+- 复用已有 hoverRow 状态: 行内操作区 opacity 0.3(常态) -> 1(悬停), 仍保持可点击(不破坏自动化)
+- E1-BACKLOG 增补 ui.toolbar / host.menu 与 hover 视觉说明, 并给出一条命令
+验证: check-all.ps1 全绿(defined 384/dup0/paging0); 设备仍未连到

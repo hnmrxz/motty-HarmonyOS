@@ -51,3 +51,16 @@ Emulator.exe 只是外壳，真正跑虚拟机的 qemu 需要该服务 ⇒ 进�
 python harmonyos\tools\run-all.py --only vault,settings.tab,settings.scrollback,settings.display,settings.startup,jump,knownhosts,logs
 ```
 
+## 新增待验（Round 129~133）
+
+| 用例 | 覆盖 |
+|---|---|
+| `ui.toolbar` | 顶栏：新会话 / 刷新 / 排序切换 / 粘贴 / 本地终端 / AI / 通知 + 提示行 |
+| `host.menu` | 主机行 ⋯ 菜单：复制地址提示、详情面板 |
+| （视觉）hover 显隐 | 主机行操作区 `opacity 0.3 → 1`（悬停时完全显示）—— 属视觉行为，**无自动断言**，需人工目视 |
+
+一条命令（含上面全部）：
+```powershell
+python harmonyos\tools\run-all.py --only vault,settings.tab,settings.scrollback,settings.display,settings.startup,settings.reset,jump,knownhosts,logs,workspace,ui.toolbar,host.menu
+```
+
