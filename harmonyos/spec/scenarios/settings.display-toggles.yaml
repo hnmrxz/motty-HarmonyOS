@@ -1,0 +1,112 @@
+schema: 1
+id: settings.display-toggles
+title: 设置「显示会话计数」：关闭后顶部不再出现 "1 session"，会话标签仍在
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+fixture:
+  vncAuth: false
+  vncResize: false
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/clear
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/close
+  - action: wait
+    ms: 500
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: toggles-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "toggles-a"
+      withinMs: 12000
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "信任此主机|Trust this host|Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+    expect:
+      kind: screenRegex
+      regex: "1 session"
+      withinMs: 12000
+  # 关闭会话计数
+  - action: click
+    target: id:nav/settings
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:settings/show-tabcount
+  - action: wait
+    ms: 500
+  - action: click
+    target: id:settings/close
+  - action: wait
+    ms: 800
+asserts:
+  - kind: screenRegex
+    regex: "toggles-a"
+    withinMs: 8000
+  - kind: absent
+    value: "1 session"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：设置里关闭「显示会话计数」后顶部 "1 session" 消失，会话标签仍在。
+    **不覆盖**：「显示最近连接」开关的可见性（其文案与状态列重合，absence 断言不可靠）、重启保持。
+deviations:
+  - 以 "1 session" 消失作为判据；会话标签名仍要求可见。
+notes: >-
+  showTabCount/showLastUsed 存 DB ui_state。

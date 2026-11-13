@@ -128,3 +128,10 @@ Output 2 / Share 2 / Shortcuts 1`
 `-wipe-data` 重试也无效。已确认不是 hdc 端口问题（`tconn` 失败）。
 ⇒ 需要从 DevEco Studio GUI 里重新启动模拟器（或重建镜像）；在此之前所有新增只有 E2。
 
+## Round 118 追加（E2）
+
+| 项 | 实现 | 用例 |
+|---|---|---|
+| 设置「显示最近连接」 | `settings/show-lastused` 开关；关闭时列表行不再渲染最近连接文本 | 并入 `settings.display-toggles` |
+| 设置「显示会话计数」 | `settings/show-tabcount` 开关；关闭时顶部 `session/count` 不渲染 | `settings.display-toggles` |
+

@@ -272,6 +272,8 @@ struct Index {
   @State tabNumbers: boolean = false;
   @State tabSide: boolean = false;
   @State termScrollback: number = 3;
+  @State showLastUsed: boolean = true;
+  @State showTabCount: boolean = true;
   @State hoverRow: number = -1;
   @State selectAll: boolean = false;
   @State selectedIds: string[] = [];
@@ -2739,8 +2741,10 @@ struct Index {
       }
       .scrollable(ScrollDirection.Horizontal)
       .layoutWeight(1)
-      Text(this.tabs.length > 1 ? this.tabs.length + ' sessions' : '1 session')
+      if (this.showTabCount) {
+        Text(this.tabs.length > 1 ? this.tabs.length + ' sessions' : '1 session')
         .id('session/count').fontSize(11).fontColor('#666666')
+      }
     }
     .id('session/tabbar').width('100%').padding({ left: 16, right: 16, top: 8, bottom: 8 })
     .backgroundColor('#EFEFEF')
@@ -2884,10 +2888,10 @@ struct Index {
                     Text(this.iconGlyph(h.icon)).id('host-icon/' + h.id).fontSize(13).fontColor('#E0A458')
                     Text(h.label).fontSize(15).fontColor('#E8EAED').fontWeight(FontWeight.Medium)
                       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).width('100%')
-                    Text(this.lastUsedText(h)).id('host-lastused/' + h.id).fontSize(10)
+                    Text(this.showLastUsed ? this.lastUsedText(h) : '').id('host-lastused/' + h.id).fontSize(10)
+                      .fontColor('#6B7078').maxLines(1)
                     Text('ⓘ').id('host-info/' + index).fontSize(11).fontColor('#6B7078')
                       .onClick(() => { this.hostDetailIndex = index; })
-                      .fontColor('#6B7078').maxLines(1)
                     Text(h.user.length > 0 ? h.user : '-').fontSize(12).fontColor('#8A8F98')
                   }
                   .id('host-name/' + index)
@@ -3851,6 +3855,8 @@ struct Index {
     const dbFont: string = await this.getUiState('termFontSize');
     const dbTabSide: string = await this.getUiState('tabSide');
     const dbSb: string = await this.getUiState('termScrollback');
+    const dbLU: string = await this.getUiState('showLastUsed');
+    const dbTC: string = await this.getUiState('showTabCount');
     let lang: string = dbLang;
     let view: string = dbView;
     let sort: string = dbSort;
@@ -3878,6 +3884,8 @@ struct Index {
     this.tabSide = dbTabSide === '1';
     const sbN: number = Number.parseInt(dbSb, 10);
     if (sbN >= 0 && sbN <= 100) { this.termScrollback = sbN; }
+    this.showLastUsed = dbLU !== '0';
+    this.showTabCount = dbTC !== '0';
     hilog.info(DOMAIN, TAG, 'settings loaded lang=%{public}s order=%{public}s',
       this.lang, this.groupOrder.join(','));
   }
@@ -3893,6 +3901,8 @@ struct Index {
     await this.setUiState('termFontSize', String(this.termFontSize));
     await this.setUiState('tabSide', this.tabSide ? '1' : '0');
     await this.setUiState('termScrollback', String(this.termScrollback));
+    await this.setUiState('showLastUsed', this.showLastUsed ? '1' : '0');
+    await this.setUiState('showTabCount', this.showTabCount ? '1' : '0');
     if (this.prefs === null) { return; }
     try {
       this.prefs.putSync('lang', this.lang);
@@ -3958,7 +3968,17 @@ struct Index {
             .backgroundColor(this.hostView === 'list' ? '#2F6F4F' : '#23262B')
             .fontColor(this.hostView === 'list' ? Color.White : '#C7CBD1')
             .onClick(() => { this.hostView = 'list'; this.savePrefs(); })
-          Button(this.lang === 'zh' ? '回滚行数' : 'Scrollback').id('settings/scrollback').height(30).fontSize(12)
+          Button(this.lang === 'zh' ? '显示最近连接' : 'Show last used').id('settings/show-lastused')
+          .height(30).fontSize(12)
+          .backgroundColor(this.showLastUsed ? '#2F6F4F' : '#23262B')
+          .fontColor(this.showLastUsed ? Color.White : '#C7CBD1')
+          .onClick(() => { this.showLastUsed = !this.showLastUsed; this.savePrefs(); })
+        Button(this.lang === 'zh' ? '显示会话计数' : 'Show tab count').id('settings/show-tabcount')
+          .height(30).fontSize(12)
+          .backgroundColor(this.showTabCount ? '#2F6F4F' : '#23262B')
+          .fontColor(this.showTabCount ? Color.White : '#C7CBD1')
+          .onClick(() => { this.showTabCount = !this.showTabCount; this.savePrefs(); })
+        Button(this.lang === 'zh' ? '回滚行数' : 'Scrollback').id('settings/scrollback').height(30).fontSize(12)
           .backgroundColor('#23262B').fontColor('#C7CBD1')
           .onClick(() => { this.termScrollback = this.termScrollback >= 100 ? 0 : this.termScrollback + 10; this.savePrefs(); })
         Text(this.lang === 'zh' ? '回滚 ' + this.termScrollback : 'scrollback ' + this.termScrollback)
