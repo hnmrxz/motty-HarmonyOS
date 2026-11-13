@@ -2433,7 +2433,7 @@ struct Index {
       Text('Limits: text only, 256 KiB cap, no upload/rename/delete yet.')
         .fontSize(10).fontColor('#999999').width('100%')
     }
-    .id('sftp/panel').width(680).padding(16).backgroundColor(Color.White).borderRadius(12)
+    .id('sftp/panel').width(680).padding(16).backgroundColor(this.th('#1C1F24')).borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
 
@@ -2534,7 +2534,7 @@ struct Index {
       Text('Limits: one active connection at a time, no ACL, local forward only.')
         .fontSize(10).fontColor('#999999').width('100%')
     }
-    .id('fwd/panel').width(680).padding(16).backgroundColor(Color.White).borderRadius(12)
+    .id('fwd/panel').width(680).padding(16).backgroundColor(this.th('#1C1F24')).borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
 
@@ -2592,7 +2592,7 @@ struct Index {
       Text(this.vncFrameInfo.length > 0 ? this.vncFrameInfo : 'frame: (none)')
         .id('vnc/frame').fontSize(11).fontFamily('monospace').width('100%')
     }
-    .id('vnc/panel').width(680).padding(16).backgroundColor(Color.White).borderRadius(12)
+    .id('vnc/panel').width(680).padding(16).backgroundColor(this.th('#1C1F24')).borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
 
@@ -2688,7 +2688,7 @@ struct Index {
       Text('Deleting an entry forces the trust prompt again on next connect.')
         .fontSize(10).fontColor('#999999').width('100%')
     }
-    .id('known/panel').width(620).padding(16).backgroundColor(Color.White).borderRadius(12)
+    .id('known/panel').width(620).padding(16).backgroundColor(this.th('#1C1F24')).borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
 
@@ -2707,7 +2707,7 @@ struct Index {
                 .onClick(() => { this.selectTab(t.id); })
               Button('\u00d7')
                 .id('session-close/' + t.id)
-                .backgroundColor('#F0F0F0')
+                .backgroundColor(this.th('#23262B'))
                 .fontColor('#666666')
                 .fontSize(12)
                 .onClick(() => { this.closeTab(t.id); })
@@ -2723,7 +2723,7 @@ struct Index {
       }
     }
     .id('session/tabbar').width('100%').padding({ left: 16, right: 16, top: 8, bottom: 8 })
-    .backgroundColor('#EFEFEF')
+    .backgroundColor(this.th('#1E2127'))
   }
 
 
@@ -2998,7 +2998,7 @@ struct Index {
     }
     .width('100%').height(38).padding({ left: 14, right: 14 })
     .backgroundColor(this.th('#0C0D10'))
-    .border({ width: { bottom: 1 }, color: '#1E2126' })
+    .border({ width: { bottom: 1 }, color: this.th('#1E2126') })
   }
 
   @Builder
@@ -3039,7 +3039,7 @@ struct Index {
       }.width('100%').padding({ left: 12, right: 12, top: 6, bottom: 12 })
     }
     .width(210).height('100%').backgroundColor(this.th('#101114'))
-    .border({ width: { right: 1 }, color: '#22252A' })
+    .border({ width: { right: 1 }, color: this.th('#22252A') })
   }
 
   @Builder
@@ -5272,7 +5272,7 @@ struct Index {
         Scroll() {
           Text(this.probeText).id('net/probe-result').fontSize(11).fontFamily('monospace')
             .fontColor(this.th('#C7CBD1')).width('100%')
-        }.height(80).width('100%').border({ width: 1, color: '#22252A' }).padding(8)
+        }.height(80).width('100%').border({ width: 1, color: this.th('#22252A') }).padding(8)
       }
 
       if (this.diagTab === 'snap') {
@@ -5291,7 +5291,7 @@ struct Index {
           .id('rdp/experimental-note').fontSize(10).fontColor(this.th('#8A8F98')).width('100%')
       }
     }
-    .id('diag/panel').width(680).padding(16).backgroundColor(Color.White).borderRadius(12)
+    .id('diag/panel').width(680).padding(16).backgroundColor(this.th('#1C1F24')).borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
 
@@ -5571,7 +5571,7 @@ struct Index {
       Scroll() {
         Text(this.aiAnswer.length > 0 ? this.aiAnswer : (this.lang === 'zh' ? '(还没有回答)' : '(no answer yet)'))
           .id('ai/panel-answer').fontSize(12).fontFamily('monospace').fontColor(this.th('#C7CBD1')).width('100%')
-      }.height(160).width('100%').border({ width: 1, color: '#22252A' }).padding(8)
+      }.height(160).width('100%').border({ width: 1, color: this.th('#22252A') }).padding(8)
       .align(Alignment.TopStart).id('ai/answer-box')
     }
     .id('ai/panel').width(520).padding(18).backgroundColor(this.th('#1C1F24')).borderRadius(12)

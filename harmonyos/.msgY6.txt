@@ -1,0 +1,6 @@
+﻿fix(harmonyos/ui): 主题覆盖面板白底(5 处)与边线/标签栏底色, th 增 2 组映射
+
+- backgroundColor(Color.White) -> th(#1C1F24); #EFEFEF -> th(#1E2127); #F0F0F0 -> th(#23262B)
+- 边线 #22252A/#1E2126 纳入 th(); 浅色下映射为浅灰
+- 终端工具条遗留 #E6E6E6/#1A1A1A 保持不变(需设备目视后再决定)
+验证: check-all.ps1 五项全绿(112 场景)
