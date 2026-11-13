@@ -59,3 +59,11 @@ PC 端主功能已齐：主机/分组/终端/SFTP/端口转发/VNC/RDP/命令面
 | `tools/check-ids.py` | spec target 是否存在 + **静态 id 不重复** |
 | `tools/check-paging.py` | 分页规则（先切页） |
 
+## Round 131：一条命令跑完静态门禁
+
+```powershell
+powershell harmonyos\tools\check-all.ps1
+```
+依次执行 **build → spec/lint → check-ids → check-paging**，任一失败立即非零退出。
+当前结果：`build SUCCESSFUL` / `lint 全部通过` / `dup: 0 缺失 0` / `paging 0 违规`。
+

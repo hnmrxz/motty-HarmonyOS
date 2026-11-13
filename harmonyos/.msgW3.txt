@@ -1,0 +1,5 @@
+﻿chore(harmonyos): 新增 check-all.ps1 一条命令跑完静态门禁(build+lint+check-ids+check-paging)
+
+用途: 每轮改动后一次调用完成全部无需设备的校验, 省掉多次往返
+当前结果: build SUCCESSFUL / lint 全部通过 / dup 0 缺失 0 / paging 0 违规
+README/DELIVERY-STATUS 已补用法

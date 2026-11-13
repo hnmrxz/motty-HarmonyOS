@@ -71,6 +71,7 @@ $env:MOTTY_RUN_ID="full-$(Get-Date -Format yyyyMMdd)"
 python harmonyos\tools\run-all.py
 
 # 6) 静态检查（无需设备）
+powershell harmonyos\tools\check-all.ps1   # build + lint + check-ids + check-paging 一条命令
 python harmonyos\spec\lint.py
 python harmonyos\tools\check-ids.py     # spec 的 target id 是否都存在 + 静态 id 不重复（无需设备）
 python harmonyos\tools\check-paging.py   # 诊断面板分页：先切页再点（无需设备）
