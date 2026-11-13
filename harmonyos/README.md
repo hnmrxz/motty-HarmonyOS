@@ -23,7 +23,7 @@
 | 调试面板（RDP / 调试 / 快照 三页） | ✅ | `diag.tabs`、`ui.*` |
 | AI 通路（本地 stub） | ✅ 仅通路 | `ai.request` |
 
-**用例总数：99**；最近一次全量：**83/83 全绿**（连续 7 次全量全通过，见
+**用例总数：105**；最近一次全量：**83/83 全绿**（连续 7 次全量全通过，见
 [docs/REGRESSION.md](docs/REGRESSION.md)）。
 
 ## 架构
@@ -61,12 +61,18 @@ hdc -t 127.0.0.1:10100 rport tcp:5901 tcp:5901
 python harmonyos\spec\run.py harmonyos\spec\scenarios\terminal.vt.yaml `
   --serial 127.0.0.1:10100 --profile 2in1 --fresh --out harmonyos\spec\evidence\runs\manual-1
 
-# 5) 全量回归（约 70~80 分钟，83 条）
+# 5) 定向回归（推荐，5~15 分钟）
+# 定向：只跑某前缀（支持逗号分隔）
+python harmonyos\tools\run-all.py --only host,forward
+# 冒烟：12 条，约 12 分钟
+python harmonyos\tools\run-all.py --quick
+# 全量（里程碑才用，约 80 分钟）
 $env:MOTTY_RUN_ID="full-$(Get-Date -Format yyyyMMdd)"
 python harmonyos\tools\run-all.py
 
 # 6) 静态检查（无需设备）
 python harmonyos\spec\lint.py
+python harmonyos\tools\check-ids.py     # spec 的 target id 是否都存在（无需设备）
 python harmonyos\tools\gen-sbom.py --check
 ```
 
@@ -103,6 +109,8 @@ python harmonyos\tools\gen-sbom.py --check
 | **E3** | 未执行或不可复现 |
 
 全量结果在 `harmonyos/spec/evidence/runs/<run-id>/summary.json`；每次提交都带证据目录。
+
+> 交付状态与唯一阻塞：见 [docs/DELIVERY-STATUS.md](docs/DELIVERY-STATUS.md)。
 
 ## 文档地图
 

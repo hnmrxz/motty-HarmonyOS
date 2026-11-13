@@ -1,0 +1,10 @@
+﻿docs(harmonyos): 新增交付状态页 DELIVERY-STATUS + README 更新(105 条用例/定向回归/check-ids)
+
+内容:
+- 一句话现状: PC 端主功能齐, 105 条用例, 最近完整全量 91/91
+- 唯一硬阻塞: vmcompute(Hyper-V 主机计算服务) Manual/Stopped 且当前会话无权限启动;
+  hypervisor 已检测到, 只需管理员身份启动服务或用管理员 DevEco 启动模拟器
+- 待补 E1 13 条 + 一条命令
+- 明确规则: 设备不可用期间新增只有 E2, 不把 E2 写成 E1
+- 未完成项按成本列出(浅色主题/pane 分屏/RDP 常驻会话/ProxyJump/arm64/平板)
+README: 用例数 105, 快速开始补 --only/--quick 与 check-ids, 链接到交付状态页
