@@ -2355,12 +2355,24 @@ struct Index {
         Button(this.t('sftp.up')).id('sftp/up').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => {
             const cred = this.creds.get(this.fixtureKey);
+          if (cred === undefined) {
+            this.hint(this.lang === 'zh' ? '请先连接一台主机' : 'connect a host first');
+            return;
+          }
+            if (cred === undefined) {
+              this.hint(this.lang === 'zh' ? '请先连接一台主机' : 'connect a host first');
+              return;
+            }
             if (cred !== undefined) {
               this.lookupFp(this.fixtureKey).then((fp: string) => { this.goUp(cred, fp); });
             }
           })
         Button(this.t('sftp.list')).id('sftp/list-btn').onClick(() => {
           const cred = this.creds.get(this.fixtureKey);
+          if (cred === undefined) {
+            this.hint(this.lang === 'zh' ? '请先连接一台主机' : 'connect a host first');
+            return;
+          }
           if (cred !== undefined) {
             this.lookupFp(this.fixtureKey).then((fp: string) => { this.refreshListing(cred, fp); });
           }
@@ -2378,6 +2390,14 @@ struct Index {
                 .onClick(() => {
                   const name = entry.indexOf('|') > 0 ? entry.substring(0, entry.indexOf('|')) : entry;
                   const cred = this.creds.get(this.fixtureKey);
+          if (cred === undefined) {
+            this.hint(this.lang === 'zh' ? '请先连接一台主机' : 'connect a host first');
+            return;
+          }
+            if (cred === undefined) {
+              this.hint(this.lang === 'zh' ? '请先连接一台主机' : 'connect a host first');
+              return;
+            }
                   if (cred === undefined) {
                     return;
                   }
@@ -2405,6 +2425,10 @@ struct Index {
           .layoutWeight(1).onChange((v: string) => { this.sftpFile = v; })
         Button(this.t('sftp.download')).id('sftp/download').onClick(() => {
           const cred = this.creds.get(this.fixtureKey);
+          if (cred === undefined) {
+            this.hint(this.lang === 'zh' ? '请先连接一台主机' : 'connect a host first');
+            return;
+          }
           if (cred !== undefined) {
             this.lookupFp(this.fixtureKey).then((fp: string) => { this.downloadFile(cred, fp); });
           }
@@ -2412,6 +2436,14 @@ struct Index {
         Button(this.t('sftp.delete')).id('sftp/delete').backgroundColor('#C62828').fontColor(Color.White)
           .onClick(() => {
             const cred = this.creds.get(this.fixtureKey);
+          if (cred === undefined) {
+            this.hint(this.lang === 'zh' ? '请先连接一台主机' : 'connect a host first');
+            return;
+          }
+            if (cred === undefined) {
+              this.hint(this.lang === 'zh' ? '请先连接一台主机' : 'connect a host first');
+              return;
+            }
             if (cred !== undefined) {
               this.lookupFp(this.fixtureKey).then((fp: string) => { this.deleteFile(cred, fp); });
             }
@@ -2419,6 +2451,14 @@ struct Index {
         Button(this.t('sftp.rename')).id('sftp/rename').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => {
             const cred = this.creds.get(this.fixtureKey);
+          if (cred === undefined) {
+            this.hint(this.lang === 'zh' ? '请先连接一台主机' : 'connect a host first');
+            return;
+          }
+            if (cred === undefined) {
+              this.hint(this.lang === 'zh' ? '请先连接一台主机' : 'connect a host first');
+              return;
+            }
             if (cred !== undefined) {
               this.lookupFp(this.fixtureKey).then((fp: string) => { this.renameFile(cred, fp); });
             }
@@ -2426,6 +2466,14 @@ struct Index {
         Button(this.t('sftp.mkdir')).id('sftp/mkdir').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
           .onClick(() => {
             const cred = this.creds.get(this.fixtureKey);
+          if (cred === undefined) {
+            this.hint(this.lang === 'zh' ? '请先连接一台主机' : 'connect a host first');
+            return;
+          }
+            if (cred === undefined) {
+              this.hint(this.lang === 'zh' ? '请先连接一台主机' : 'connect a host first');
+              return;
+            }
             if (cred !== undefined) {
               this.lookupFp(this.fixtureKey).then((fp: string) => { this.mkdirRemote(cred, fp); });
             }
@@ -2437,6 +2485,10 @@ struct Index {
           .layoutWeight(1).onChange((v: string) => { this.sftpUploadName = v; })
         Button(this.t('sftp.upload')).id('sftp/upload').onClick(() => {
           const cred = this.creds.get(this.fixtureKey);
+          if (cred === undefined) {
+            this.hint(this.lang === 'zh' ? '请先连接一台主机' : 'connect a host first');
+            return;
+          }
           if (cred !== undefined) {
             this.lookupFp(this.fixtureKey).then((fp: string) => { this.uploadFile(cred, fp); });
           }

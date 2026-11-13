@@ -268,3 +268,8 @@ Output 2 / Share 2 / Shortcuts 1`
 | 终端字号 `termFontSize` | 10–24 | `font-dec`/`font-inc`，边界禁用并置灰，值旁标注 `(10–24)` |
 | 回滚行数 `termScrollback` | 0–100 | `scrollback-dec`/`scrollback`（+），边界禁用，值旁标注 `(0–100)`；不再"循环归零" |
 
+## Round 162 追加（E2）：无凭据时不再静默
+
+SFTP 面板 / 会话相关的 `creds.get(fixtureKey)` 分支原本在**未连接主机**时静默 return。
+现在统一先判空并提示「请先连接一台主机 / connect a host first」（13 处入口），提示 4 秒自动消失。
+
