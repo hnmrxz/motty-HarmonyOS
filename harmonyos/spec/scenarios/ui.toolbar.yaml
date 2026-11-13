@@ -71,7 +71,7 @@ steps:
     ms: 800
     expect:
       kind: screenRegex
-      regex: "copied 127.0.0.1:2222"
+      regex: "copied 127.0.0.1:2222|已复制 127.0.0.1:2222"
       withinMs: 8000
   # 连接后再用顶栏"新会话"
   - action: click

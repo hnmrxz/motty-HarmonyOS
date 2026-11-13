@@ -850,10 +850,10 @@ struct Index {
     const text: string = h.address + (h.port.length > 0 ? ':' + h.port : '');
     try {
       pasteboard.getSystemPasteboard().setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text))
-        .then(() => { this.toolbarHint = 'copied ' + text; })
-        .catch(() => { this.toolbarHint = 'copy failed'; });
+        .then(() => { this.toolbarHint = (this.lang === 'zh' ? '已复制 ' : 'copied ') + text; })
+        .catch(() => { this.toolbarHint = this.lang === 'zh' ? '复制失败' : 'copy failed'; });
     } catch (e) {
-      this.toolbarHint = 'copy threw';
+      this.toolbarHint = this.lang === 'zh' ? '复制异常' : 'copy threw';
     }
   }
 
@@ -864,11 +864,11 @@ struct Index {
         .then((data: pasteboard.PasteData) => {
           const text: string = data.getPrimaryText();
           this.termInput = this.termInput + (text ?? '');
-          this.toolbarHint = 'pasted ' + String((text ?? '').length) + ' chars';
+          this.toolbarHint = (this.lang === 'zh' ? '已粘贴 ' : 'pasted ') + String((text ?? '').length) + (this.lang === 'zh' ? ' 个字符' : ' chars');
         })
-        .catch(() => { this.toolbarHint = 'paste failed'; });
+        .catch(() => { this.toolbarHint = this.lang === 'zh' ? '粘贴失败' : 'paste failed'; });
     } catch (e) {
-      this.toolbarHint = 'paste threw';
+      this.toolbarHint = this.lang === 'zh' ? '粘贴异常' : 'paste threw';
     }
   }
 
@@ -1901,7 +1901,7 @@ struct Index {
       const pred = new relationalStore.RdbPredicates('forwards');
       await this.store.delete(pred);
       this.editingRuleId = '';
-      this.fwdResult = 'all rules cleared';
+      this.fwdResult = this.lang === 'zh' ? '已清空全部规则' : 'all rules cleared';
       await this.reloadRules();
     } catch (e) {
       hilog.error(DOMAIN, TAG, 'clearAllRules failed: %{public}s', JSON.stringify(e));
@@ -3922,7 +3922,7 @@ struct Index {
     this.showLastUsed = true;
     this.showTabCount = true;
     this.startupView = 'hosts';
-    this.settingsReset = 'settings reset to defaults';
+    this.settingsReset = this.lang === 'zh' ? '设置已恢复默认' : 'settings reset to defaults';
     this.savePrefs();
   }
 

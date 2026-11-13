@@ -71,7 +71,7 @@ steps:
     ms: 800
     expect:
       kind: screenRegex
-      regex: "copied 10.30.30.30"
+      regex: "copied 10.30.30.30|已复制 10.30.30.30"
       withinMs: 8000
   # 再开菜单 -> 详情
   - action: click
