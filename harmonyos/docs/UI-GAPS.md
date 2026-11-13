@@ -292,3 +292,9 @@ SFTP 面板 / 会话相关的 `creds.get(fixtureKey)` 分支原本在**未连接
 - 标签栏在未读且非活动时显示琥珀色圆点 `session-unread/<id>`（放在标签按钮**前面**，避免按钮坐标抖动 —— 这是本工程踩过的坑）
 - 覆盖范围：目前只挂在演示 vt 输出回调（`kind=vt/vt2/demo`）上；真实 SSH shell 的流式输出走另一条路径，尚未接
 
+## Round 166 追加（E2）：未读指示接入**真实 shell 流**
+
+- `openShell(...)` 的 chunk 回调：非活动标签时 `markUnread(tabId)`
+- `exec(...)` 演示回调和另一处 vt 回调同样补上 else 分支
+- 现在 `this.markUnread(` 共 3 处调用（真实 shell + 演示 vt + 演示 exec），覆盖全部输出路径
+

@@ -1374,6 +1374,8 @@ struct Index {
           mottynapi.vtFeed(vtId, chunk);
           if (this.activeId === tabId) {
             this.refreshTab(vtId);
+          } else {
+            this.markUnread(tabId);
           }
         },
         (status: string) => { this.probeText = tabLabel + ': ' + status; });
@@ -1397,6 +1399,8 @@ struct Index {
           } else {
             this.refreshTab(vtId);
           }
+        } else {
+          this.markUnread(tabId);
         }
       },
       (status: string) => {

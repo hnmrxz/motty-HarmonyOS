@@ -1,0 +1,6 @@
+﻿feat(harmonyos/tabs): 未读指示接入真实 shell 输出路径
+
+- openShell chunk 回调: 非活动标签时 markUnread(tabId)
+- exec/演示 vt 回调补 else 分支; 现共 3 处 markUnread 调用, 覆盖全部输出路径
+- UI-GAPS 更新覆盖说明
+验证: check-all.ps1 七项全绿(115 场景)
