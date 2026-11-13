@@ -273,3 +273,9 @@ Output 2 / Share 2 / Shortcuts 1`
 SFTP 面板 / 会话相关的 `creds.get(fixtureKey)` 分支原本在**未连接主机**时静默 return。
 现在统一先判空并提示「请先连接一台主机 / connect a host first」（13 处入口），提示 4 秒自动消失。
 
+## Round 163 追加（E2）：端口转发表单校验
+
+- 新增 `forwardFormError()`：监听端口 / 目标端口必须是 **1–65535** 的整数、目标主机不能为空
+- `startForward()` 与 `saveRule()` 先校验：不合格时把错误写进 `fwd/events` 或 `fwd/result`，不再带着无效参数去连接/入库
+- **未加用例**：输入框是非受控的，自动化无法「清空已有内容」，构造非法值不稳定；列为 E2 代码级保证
+

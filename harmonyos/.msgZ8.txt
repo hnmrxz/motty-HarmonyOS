@@ -1,0 +1,7 @@
+﻿feat(harmonyos/forward): 端口转发表单校验(1-65535/目标主机非空) + 修复误插导致的编译错误
+
+- 新增 forwardFormError(); startForward() 与 saveRule() 先校验, 不合格写 fwd/events 或 fwd/result
+- 修复插入位置错误: 原 startForward 是 "private  async ..." 两行写法, 插入后留下孤立的 private
+  (ArkTS 报 arkts-no-any-unknown), 已改为标准 private 方法声明
+- 未加用例: 非受控输入框无法在自动化里清空已有内容, 构造非法值不稳定(E2 代码级保证), 已写入 UI-GAPS
+验证: check-all.ps1 七项全绿(115 场景)

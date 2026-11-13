@@ -1525,7 +1525,28 @@ struct Index {
   }
 
   // ---------------- 端口转发（本地 forward）----------------
-  private startForward(): void {
+  // 端口转发表单校验：返回错误文案（空串=通过）
+  private forwardFormError(): string {
+    const lp: number = Number.parseInt(this.fwdListen, 10);
+    if (this.fwdListen.trim().length === 0 || Number.isNaN(lp) || lp < 1 || lp > 65535) {
+      return this.lang === 'zh' ? '监听端口必须是 1–65535 的数字' : 'listen port must be 1-65535';
+    }
+    if (this.fwdTargetHost.trim().length === 0) {
+      return this.lang === 'zh' ? '目标主机不能为空' : 'target host is required';
+    }
+    const tp: number = Number.parseInt(this.fwdTargetPort, 10);
+    if (this.fwdTargetPort.trim().length === 0 || Number.isNaN(tp) || tp < 1 || tp > 65535) {
+      return this.lang === 'zh' ? '目标端口必须是 1–65535 的数字' : 'target port must be 1-65535';
+    }
+    return '';
+  }
+
+ startForward(): void {
+    const formErr: string = this.forwardFormError();
+    if (formErr.length > 0) {
+      this.fwdEvents = formErr;
+      return;
+    }
     const cred = this.creds.get(this.fixtureKey);
     if (cred === undefined) {
       this.fwdEvents = 'no credentials (create a host for 127.0.0.1:2222 first)';
@@ -1871,6 +1892,11 @@ struct Index {
   private async saveRule(): Promise<void> {
     if (this.store === null) {
       return;
+    }
+    const formErr2: string = this.forwardFormError();
+    if (formErr2.length > 0) {
+      this.fwdResult = formErr2;
+      return Promise.resolve();
     }
     if (this.editingRuleId.length > 0) {
       const predU = new relationalStore.RdbPredicates('forwards');
