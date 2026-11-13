@@ -1,0 +1,7 @@
+﻿feat(harmonyos/ui): 设置面板分区重构(语言/外观/主机列表/终端/启动/关于) + check-ids 增强
+
+- 原面板把"终端字号"塞进"默认视图"、字号/启动/显示开关挤在一行, 视觉与信息架构混乱
+- 现按 6 个分区重组, 新增 settingsSection(分区标题) 与 settingsOpt(选项按钮) 两个 builder, 所有 id 保留
+- 关于区文案更新: RDP 现在可连接/可解码/会话预览+输入投递(实验性)
+- check-ids 增强: 识别 @Builder 参数传入的 id (settingsOpt(label,'id',...))
+验证: check-all.ps1 五项全绿(111 场景)

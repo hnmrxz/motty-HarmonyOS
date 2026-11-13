@@ -3959,11 +3959,27 @@ struct Index {
 
 
 
+
+  @Builder
+  settingsSection(title: string) {
+    Text(title).fontSize(12).fontColor('#8A8F98').width('100%').margin({ top: 4 })
+  }
+
+  @Builder
+  settingsOpt(label: string, idName: string, active: boolean, onTap: () => void) {
+    Button(label)
+      .id(idName).height(30).fontSize(12)
+      .backgroundColor(active ? '#2F6F4F' : '#23262B')
+      .fontColor(active ? Color.White : '#C7CBD1')
+      .onClick(() => { onTap(); })
+  }
+
   @Builder
   settingsPanel() {
-    Column({ space: 14 }) {
+    Column({ space: 10 }) {
       Row() {
-        Text(this.lang === 'zh' ? '设置' : 'Settings').fontSize(this.fs(18)).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
+        Text(this.lang === 'zh' ? '设置' : 'Settings')
+          .fontSize(this.fs(18)).fontWeight(FontWeight.Bold).fontColor('#E8EAED')
         Blank()
         Button(this.lang === 'zh' ? '恢复默认' : 'Reset to defaults').id('settings/reset')
           .height(30).fontSize(12).backgroundColor('#3A2226').fontColor('#E08A8A')
@@ -3972,144 +3988,98 @@ struct Index {
           .backgroundColor('#23262B').fontColor('#C7CBD1')
           .onClick(() => { this.settingsOpen = false; })
       }.width('100%')
+      if (this.settingsReset.length > 0) {
+        Text(this.settingsReset).id('settings/reset-result')
+          .fontSize(11).fontColor('#0A6C00').width('100%')
+      }
 
-      // 语言
-      Column({ space: 6 }) {
-        Text(this.lang === 'zh' ? '语言' : 'Language').fontSize(12).fontColor('#8A8F98')
-        Row({ space: 8 }) {
-          Button('中文').id('settings/lang-zh').height(30).fontSize(12)
-            .backgroundColor(this.lang === 'zh' ? '#2F6F4F' : '#23262B')
-            .fontColor(this.lang === 'zh' ? Color.White : '#C7CBD1')
-            .onClick(() => { if (this.lang !== 'zh') { this.toggleLangAndSave(); } })
-          Button('English').id('settings/lang-en').height(30).fontSize(12)
-            .backgroundColor(this.lang === 'en' ? '#2F6F4F' : '#23262B')
-            .fontColor(this.lang === 'en' ? Color.White : '#C7CBD1')
-            .onClick(() => { if (this.lang !== 'en') { this.toggleLangAndSave(); } })
-        }
-      }.alignItems(HorizontalAlign.Start).width('100%')
+      this.settingsSection(this.lang === 'zh' ? '语言' : 'Language')
+      Row({ space: 8 }) {
+        this.settingsOpt('中文', 'settings/lang-zh', this.lang === 'zh', () => {
+          if (this.lang !== 'zh') { this.toggleLangAndSave(); }
+        })
+        this.settingsOpt('English', 'settings/lang-en', this.lang === 'en', () => {
+          if (this.lang !== 'en') { this.toggleLangAndSave(); }
+        })
+      }.width('100%')
 
-      // 默认视图
-      Column({ space: 6 }) {
-        // 终端字号（作用到终端输出文本的实际字号）
-        Column({ space: 6 }) {
-          Text(this.lang === 'zh' ? '终端字号' : 'Terminal font size').fontSize(12).fontColor('#8A8F98')
-          Row({ space: 10 }) {
-            Button('-').id('settings/font-dec').height(30).width(40).fontSize(13)
-              .backgroundColor('#23262B').fontColor('#C7CBD1')
-              .onClick(() => { this.changeTermFont(-1); })
-            Text('字号 ' + this.termFontSize.toString()).id('settings/font-value')
-              .fontSize(12).fontColor('#C7CBD1')
-            Button('+').id('settings/font-inc').height(30).width(40).fontSize(13)
-              .backgroundColor('#23262B').fontColor('#C7CBD1')
-              .onClick(() => { this.changeTermFont(1); })
-          }
-        }.alignItems(HorizontalAlign.Start).width('100%')
+      this.settingsSection(this.lang === 'zh' ? '外观' : 'Appearance')
+      Row({ space: 8 }) {
+        this.settingsOpt(this.lang === 'zh' ? '小' : 'Small', 'settings/scale-small',
+          this.uiScaleKey === 'small', () => { this.uiScaleKey = 'small'; this.savePrefs(); })
+        this.settingsOpt(this.lang === 'zh' ? '标准' : 'Regular', 'settings/scale-regular',
+          this.uiScaleKey === 'regular', () => { this.uiScaleKey = 'regular'; this.savePrefs(); })
+        this.settingsOpt(this.lang === 'zh' ? '大' : 'Large', 'settings/scale-large',
+          this.uiScaleKey === 'large', () => { this.uiScaleKey = 'large'; this.savePrefs(); })
+      }.width('100%')
 
-        Text(this.lang === 'zh' ? '默认视图' : 'Default view').fontSize(12).fontColor('#8A8F98')
-        Row({ space: 8 }) {
-          Button(this.lang === 'zh' ? '列表' : 'List').id('settings/view-list').height(30).fontSize(12)
-            .backgroundColor(this.hostView === 'list' ? '#2F6F4F' : '#23262B')
-            .fontColor(this.hostView === 'list' ? Color.White : '#C7CBD1')
-            .onClick(() => { this.hostView = 'list'; this.savePrefs(); })
-          Button(this.lang === 'zh' ? '字号: 小' : 'Text: small').id('settings/scale-small')
-          .height(30).fontSize(12)
-          .backgroundColor(this.uiScaleKey === 'small' ? '#2F6F4F' : '#23262B')
-          .fontColor(this.uiScaleKey === 'small' ? Color.White : '#C7CBD1')
-          .onClick(() => { this.uiScaleKey = 'small'; this.savePrefs(); })
-        Button(this.lang === 'zh' ? '字号: 标准' : 'Text: regular').id('settings/scale-regular')
-          .height(30).fontSize(12)
-          .backgroundColor(this.uiScaleKey === 'regular' ? '#2F6F4F' : '#23262B')
-          .fontColor(this.uiScaleKey === 'regular' ? Color.White : '#C7CBD1')
-          .onClick(() => { this.uiScaleKey = 'regular'; this.savePrefs(); })
-        Button(this.lang === 'zh' ? '字号: 大' : 'Text: large').id('settings/scale-large')
-          .height(30).fontSize(12)
-          .backgroundColor(this.uiScaleKey === 'large' ? '#2F6F4F' : '#23262B')
-          .fontColor(this.uiScaleKey === 'large' ? Color.White : '#C7CBD1')
-          .onClick(() => { this.uiScaleKey = 'large'; this.savePrefs(); })
-        Button(this.lang === 'zh' ? '启动: 主机' : 'Start: hosts').id('settings/start-hosts')
-          .height(30).fontSize(12)
-          .backgroundColor(this.startupView === 'hosts' ? '#2F6F4F' : '#23262B')
-          .fontColor(this.startupView === 'hosts' ? Color.White : '#C7CBD1')
-          .onClick(() => { this.startupView = 'hosts'; this.savePrefs(); })
-        Button(this.lang === 'zh' ? '启动: 日志' : 'Start: logs').id('settings/start-logs')
-          .height(30).fontSize(12)
-          .backgroundColor(this.startupView === 'logs' ? '#2F6F4F' : '#23262B')
-          .fontColor(this.startupView === 'logs' ? Color.White : '#C7CBD1')
-          .onClick(() => { this.startupView = 'logs'; this.savePrefs(); })
-        Button(this.lang === 'zh' ? '启动: 工作区' : 'Start: workspace').id('settings/start-workspace')
-          .height(30).fontSize(12)
-          .backgroundColor(this.startupView === 'workspace' ? '#2F6F4F' : '#23262B')
-          .fontColor(this.startupView === 'workspace' ? Color.White : '#C7CBD1')
-          .onClick(() => { this.startupView = 'workspace'; this.savePrefs(); })
-        Button(this.lang === 'zh' ? '显示最近连接' : 'Show last used').id('settings/show-lastused')
-          .height(30).fontSize(12)
-          .backgroundColor(this.showLastUsed ? '#2F6F4F' : '#23262B')
-          .fontColor(this.showLastUsed ? Color.White : '#C7CBD1')
-          .onClick(() => { this.showLastUsed = !this.showLastUsed; this.savePrefs(); })
-        Button(this.lang === 'zh' ? '显示会话计数' : 'Show tab count').id('settings/show-tabcount')
-          .height(30).fontSize(12)
-          .backgroundColor(this.showTabCount ? '#2F6F4F' : '#23262B')
-          .fontColor(this.showTabCount ? Color.White : '#C7CBD1')
-          .onClick(() => { this.showTabCount = !this.showTabCount; this.savePrefs(); })
-        Button(this.lang === 'zh' ? '回滚行数' : 'Scrollback').id('settings/scrollback').height(30).fontSize(12)
+      this.settingsSection(this.lang === 'zh' ? '主机列表' : 'Host list')
+      Row({ space: 8 }) {
+        this.settingsOpt(this.lang === 'zh' ? '列表' : 'List', 'settings/view-list',
+          this.hostView === 'list', () => { this.hostView = 'list'; this.savePrefs(); })
+        this.settingsOpt(this.lang === 'zh' ? '网格' : 'Grid', 'settings/view-grid',
+          this.hostView === 'grid', () => { this.hostView = 'grid'; this.savePrefs(); })
+        this.settingsOpt(this.lang === 'zh' ? '手动排序' : 'Manual', 'settings/sort-manual',
+          this.hostSort === 'manual', () => { this.hostSort = 'manual'; this.savePrefs(); })
+        this.settingsOpt(this.lang === 'zh' ? '按名称' : 'By name', 'settings/sort-name',
+          this.hostSort === 'name', () => { this.hostSort = 'name'; this.savePrefs(); })
+        this.settingsOpt(this.lang === 'zh' ? '按地址' : 'By IP', 'settings/sort-ip',
+          this.hostSort === 'ip', () => { this.hostSort = 'ip'; this.savePrefs(); })
+      }.width('100%')
+      Row({ space: 8 }) {
+        this.settingsOpt((this.showLastUsed ? '✓ ' : '') + (this.lang === 'zh' ? '最近连接' : 'Last used'),
+          'settings/show-lastused', this.showLastUsed, () => { this.showLastUsed = !this.showLastUsed; this.savePrefs(); })
+        this.settingsOpt((this.showTabCount ? '✓ ' : '') + (this.lang === 'zh' ? '会话计数' : 'Tab count'),
+          'settings/show-tabcount', this.showTabCount, () => { this.showTabCount = !this.showTabCount; this.savePrefs(); })
+        this.settingsOpt(this.lang === 'zh' ? '标签编号' : 'Tab numbers',
+          'settings/tab-numbers', this.tabNumbers, () => { this.tabNumbers = !this.tabNumbers; this.savePrefs(); })
+        this.settingsOpt(this.lang === 'zh' ? '侧栏标签' : 'Side tabs',
+          'settings/tab-side', this.tabSide, () => { this.tabSide = !this.tabSide; this.savePrefs(); })
+      }.width('100%')
+
+      this.settingsSection(this.lang === 'zh' ? '终端' : 'Terminal')
+      Row({ space: 10 }) {
+        Button('-').id('settings/font-dec').height(30).width(40).fontSize(13)
           .backgroundColor('#23262B').fontColor('#C7CBD1')
-          .onClick(() => { this.termScrollback = this.termScrollback >= 100 ? 0 : this.termScrollback + 10; this.savePrefs(); })
-        Text(this.lang === 'zh' ? '回滚 ' + this.termScrollback : 'scrollback ' + this.termScrollback)
-          .id('settings/scrollback-value').fontSize(11).fontColor('#8A8F98')
-        Button(this.lang === 'zh' ? '侧栏标签' : 'Side tabs')
-          .id('settings/tab-side').height(30).fontSize(12)
-          .backgroundColor(this.tabSide ? '#2F6F4F' : '#23262B')
-          .fontColor(this.tabSide ? Color.White : '#C7CBD1')
-          .onClick(() => { this.tabSide = !this.tabSide; this.savePrefs(); })
-        Button(this.lang === 'zh' ? '标签编号' : 'Tab numbers')
-          .id('settings/tab-numbers').height(30).fontSize(12)
-          .backgroundColor(this.tabNumbers ? '#2F6F4F' : '#23262B')
-          .fontColor(this.tabNumbers ? Color.White : '#C7CBD1')
-          .onClick(() => { this.tabNumbers = !this.tabNumbers; this.savePrefs(); })
-        Button(this.lang === 'zh' ? '网格' : 'Grid').id('settings/view-grid').height(30).fontSize(12)
-            .backgroundColor(this.hostView === 'grid' ? '#2F6F4F' : '#23262B')
-            .fontColor(this.hostView === 'grid' ? Color.White : '#C7CBD1')
-            .onClick(() => { this.hostView = 'grid'; this.savePrefs(); })
-        }
-      }.alignItems(HorizontalAlign.Start).width('100%')
+          .onClick(() => { this.changeTermFont(-1); })
+        Text(this.lang === 'zh' ? '字号 ' + this.termFontSize : 'size ' + this.termFontSize)
+          .id('settings/font-value').fontSize(12).fontColor('#C7CBD1')
+        Button('+').id('settings/font-inc').height(30).width(40).fontSize(13)
+          .backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => { this.changeTermFont(1); })
+        Button(this.lang === 'zh' ? '回滚 ' + this.termScrollback : 'scrollback ' + this.termScrollback)
+          .id('settings/scrollback').height(30).fontSize(12)
+          .backgroundColor('#23262B').fontColor('#C7CBD1')
+          .onClick(() => {
+            this.termScrollback = this.termScrollback >= 100 ? 0 : this.termScrollback + 10;
+            this.savePrefs();
+          })
+      }.width('100%')
 
-      // 排序
-      Column({ space: 6 }) {
-        Text(this.lang === 'zh' ? '排序' : 'Sort').fontSize(12).fontColor('#8A8F98')
-        Row({ space: 8 }) {
-          Button(this.lang === 'zh' ? '手动' : 'Manual').id('settings/sort-manual').height(30).fontSize(12)
-            .backgroundColor(this.hostSort === 'manual' ? '#2F6F4F' : '#23262B')
-            .fontColor(this.hostSort === 'manual' ? Color.White : '#C7CBD1')
-            .onClick(() => { this.hostSort = 'manual'; this.savePrefs(); })
-          Button(this.lang === 'zh' ? '按名称' : 'Name').id('settings/sort-name').height(30).fontSize(12)
-            .backgroundColor(this.hostSort === 'name' ? '#2F6F4F' : '#23262B')
-            .fontColor(this.hostSort === 'name' ? Color.White : '#C7CBD1')
-            .onClick(() => { this.hostSort = 'name'; this.savePrefs(); })
-          Button(this.lang === 'zh' ? '按 IP' : 'IP').id('settings/sort-ip').height(30).fontSize(12)
-            .backgroundColor(this.hostSort === 'ip' ? '#2F6F4F' : '#23262B')
-            .fontColor(this.hostSort === 'ip' ? Color.White : '#C7CBD1')
-            .onClick(() => { this.hostSort = 'ip'; this.savePrefs(); })
-        }
-      }.alignItems(HorizontalAlign.Start).width('100%')
+      this.settingsSection(this.lang === 'zh' ? '启动时打开' : 'On launch')
+      Row({ space: 8 }) {
+        this.settingsOpt(this.lang === 'zh' ? '主机' : 'Hosts', 'settings/start-hosts',
+          this.startupView === 'hosts', () => { this.startupView = 'hosts'; this.savePrefs(); })
+        this.settingsOpt(this.lang === 'zh' ? '会话日志' : 'Session logs', 'settings/start-logs',
+          this.startupView === 'logs', () => { this.startupView = 'logs'; this.savePrefs(); })
+        this.settingsOpt(this.lang === 'zh' ? '工作区' : 'Workspace', 'settings/start-workspace',
+          this.startupView === 'workspace', () => { this.startupView = 'workspace'; this.savePrefs(); })
+      }.width('100%')
 
-      Divider().color('#23262A')
-
-      // 关于
+      this.settingsSection(this.lang === 'zh' ? '关于' : 'About')
       Column({ space: 4 }) {
-        Text(this.lang === 'zh' ? '关于' : 'About').fontSize(12).fontColor('#8A8F98')
-        Text('Motty for HarmonyOS · PC').fontSize(13).fontColor('#E8EAED')
         Text(this.lang === 'zh'
           ? '上游 t8y2/motty（Apache-2.0）；鸿蒙端为 ArkTS + C/C++（NAPI）实现。'
           : 'Upstream t8y2/motty (Apache-2.0); HarmonyOS build in ArkTS + C/C++ via NAPI.')
           .fontSize(11).fontColor('#8A8F98')
         Text(this.lang === 'zh'
-          ? 'RDP 仍为实验性：可连接与解码，但画面内容与输入投递未完成。'
-          : 'RDP is experimental: connect and decode work, picture content and input are not done.')
+          ? 'RDP：可连接、可解码、会话视图可预览画面并投递输入（实验性）。'
+          : 'RDP: connect, decode and session preview with input delivery (experimental).')
           .fontSize(11).fontColor('#E0A458')
       }.alignItems(HorizontalAlign.Start).width('100%')
     }
     .id('settings/panel')
-    .width(520).padding(20).backgroundColor('#1C1F24').borderRadius(14)
+    .width(560).padding(20).backgroundColor('#1C1F24').borderRadius(14)
     .shadow({ radius: 24, color: '#66000000', offsetY: 8 })
   }
 

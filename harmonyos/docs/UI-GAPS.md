@@ -162,3 +162,20 @@ Output 2 / Share 2 / Shortcuts 1`
 | 标题统一 | 快捷命令 `snippet/title`、笔记 `note/title` 接入 `pageTitle`；主机页标题 `hosts/title` 接入 `fs()` |
 | 页内边距统一 | 二级页面统一 `left/right 22, top 10, height 100%` |
 
+## Round 144 追加（E2）：设置面板**分区重构**
+
+原面板把「终端字号」塞进「默认视图」列、把字号/启动/显示开关全挤在一行，视觉与信息架构都乱。
+
+新结构（560 宽，统一 `settingsSection` 分区标题 + `settingsOpt` 选项按钮）：
+
+| 分区 | 内容（id 全部保留） |
+|---|---|
+| 语言 | `settings/lang-zh|lang-en` |
+| 外观 | `settings/scale-small|regular|large` |
+| 主机列表 | `settings/view-list|view-grid`、`sort-manual|name|ip`、`show-lastused`、`show-tabcount`、`tab-numbers`、`tab-side` |
+| 终端 | `settings/font-dec|font-value|font-inc`、`settings/scrollback` |
+| 启动时打开 | `settings/start-hosts|start-logs|start-workspace` |
+| 关于 | 版本说明（RDP 文案更新为「可连接/可解码/会话预览+输入投递（实验性）」） |
+
+`check-ids` 同步增强：识别通过 `@Builder` 参数传入的 id（如 `settingsOpt(label, 'settings/x', ...)`）。
+

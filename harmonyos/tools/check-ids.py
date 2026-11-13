@@ -16,6 +16,9 @@ for m in re.finditer(r"\.id\('([^']*)'(?:\s*\+\s*[^)]*)?\)", text):
     defined.add(m.group(1))
 for m in re.finditer(r"pcNavItem\('[^']*',\s*'([^']+)'", text):
     defined.add(m.group(1))
+# 通过 @Builder 参数传入的 id（如 settingsOpt(label, 'id', ...)）
+for m in re.finditer(r"\b\w+Opt\([^,]+,\s*'([^']+)'", text):
+    defined.add(m.group(1))
 dynamic = {d for d in defined if d.endswith(("/", "-"))}
 
 static_ids = [m.group(1) for m in re.finditer(r"\.id\('([^']*)'\)", text)]
