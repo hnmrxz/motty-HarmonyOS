@@ -2554,7 +2554,6 @@ struct Index {
       }.width('100%').justifyContent(FlexAlign.End)
     }
     .id('hostdel/dialog').width(480).padding(20).backgroundColor('#1C1F24').borderRadius(12)
-    .id('hostdel/dialog').width(480).padding(20).backgroundColor(Color.White).borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
 
@@ -2584,7 +2583,6 @@ struct Index {
       }.width('100%').justifyContent(FlexAlign.End)
     }
     .id('hostkey/changed').width(560).padding(20).backgroundColor('#1C1F24').borderRadius(12)
-    .id('hostkey/changed').width(560).padding(20).backgroundColor(Color.White).borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
 
@@ -2634,123 +2632,6 @@ struct Index {
         .fontSize(10).fontColor('#999999').width('100%')
     }
     .id('known/panel').width(620).padding(16).backgroundColor(Color.White).borderRadius(12)
-    .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
-  }
-
-  @Builder
-  diagPanel() {
-    Column({ space: 10 }) {
-      Row() {
-        Text(this.t('diag.title')).fontSize(16).fontWeight(FontWeight.Bold)
-        Blank()
-        Button(this.t('common.close')).id('diag/close').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-          .onClick(() => { this.diagOpen = false; this.stopRdpPreview(); })
-      }.width('100%')
-      Row({ space: 8 }) {
-        Button('term-echo').id('diag/term-echo').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-          .onClick(() => { this.connectFixtureDemo('term-echo'); })
-        Button('vt-demo').id('terminal/demo').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-          .onClick(() => { this.connectFixtureDemo('demo'); })
-        Button('vt-demo2').id('terminal/vt2').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-          .onClick(() => { this.connectFixtureDemo('vt2'); })
-        Button('vt').id('terminal/vt').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-          .onClick(() => { this.connectFixtureDemo('vt'); })
-        Button('pty shell').id('terminal/shell').backgroundColor('#0A6C00').fontColor(Color.White)
-          .onClick(() => { this.connectFixtureDemo('shell'); })
-        Button('VNC session').id('vnc/session').backgroundColor('#6A1B9A').fontColor(Color.White)
-          .onClick(() => { this.diagOpen = false; this.stopRdpPreview(); this.startVnc('secret'); })
-        Button('VNC bad pw').id('vnc/session-bad').backgroundColor('#C62828').fontColor(Color.White)
-          .onClick(() => { this.diagOpen = false; this.stopRdpPreview(); this.startVnc('wrong-password'); })
-        Button(this.t('rdp.srvStart')).id('rdp/srv-start').backgroundColor('#0A6C00').fontColor(Color.White)
-          .onClick(() => { this.startRdpServer(); })
-        Button(this.t('rdp.srvStop')).id('rdp/srv-stop').backgroundColor('#C62828').fontColor(Color.White)
-          .onClick(() => { this.stopRdpServer(); })
-        Button(this.t('rdp.srvStatus')).id('rdp/srv-status').backgroundColor('#37474F').fontColor(Color.White)
-          .onClick(() => { this.refreshRdpServer(); })
-      }.width('100%')
-      // 6 个按钮排一行会超出面板宽度（后面的按钮因此不渲染）-> 拆成两行
-      Row({ space: 8 }) {
-        Button(this.t('rdp.local') + ' :13389').id('rdp/probe-local').backgroundColor('#1A6DD0').fontColor(Color.White)
-          .onClick(() => { this.rdpProbe(13389, 'tester', 'secret'); })
-        Button('RDP render').id('rdp/render').backgroundColor('#1A6DD0').fontColor(Color.White)
-          .onClick(() => { this.startRdpRender(); })
-        Button('RDP input').id('rdp/input').backgroundColor('#1A6DD0').fontColor(Color.White)
-            .onClick(() => { this.probeRdpInput(); })
-        Button('TCP').id('rdp/tcpprobe').backgroundColor('#37474F').fontColor(Color.White)
-          .onClick(() => {
-            const p2: number = Number.parseInt(this.rdpTargetPort, 10);
-            this.rdpResult = 'tcp-probe: ' +
-              mottynapi.rawTcpProbe(this.rdpTargetHost, Number.isNaN(p2) ? 3389 : p2);
-          })
-          .onClick(() => { this.probeRdpInput(); })
-        Button('RDP :3390').id('rdp/probe-closed').backgroundColor('#37474F').fontColor(Color.White)
-          .onClick(() => { this.rdpProbe(3390); })
-        Button('RDP :2222').id('rdp/probe-ssh').backgroundColor('#37474F').fontColor(Color.White)
-          .onClick(() => { this.rdpProbe(2222); })
-      }.width('100%')
-      Text('These entries exist to exercise protocol paths that the product UI does not expose yet.')
-        .fontSize(11).fontColor('#666666').width('100%')
-      Row({ space: 8 }) {
-        Button(this.t('diag.tcpProbe')).id('net/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-          .onClick(() => { this.probeNet(); })
-        Button(this.t('diag.sshProbe')).id('ssh/probe').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-          .onClick(() => { this.probeSsh(); })
-        Button(this.t('diag.hostkeyCheck')).id('ssh/hostkey-check').backgroundColor('#E6E6E6').fontColor('#1A1A1A')
-          .onClick(() => { this.hostkeyCheck(); })
-      }.width('100%')
-      Text(this.vncResult.length > 0 ? this.vncResult : 'vnc: (not probed)')
-        .id('vnc/result').fontSize(11).fontFamily('monospace').fontColor('#6A1B9A').width('100%')
-      Text(this.rdpSrvStatus.length > 0 ? this.rdpSrvStatus : 'rdp-server: (idle)')
-        .id('rdp/srv-state').fontSize(11).fontFamily('monospace').fontColor('#0A6C00').width('100%')
-      Row({ space: 6 }) {
-        TextInput({ text: this.rdpTargetHost, placeholder: 'host' }).id('rdp/host').width(150)
-          .onChange((v: string) => { this.rdpTargetHost = v; })
-        TextInput({ text: this.rdpTargetPort, placeholder: 'port' }).id('rdp/port').width(70)
-          .onChange((v: string) => { this.rdpTargetPort = v; })
-        TextInput({ text: this.rdpTargetUser, placeholder: 'user' }).id('rdp/user').width(110)
-          .onChange((v: string) => { this.rdpTargetUser = v; })
-        TextInput({ text: this.rdpTargetPass, placeholder: 'password' }).id('rdp/pass').type(InputType.Password).width(110)
-          .onChange((v: string) => { this.rdpTargetPass = v; })
-        Toggle({ type: ToggleType.Checkbox, isOn: this.rdpUseNla }).id('rdp/nla')
-          .onChange((v: boolean) => { this.rdpUseNla = v; })
-        Text('NLA').fontSize(11)
-      }.width('100%')
-      Row({ space: 8 }) {
-        Button('catalog export').id('catalog/export-file').fontSize(11).height(28)
-          .backgroundColor('#1E2127').fontColor('#C7CBD1')
-          .onClick(() => { this.exportCatalogToSandbox(); })
-        Button('catalog import').id('catalog/import-file').fontSize(11).height(28)
-          .backgroundColor('#1E2127').fontColor('#C7CBD1')
-          .onClick(() => { this.importCatalogFromSandbox(); })
-      }.width('100%')
-      Button('catalog reset hosts').id('catalog/reset-hosts').fontSize(11).height(26)
-        .backgroundColor('#3A2226').fontColor('#E08A8A')
-        .onClick(() => { this.resetAllHosts(); })
-      Text(this.catalogResult).id('catalog/result').fontSize(11).fontFamily('monospace')
-        .fontColor('#0A6C00').width('100%')
-      Scroll() {
-        Text(this.probeText).id('net/probe-result').fontSize(11).fontFamily('monospace')
-          .fontColor('#C7CBD1').width('100%')
-      }.height(80).width('100%').border({ width: 1, color: '#22252A' }).padding(8)
-      Text(this.lang === 'zh' ? 'RDP：实验性' : 'RDP is experimental')
-        .id('rdp/experimental').fontSize(11).fontWeight(FontWeight.Bold)
-        .fontColor('#E0A458').width('100%')
-      this.rdpPreviewStrip()
-      Text(this.lang === 'zh'
-        ? '画面与输入尚未投递：可连接、可解码，但不能当作可用的远程桌面。'
-        : 'picture/input are not delivered yet: connect and decode work, but not usable as a desktop.')
-        .id('rdp/experimental-note').fontSize(10).fontColor('#8A8F98').width('100%')
-      Text(this.rdpResult.length > 0 ? this.rdpResult : 'rdp: (not probed)')
-        .id('rdp/result').fontSize(11).fontFamily('monospace').fontColor('#37474F').width('100%')
-      Text('ticks=' + this.rdpTickCount + ' drawn=' + this.rdpTickDrawn).id('rdp/ticks').fontSize(11).fontColor('#0A6C00')
-      Text(this.rdpSnapInfo)
-        .id('rdp/canvas-info').fontSize(11).fontFamily('monospace').fontColor('#0A6C00')
-      Canvas(this.rdpCanvasCtx)
-        .id('rdp/canvas')
-        .width(512).height(384)
-        .backgroundColor('#000000')
-    }
-    .id('diag/panel').width(680).padding(16).backgroundColor(Color.White).borderRadius(12)
     .shadow({ radius: 24, color: '#33000000', offsetY: 8 })
   }
 
@@ -3075,7 +2956,7 @@ struct Index {
           .backgroundColor('#1E2127').fontColor('#9AA0A6')
           .onClick(() => { this.toggleLang(); })
         Blank()
-        Text('RDP: 实验').id('rdp/experimental').fontSize(10).fontColor('#E0A458')
+        Text('RDP: 实验').id('rdp/experimental-badge').fontSize(10).fontColor('#E0A458')
       }.width('100%').padding({ left: 12, right: 12, top: 6, bottom: 12 })
     }
     .width(210).height('100%').backgroundColor('#101114')

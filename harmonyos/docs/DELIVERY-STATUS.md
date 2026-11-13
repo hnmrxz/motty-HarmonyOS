@@ -38,3 +38,12 @@ PC 端主功能已齐：主机/分组/终端/SFTP/端口转发/VNC/RDP/命令面
 - `spec/lint.py`：用例 schema 与步骤合法性
 - `tools/check-ids.py`：spec 指向的控件 id 是否都存在
 - `tools/run-all.py --quick` / `--only` / 全量
+
+## Round 126：代码整洁 + 静态校验增强
+
+- 删除**未使用的旧 `diagPanel()`**（117 行死代码，曾导致 40+ 个重复 id）
+- 修掉 2 处并排重复 `.id(...)`（`hostdel/dialog`、`hostkey/changed`）
+- 侧栏 RDP 徽标改名 `rdp/experimental-badge`，避免与诊断面板 `rdp/experimental` 同名（用例解析会命中错的节点）
+- `tools/check-ids.py` 现在同时检查：①spec target 缺失 ②静态 id 重复（退出码 2）
+  当前：`defined 372 / dynamic 47 / dup 0 / 缺失 0`
+

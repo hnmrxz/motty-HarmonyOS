@@ -1,0 +1,9 @@
+﻿chore(harmonyos): 删除旧 diagPanel 死代码(117 行) + 修重复 id + check-ids 增查重复 id
+
+1) 删除未使用的旧 diagPanel()(117 行) —— 它带着 40+ 个重复 id
+2) 修掉 2 处并排重复 .id(): hostdel/dialog, hostkey/changed
+3) 侧栏 RDP 徽标改名 rdp/experimental-badge, 避免与诊断面板 rdp/experimental 同名
+   (同名会让用例解析到错误节点)
+4) tools/check-ids.py 增加"静态 id 重复"检查(退出码 2), 并修正重复检查原先不可达的问题
+
+现状: defined 372 / dynamic 47 / dup 0 / target 缺失 0; build + lint 全绿
