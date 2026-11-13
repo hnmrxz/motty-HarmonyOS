@@ -18,6 +18,9 @@ if ($LASTEXITCODE -ne 0) { exit 1 }
 Write-Host "== check-paging ==" -ForegroundColor Cyan
 & C:\Python315\python.exe harmonyos\tools\check-paging.py | Select-Object -Last 1
 if ($LASTEXITCODE -ne 0) { exit 1 }
+Write-Host "== check-theme ==" -ForegroundColor Cyan
+& C:\Python315\python.exe harmonyos\tools\check-theme.py | Select-Object -Last 1
+if ($LASTEXITCODE -ne 0) { exit 1 }
 Write-Host "== check-contrast ==" -ForegroundColor Cyan
 & C:\Python315\python.exe harmonyos\tools\check-contrast.py | Select-Object -Last 1
 if ($LASTEXITCODE -ne 0) { exit 1 }

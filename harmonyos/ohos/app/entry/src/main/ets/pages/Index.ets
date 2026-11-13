@@ -2746,7 +2746,7 @@ struct Index {
       }, (t: TabInfo) => 'v-' + t.id)
     }
     .id('session/tabstrip').width(210).padding({ left: 8, right: 8, top: 8, bottom: 8 })
-    .backgroundColor('#17191D')
+    .backgroundColor(this.th('#17191D'))
   }
 
   @Builder
@@ -2916,7 +2916,7 @@ struct Index {
                 }
                 .width('100%').height(60).padding({ left: 10, right: 10 })
                 .borderRadius(10)
-                .backgroundColor(this.hoverRow === index ? '#22262C' : this.th('#1C1F24'))
+                .backgroundColor(this.hoverRow === index ? this.th('#22262C') : this.th('#1C1F24'))
                 .onHover((isHover: boolean) => {
                   if (isHover) { this.hoverRow = index; }
                   else if (this.hoverRow === index) { this.hoverRow = -1; }
@@ -3032,7 +3032,7 @@ struct Index {
       this.pcNavItem('设置', 'nav/settings', $r('app.media.ic_settings'), true, () => { this.settingsOpen = true; })
       Row({ space: 8 }) {
         Button(this.t('top.lang')).id('ui/lang').height(26).fontSize(11)
-          .backgroundColor(this.th('#1E2127')).fontColor('#9AA0A6')
+          .backgroundColor(this.th('#1E2127')).fontColor(this.th('#9AA0A6'))
           .onClick(() => { this.toggleLang(); })
         Blank()
         Text(this.lang === 'zh' ? 'RDP: 实验' : 'RDP: exp').id('rdp/experimental-badge').fontSize(10).fontColor('#E0A458')
@@ -4730,7 +4730,7 @@ struct Index {
             .width('100%').height(34).padding({ left: 10, right: 10 })
             .borderRadius(6)
             .backgroundColor(this.paletteIndex === idx ? '#3DDC97'
-              : (this.paletteHover === idx ? '#2F343B' : Color.Transparent))
+              : (this.paletteHover === idx ? this.th('#2F343B') : Color.Transparent))
             .onHover((isHover: boolean) => {
               this.paletteHover = isHover ? idx : -1;
             })
@@ -5146,7 +5146,7 @@ struct Index {
       }.width('100%').justifyContent(FlexAlign.Start)
       if (this.rdpFrameSrc.length > 0) {
         Image(this.rdpFrameSrc).id('rdp/frame').width(512).height(384)
-          .objectFit(ImageFit.Fill).border({ width: 1, color: '#3A3F46' })
+          .objectFit(ImageFit.Fill).border({ width: 1, color: this.th('#3A3F46') })
       }
     }.width('100%').alignItems(HorizontalAlign.Start)
   }
@@ -5388,13 +5388,13 @@ struct Index {
       if (this.rdpSessionFrame.length > 0) {
         Image(this.rdpSessionFrame).id('rdp/session-frame')
           .width(700).height(525).objectFit(ImageFit.Contain)
-          .backgroundColor('#000000').border({ width: 1, color: '#3A3F46' })
+          .backgroundColor('#000000').border({ width: 1, color: this.th('#3A3F46') })
       } else {
         Column() {
           Text(this.lang === 'zh' ? '正在获取画面…' : 'fetching picture ...')
             .fontSize(13).fontColor(this.th('#8A8F98'))
         }.width(700).height(525).justifyContent(FlexAlign.Center)
-        .backgroundColor('#0B0D10').border({ width: 1, color: '#3A3F46' })
+        .backgroundColor(this.th('#0B0D10')).border({ width: 1, color: this.th('#3A3F46') })
         .id('rdp/session-placeholder')
       }
       Text(this.rdpSessionStatus).id('rdp/session-status')

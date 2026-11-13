@@ -1,0 +1,8 @@
+﻿chore(harmonyos): 新增 check-theme.py(灰色必须走 th()) -> 门禁七项
+
+- 规则: 所有近灰颜色(RGB 最大差<=12)必须包在 this.th(...) 里; 彩色强调不检查
+- 本轮把 #17191D(侧栏标签条)/#22262C(悬停行)/#9AA0A6(侧栏次要文字)/#2F343B/#3A3F46/#0B0D10 纳入 th()
+- 白名单(有意固定, 待设备目视): 终端深色底 000/1E1E1E/D4D4D4/333, 固定对比 888/FAFAFA,
+  历史浅底按钮 E6E6E6/1A1A1A, 浅色文字 12141A, 次级 999/666/DDD, 以及 th() 自身返回的浅色值
+- 结果: non-themed gray colors: 0; 门禁: build->lint->check-ids->check-paging->check-theme->check-contrast->check-actions
+验证: 七项全绿(112 场景)
