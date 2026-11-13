@@ -270,6 +270,7 @@ struct Index {
   @State vaultResult: string = '';
   @State knownResult: string = '';
   @State tabNumbers: boolean = false;
+  @State tabSide: boolean = false;
   @State hoverRow: number = -1;
   @State selectAll: boolean = false;
   @State selectedIds: string[] = [];
@@ -2744,6 +2745,29 @@ struct Index {
     .backgroundColor('#EFEFEF')
   }
 
+
+  // 标签方向：侧栏（垂直）标签条
+  @Builder
+  tabStripVertical() {
+    Column({ space: 6 }) {
+      ForEach(this.tabs, (t: TabInfo, idx: number) => {
+        Row({ space: 4 }) {
+          Button((this.tabNumbers ? (idx + 1).toString() + ' ' : '') + t.label)
+            .id('session-tabv/' + t.id)
+            .backgroundColor(this.activeId === t.id ? '#1A6DD0' : '#23262B')
+            .fontColor(this.activeId === t.id ? Color.White : '#C7CBD1')
+            .fontSize(12).height(30).layoutWeight(1)
+            .onClick(() => { this.selectTab(t.id); })
+          Button('×').id('session-closev/' + t.id)
+            .backgroundColor('#2A2D33').fontColor('#C7CBD1').fontSize(12).height(30).width(30)
+            .onClick(() => { this.closeTab(t.id); })
+        }.width('100%')
+      }, (t: TabInfo) => 'v-' + t.id)
+    }
+    .id('session/tabstrip').width(210).padding({ left: 8, right: 8, top: 8, bottom: 8 })
+    .backgroundColor('#17191D')
+  }
+
   @Builder
   terminalView() {
     Column({ space: 8 }) {
@@ -3824,6 +3848,7 @@ struct Index {
     const dbPinned: string = await this.getUiState('pinnedGroups');
     const dbOrder: string = await this.getUiState('groupOrder');
     const dbFont: string = await this.getUiState('termFontSize');
+    const dbTabSide: string = await this.getUiState('tabSide');
     let lang: string = dbLang;
     let view: string = dbView;
     let sort: string = dbSort;
@@ -3848,6 +3873,7 @@ struct Index {
     }
     const fontN: number = Number.parseInt(dbFont, 10);
     if (fontN >= 10 && fontN <= 24) { this.termFontSize = fontN; }
+    this.tabSide = dbTabSide === '1';
     hilog.info(DOMAIN, TAG, 'settings loaded lang=%{public}s order=%{public}s',
       this.lang, this.groupOrder.join(','));
   }
@@ -3861,6 +3887,7 @@ struct Index {
     await this.setUiState('pinnedGroups', this.pinnedGroups.join('\u0001'));
     await this.setUiState('groupOrder', this.groupOrder.join('\u0001'));
     await this.setUiState('termFontSize', String(this.termFontSize));
+    await this.setUiState('tabSide', this.tabSide ? '1' : '0');
     if (this.prefs === null) { return; }
     try {
       this.prefs.putSync('lang', this.lang);
@@ -3926,7 +3953,12 @@ struct Index {
             .backgroundColor(this.hostView === 'list' ? '#2F6F4F' : '#23262B')
             .fontColor(this.hostView === 'list' ? Color.White : '#C7CBD1')
             .onClick(() => { this.hostView = 'list'; this.savePrefs(); })
-          Button(this.lang === 'zh' ? '标签编号' : 'Tab numbers')
+          Button(this.lang === 'zh' ? '侧栏标签' : 'Side tabs')
+          .id('settings/tab-side').height(30).fontSize(12)
+          .backgroundColor(this.tabSide ? '#2F6F4F' : '#23262B')
+          .fontColor(this.tabSide ? Color.White : '#C7CBD1')
+          .onClick(() => { this.tabSide = !this.tabSide; this.savePrefs(); })
+        Button(this.lang === 'zh' ? '标签编号' : 'Tab numbers')
           .id('settings/tab-numbers').height(30).fontSize(12)
           .backgroundColor(this.tabNumbers ? '#2F6F4F' : '#23262B')
           .fontColor(this.tabNumbers ? Color.White : '#C7CBD1')
@@ -5292,10 +5324,13 @@ struct Index {
       this.pcTopBar()
       Row() {
         this.pcSidebar()
+        if (this.tabSide && this.tabs.length > 0) {
+          this.tabStripVertical()
+        }
         Column() {
           this.pcHeader()
           this.pcChips()
-          if (this.tabs.length > 0) {
+          if (this.tabs.length > 0 && !this.tabSide) {
             this.tabBar()
           }
           if (this.pcNav === '跳板路由') {

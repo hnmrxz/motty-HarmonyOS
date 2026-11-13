@@ -110,3 +110,9 @@ Output 2 / Share 2 / Shortcuts 1`
 |---|---|---|
 | 会话日志按协议筛选 | `logs/proto-all|ssh|rdp|vnc` chips + `logs/proto-count`；`logsFiltered()` 同时按协议与关键词过滤（AND） | `logs.proto-filter` |
 
+## Round 115 追加（E2）
+
+| 项 | 实现 | 用例 |
+|---|---|---|
+| 设置「侧栏标签」 | `settings/tab-side` 开关；开启后顶部 `tabBar` 隐藏，左侧渲染 `session/tabstrip`（`session-tabv/<id>`、`session-closev/<id>`）；DB 持久化 `tabSide` | `settings.tab-side` |
+

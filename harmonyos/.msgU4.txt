@@ -1,0 +1,5 @@
+﻿feat(harmonyos/settings): 标签方向(顶部/侧栏) + 用例(E2)
+
+实现: settings/tab-side 开关; 开启后顶部 tabBar 隐藏, 左侧渲染 session/tabstrip
+  (session-tabv/<id>, session-closev/<id>); DB 持久化 tabSide
+验证: build SUCCESSFUL + spec/lint 全绿; 模拟器未连接 -> E2, 下轮 --only settings.tab 拿 E1

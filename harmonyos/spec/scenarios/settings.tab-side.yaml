@@ -1,0 +1,110 @@
+schema: 1
+id: settings.tab-side
+title: 设置「侧栏标签」：开启后标签竖排在左侧，顶部标签栏隐藏
+sourceScript: null
+pcOnly: true
+profile:
+  - 2in1
+capabilities:
+  - A03
+app:
+  bundleName: com.motty.harmony
+  ability: EntryAbility
+  settleMs: 1800
+fixture:
+  vncAuth: false
+  vncResize: false
+steps:
+  - action: launch
+  - action: wait
+    ms: 800
+    expect:
+      kind: screenRegex
+      regex: "新建主机|New Host"
+      withinMs: 20000
+  - action: click
+    target: id:known/open
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/clear
+  - action: wait
+    ms: 700
+  - action: click
+    target: id:known/close
+  - action: wait
+    ms: 500
+  - action: click
+    target: id:shell/add-host
+  - action: type
+    target: id:shell/dialog-label
+    text: tabside-a
+  - action: type
+    target: id:shell/dialog-address
+    text: 127.0.0.1
+  - action: type
+    target: id:shell/dialog-user
+    text: tester
+  - action: type
+    target: id:shell/dialog-port
+    text: "2222"
+  - action: type
+    target: id:shell/dialog-password
+    text: secret
+    secret: true
+  - action: click
+    target: id:shell/dialog-submit
+  - action: wait
+    ms: 1500
+    expect:
+      kind: screenRegex
+      regex: "tabside-a"
+      withinMs: 12000
+  - action: key
+    code: 2070
+  - action: wait
+    ms: 600
+  # 开侧栏标签
+  - action: click
+    target: id:nav/settings
+  - action: wait
+    ms: 800
+  - action: click
+    target: id:settings/tab-side
+  - action: wait
+    ms: 600
+  - action: click
+    target: id:settings/close
+  - action: wait
+    ms: 600
+  # 连接产生标签
+  - action: click
+    target: id:host-open/0
+  - action: wait
+    ms: 2500
+    expect:
+      kind: screenRegex
+      regex: "信任此主机|Trust this host|Unknown host key"
+      withinMs: 15000
+  - action: click
+    target: id:hostkey/trust
+  - action: wait
+    ms: 3000
+asserts:
+  - kind: screenRegex
+    regex: "tabside-a"
+    withinMs: 10000
+  - kind: absent
+    value: "1 session"
+    withinMs: 6000
+evidence:
+  png: true
+  tree: true
+  limits: >-
+    PC（2in1）实测。覆盖：设置里开启「侧栏标签」后有会话时顶部标签栏消失（不再出现 "1 session"），
+    标签改在左侧竖排（会话名仍可见）。
+    **不覆盖**：侧栏标签的点击切换/关闭（同一 selectTab/closeTab 路径）、重启后保持（DB 持久化同路径）。
+deviations:
+  - 以"顶部标签栏的 1 session 计数消失"作为方向切换的判据，避免依赖坐标比较。
+notes: >-
+  tabSide 存 DB ui_state；顶部 tabBar 与侧栏 tabStripVertical 互斥显示。
