@@ -72,7 +72,8 @@ python harmonyos\tools\run-all.py
 
 # 6) 静态检查（无需设备）
 python harmonyos\spec\lint.py
-python harmonyos\tools\check-ids.py     # spec 的 target id 是否都存在（无需设备）
+python harmonyos\tools\check-ids.py     # spec 的 target id 是否都存在 + 静态 id 不重复（无需设备）
+python harmonyos\tools\check-paging.py   # 诊断面板分页：先切页再点（无需设备）
 python harmonyos\tools\gen-sbom.py --check
 ```
 

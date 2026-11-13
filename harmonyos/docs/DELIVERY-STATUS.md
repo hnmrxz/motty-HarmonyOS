@@ -47,3 +47,15 @@ PC 端主功能已齐：主机/分组/终端/SFTP/端口转发/VNC/RDP/命令面
 - `tools/check-ids.py` 现在同时检查：①spec target 缺失 ②静态 id 重复（退出码 2）
   当前：`defined 372 / dynamic 47 / dup 0 / 缺失 0`
 
+## Round 127：新增分页静态检查
+
+`tools/check-paging.py`：诊断面板是分页的（RDP 默认页 / 调试页 / 快照页），
+用例若没先点 `diag/tab-debug|snap|rdp` 就点该页控件，运行时必然"选择器未命中"。
+当前 105 条用例：**0 违规**。
+
+| 静态校验 | 作用 |
+|---|---|
+| `spec/lint.py` | schema/步骤合法性 |
+| `tools/check-ids.py` | spec target 是否存在 + **静态 id 不重复** |
+| `tools/check-paging.py` | 分页规则（先切页） |
+

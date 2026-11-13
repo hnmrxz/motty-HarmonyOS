@@ -1,0 +1,6 @@
+﻿chore(harmonyos): 新增 check-paging 静态检查(诊断面板分页规则)
+
+诊断面板分页(RDP默认/调试/快照): 用例没先点 diag/tab-debug|snap 就点该页控件, 运行必失败。
+本工具按首次出现顺序校验 target 所属页是否已激活。
+当前 105 条用例: 0 违规。
+README/DELIVERY-STATUS 已补三件套说明: lint.py / check-ids.py / check-paging.py
