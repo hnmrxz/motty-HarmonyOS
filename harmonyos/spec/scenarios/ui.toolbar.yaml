@@ -90,6 +90,25 @@ steps:
     target: id:top/new-session
   - action: wait
     ms: 3000
+  # 顶栏排序切换：manual -> name -> ip（提示行显示 sort: xxx）
+  - action: click
+    target: id:top/order
+  - action: wait
+    ms: 700
+    expect:
+      kind: screenRegex
+      regex: "sort: name|sort: ip|sort: manual"
+      withinMs: 8000
+  # 顶栏"粘贴"（剪贴板可能为空，但必须给出 pasted/failed 之一）
+  - action: click
+    target: id:top/paste
+  - action: wait
+    ms: 900
+    expect:
+      kind: screenRegex
+      regex: "pasted [0-9]+ chars|paste failed|paste threw"
+      withinMs: 8000
+
 asserts:
   - kind: screenRegex
     regex: "2 sessions"
@@ -100,7 +119,8 @@ evidence:
   limits: >-
     PC（2in1）实测。覆盖：主机行"复制地址"写剪贴板并在顶栏提示 copied <addr:port>；
     顶栏"新会话"用已有主机再开一个会话（出现 2 sessions）。
-    **不覆盖**：剪贴板内容的外部读取校验、顶栏"刷新"按钮（与 reload 同路径）、无凭据时的提示分支。
+    **不覆盖**：剪贴板内容的外部读取校验（只断言提示文本）、顶栏"刷新"（与 reload 同路径）、
+    顶栏"AI"/"通知"（分别打开 AI 面板与会话日志页，同一路径未逐项断言）。
 deviations:
   - 复制只断言提示文本，不读取系统剪贴板（避免依赖剪贴板权限与实现细节）。
 notes: >-

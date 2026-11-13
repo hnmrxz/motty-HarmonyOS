@@ -277,6 +277,7 @@ struct Index {
   @State startupView: string = 'hosts';
   @State settingsReset: string = '';
   @State toolbarHint: string = '';
+  @State aiOpen: boolean = false;
   @State tabRenameOpen: boolean = false;
   @State tabRenameId: string = '';
   @State tabRenameText: string = '';
@@ -850,6 +851,21 @@ struct Index {
         .catch(() => { this.toolbarHint = 'copy failed'; });
     } catch (e) {
       this.toolbarHint = 'copy threw';
+    }
+  }
+
+  // 顶栏""粘贴""：把剪贴板文本放进终端输入框（不自动发送）
+  private pasteIntoInput(): void {
+    try {
+      pasteboard.getSystemPasteboard().getData()
+        .then((data: pasteboard.PasteData) => {
+          const text: string = data.getPrimaryText();
+          this.termInput = this.termInput + (text ?? '');
+          this.toolbarHint = 'pasted ' + String((text ?? '').length) + ' chars';
+        })
+        .catch(() => { this.toolbarHint = 'paste failed'; });
+    } catch (e) {
+      this.toolbarHint = 'paste threw';
     }
   }
 
@@ -2945,12 +2961,21 @@ struct Index {
       Blank()
       // 右：一排工具图标（占位按钮，id 便于后续接功能）
       Image($r('app.media.ic_sort')).id('top/order').width(16).height(16)
+        .onClick(() => {
+          this.hostSort = this.hostSort === 'manual' ? 'name' : (this.hostSort === 'name' ? 'ip' : 'manual');
+          this.toolbarHint = 'sort: ' + this.hostSort;
+          this.savePrefs();
+        })
       Image($r('app.media.ic_columns')).id('top/paste').width(16).height(16)
+        .onClick(() => { this.pasteIntoInput(); })
       Image($r('app.media.ic_terminal')).id('top/terminal').width(16).height(16)
+        .onClick(() => { this.pcNav = '本地终端'; })
       Image($r('app.media.ic_search')).id('top/search').width(16).height(16)
         .onClick(() => { this.openPalette(); })
       Image($r('app.media.ic_sparkles')).id('top/ai').width(16).height(16)
+        .onClick(() => { this.aiOpen = true; })
       Image($r('app.media.ic_bell')).id('top/notice').width(16).height(16)
+        .onClick(() => { this.pcNav = '会话日志'; this.reloadLogs(); })
       Image($r('app.media.ic_settings')).id('top/settings').width(16).height(16)
       Image($r('app.media.ic_play')).id('top/new-session').width(16).height(16)
         .onClick(() => { this.openNewSessionFromToolbar(); })

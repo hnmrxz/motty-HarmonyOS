@@ -1,0 +1,9 @@
+﻿feat(harmonyos/ui): 顶栏剩余按钮接行为(排序/粘贴/本地终端/AI/通知) + 用例扩展
+
+- top/order: 循环 hostSort(manual->name->ip) 并提示 sort: xxx, 存 DB
+- top/paste: pasteIntoInput() 读剪贴板填入终端输入框(不自动发送), 提示 pasted N chars
+- top/terminal: 切到本地终端页
+- top/ai: 打开 AI 面板(aiOpen)
+- top/notice: 跳到会话日志页并刷新
+用例 ui.toolbar 扩展: 排序提示 + 粘贴结果提示
+验证: build SUCCESSFUL + lint/check-ids/check-paging 全绿; 设备仍未连到
