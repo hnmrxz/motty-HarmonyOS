@@ -1,0 +1,5 @@
+﻿test(harmonyos/logs): 新增三重筛选组合用例 logs.filters-combo + 文档水位更新到 116 条用例
+
+- 用例: 主机 chip + SSH 协议 + 关键词同时生效(AND), 计数 0 / N
+- README/DELIVERY-STATUS/E1-BACKLOG 同步: 116 条用例, 7 道门禁, 19 条待补 E1
+验证: check-all.ps1 七项全绿(116 场景)

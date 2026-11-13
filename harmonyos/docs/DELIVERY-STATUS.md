@@ -2,7 +2,7 @@
 
 ## 一句话
 PC 端主功能已齐：主机/分组/终端/SFTP/端口转发/VNC/RDP/命令面板/设置/日志/密钥链/已知主机/调试/工作区，
-**105 条机器判定用例**；最近一次完整全量 **91/91**（更早 15 次连续全绿）。
+**116 条**；最近一次完整全量 **91/91**（更早 15 次连续全绿）。
 
 ## 当前唯一硬阻塞：模拟器无法启动
 - 根因：`Hyper-V 主机计算服务 (vmcompute)` 为 `Manual/Stopped`，当前会话**无权限**启动
@@ -72,4 +72,11 @@ powershell harmonyos\tools\check-all.ps1
 `check-all.ps1` 现在依次执行：**build → lint → check-ids → check-paging → check-actions**
 - `check-actions.py`：带 `id` 的 Button/Image 若附近没有 `onClick/onChange/onSubmit/onHover/bindMenu`，判为"死控件"
 - 当前结果：`dead controls: 0`（本轮据此修掉了 `view/order` 死图标）
+
+## Round 167：水位与状态
+
+- 用例：**116 条**（`spec/scenarios/*.yaml`）
+- 静态门禁：**7 项**（build / lint / check-ids / check-paging / check-theme / check-contrast / check-actions）
+- 待补 E1：**19 条**（`docs/E1-BACKLOG.md`，含本轮新增 `logs.filters-combo`）
+- 构建：`BUILD SUCCESSFUL`
 

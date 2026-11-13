@@ -64,3 +64,9 @@ python harmonyos\tools\run-all.py --only vault,settings.tab,settings.scrollback,
 python harmonyos\tools\run-all.py --only vault,settings.tab,settings.scrollback,settings.display,settings.startup,settings.reset,jump,knownhosts,logs,workspace,ui.toolbar,host.menu
 ```
 
+## Round 167 新增
+
+| 用例 | 覆盖 |
+|---|---|
+| `logs.filters-combo` | 日志主机 chip + SSH 协议 + 关键词三重 AND 过滤（计数 0 / N） |
+
